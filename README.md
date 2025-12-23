@@ -2,6 +2,8 @@
 
 PBS Wisconsin Editorial Assistant - A system for processing video transcripts and generating SEO-optimized metadata (titles, descriptions, keywords) for streaming platforms.
 
+A re-think of [this project](https://github.com/MarkOnFire/ai-editorial-assistant), which kept bolting automation on to what was essentially a custom project run through chat. 
+
 ## Overview
 
 v3.0 represents an architectural evolution from v2.0:
