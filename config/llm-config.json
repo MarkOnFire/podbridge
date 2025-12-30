@@ -73,10 +73,20 @@
     "openrouter": {
       "type": "openrouter",
       "endpoint": "https://openrouter.ai/api/v1/chat/completions",
-      "model": "google/gemini-2.5-flash",
+      "preset": "ai-editorial-assistant",
+      "fallback_model": "google/gemini-2.5-flash",
       "api_key_env": "OPENROUTER_API_KEY",
       "timeout": 180,
       "cost_per_project": 0.02
+    },
+    "openrouter-big-brain": {
+      "type": "openrouter",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "preset": "ai-editorial-assistant-big-brain",
+      "fallback_model": "google/gemini-2.5-flash",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "timeout": 300,
+      "cost_per_project": 0.10
     }
   },
 
@@ -92,5 +102,37 @@
     "check_queue_interval_seconds": 300,
     "batch_size": 4,
     "parallel_processing": false
+  },
+
+  "phase_backends": {
+    "analyst": "openrouter-big-brain",
+    "formatter": "openrouter",
+    "seo": "openrouter",
+    "copy_editor": "openrouter-big-brain"
+  },
+
+  "openrouter_presets": {
+    "ai-editorial-assistant": {
+      "description": "General use - balanced cost/quality",
+      "models": [
+        "google/gemini-3-flash-preview",
+        "google/gemini-2.5-flash",
+        "moonshotai/kimi-k2-0711:free"
+      ]
+    },
+    "ai-editorial-assistant-big-brain": {
+      "description": "Complex reasoning - higher quality models",
+      "models": [
+        "google/gemini-3-pro-preview",
+        "anthropic/claude-sonnet-4.5",
+        "xai/grok-4.1-fast"
+      ]
+    }
+  },
+
+  "safety": {
+    "run_cost_cap": 1.0,
+    "max_cost_per_1k_tokens": 0.05,
+    "model_allowlist": []
   }
 }

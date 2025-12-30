@@ -1,7 +1,7 @@
 # Editorial Assistant v3.0 - Development Progress
 
-Last updated: 2025-12-23
-Current sprint: 2.2 (API Endpoints)
+Last updated: 2025-12-29
+Current sprint: 3.1 (Web Dashboard Foundation)
 
 ## Sprint Status
 
@@ -15,12 +15,106 @@ Current sprint: 2.2 (API Endpoints)
 - [x] 2.1.7 CI/CD pipeline skeleton
 - [x] 2.1.8 Structured logging
 
-### Sprint 2.2: API Endpoints - PENDING
-- [ ] 2.2.1 Queue router
-- [ ] 2.2.2 Jobs router
-- [ ] 2.2.3 Step-level status tracking
+### Sprint 2.2: API Endpoints - COMPLETE
+- [x] 2.2.1 Queue router
+- [x] 2.2.2 Jobs router
+- [x] 2.2.3 Step-level status tracking
+- [x] 2.2.4 Enhanced health endpoint with LLM status
+- [x] 2.2.5 LLM cost tracking per run
+- [x] 2.2.6 Cost cap and model allowlist safety guards
+- [x] 2.2.7 Timezone-aware datetime helpers
+
+### Sprint 3.1: Web Dashboard Foundation - IN PROGRESS
+- [x] 3.1.0 React + Vite + Tailwind scaffold
+- [x] 3.1.1 Dashboard: Active model/preset display
 
 ## Session Notes
+
+### 2025-12-29 - Sprint 3.1 Started (Web Dashboard)
+
+**Tasks completed:**
+
+1. **React + Vite + Tailwind Scaffold (3.1.0)** - `web/` directory
+   - Vite with React 18 and TypeScript
+   - Tailwind CSS with dark mode configuration
+   - React Router v6 with routes: /, /queue, /jobs/:id, /settings
+   - Component structure: Layout, StatusBar, pages
+   - API proxy configured for localhost:8000
+   - PBS Wisconsin brand colors added to Tailwind config
+
+2. **StatusBar Component (3.1.1)** - `web/src/components/StatusBar.tsx`
+   - Displays active LLM model and OpenRouter preset
+   - Shows queue stats (pending, in_progress counts)
+   - Shows last run cost and token totals
+   - Auto-refreshes every 10 seconds
+   - Connection status indicator (green/red dot)
+
+**Also created:**
+- Home page with stats grid and recent jobs list
+- Queue page with filter tabs and job table
+- JobDetail page with phase progress, actions, timeline
+- Settings placeholder page
+
+**CLI-Agent Integration:**
+- Discovered cli-agent HTTP server running at localhost:3001
+- Used `/delegate` endpoint to have Gemini generate scaffold spec
+- Server provides: `/query`, `/query/multi`, `/delegate`, `/sessions`
+- All three agents available: claude, gemini, codex
+
+**Ready to test:** Run `cd web && npm run dev` to start dashboard at localhost:3000
+
+### 2025-12-23 - Sprint 2.2 COMPLETE
+
+**All 7 Sprint 2.2 tasks completed in this session:**
+
+1. **Queue Router (2.2.1)** - `api/routers/queue.py`
+   - GET / - List jobs with status filter and pagination
+   - POST / - Add job to queue
+   - DELETE /{job_id} - Remove job
+   - GET /next - Get next pending job
+   - GET /stats - Queue statistics by status
+
+2. **Jobs Router (2.2.2)** - `api/routers/jobs.py`
+   - GET /{job_id} - Job details
+   - PATCH /{job_id} - Update job
+   - POST /{job_id}/pause|resume|retry|cancel - Job control
+   - GET /{job_id}/events - Job event history
+   - State transition validation included
+
+3. **Step-level Status Tracking (2.2.3)** - `api/models/job.py`, `api/services/database.py`
+   - PhaseStatus enum (pending, in_progress, completed, failed, skipped)
+   - JobPhase model with cost/tokens/metadata per phase
+   - Job.phases field with helper methods (get_resume_phase, get_completed_phases)
+   - PhaseUpdate model for updating individual phases
+   - Database migration (003_add_phases_column.py)
+   - Backward compatible with existing rows
+
+4. **Enhanced Health Endpoint (2.2.4)** - Updated `api/main.py`
+   - Returns queue stats (pending, in_progress counts)
+   - Returns active LLM model/backend/preset
+   - Returns last run cost totals
+
+5. **LLM Cost Tracking (2.2.5)** - `api/services/llm.py`
+   - RunCostTracker dataclass for per-run aggregation
+   - LLMClient with OpenRouter, OpenAI, Anthropic, Gemini support
+   - Logs cost_update events per call
+   - Emits job_completed with totals
+
+6. **Cost Cap & Safety Guards (2.2.6)** - `api/services/llm.py`
+   - Per-run cost cap ($1 default, configurable via LLM_RUN_COST_CAP)
+   - Model allowlist (configurable via LLM_MODEL_ALLOWLIST)
+   - Max $/token guard ($0.05/1K default)
+   - CostCapExceededError, ModelNotAllowedError, TokenCostTooHighError
+   - Updated config/llm-config.json with safety section
+
+7. **Timezone Helpers (2.2.7)** - `api/services/utils.py`
+   - utc_now() - timezone-aware current time
+   - utc_now_iso() - ISO 8601 string
+   - ensure_utc() - convert naive to UTC-aware
+   - parse_iso_datetime() - parse ISO strings
+   - Exported from api/services/__init__.py
+
+**Sprint 2.2 fully complete - ready for Sprint 3.1 (Dashboard)**
 
 ### 2025-12-23 - Sprint 2.1 Complete
 

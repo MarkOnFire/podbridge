@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
 )
 
-from api.models.job import Job, JobCreate, JobUpdate, JobStatus
+from api.models.job import Job, JobCreate, JobUpdate, JobStatus, JobPhase, PhaseStatus
 from api.models.events import SessionEvent, EventCreate, EventData, EventType
 from api.models.config import ConfigItem, ConfigValueType
 
@@ -67,6 +67,7 @@ jobs_table = Table(
     Column("manifest_path", Text, nullable=True),
     Column("logs_path", Text, nullable=True),
     Column("last_heartbeat", DateTime, nullable=True),
+    Column("phases", Text, nullable=True),  # JSON array of JobPhase objects
 )
 
 # Define session_stats table
@@ -178,6 +179,13 @@ async def create_job(job: JobCreate) -> Job:
         Complete Job record with generated ID and defaults
     """
     async with get_session() as session:
+        # Initialize phases from agent_phases
+        default_phases = ["analyst", "formatter"]
+        initial_phases = [
+            JobPhase(name=name, status=PhaseStatus.pending).model_dump()
+            for name in default_phases
+        ]
+
         # Prepare values
         values = {
             "project_path": job.project_path,
@@ -187,7 +195,8 @@ async def create_job(job: JobCreate) -> Job:
             "queued_at": datetime.now(timezone.utc),
             "estimated_cost": 0.0,
             "actual_cost": 0.0,
-            "agent_phases": json.dumps(["analyst", "formatter"]),
+            "agent_phases": json.dumps(default_phases),
+            "phases": json.dumps(initial_phases),
             "retry_count": 0,
             "max_retries": 3,
         }
@@ -307,6 +316,42 @@ async def update_job(job_id: int, job_update: JobUpdate) -> Optional[Job]:
 
         if job_update.last_heartbeat is not None:
             update_values["last_heartbeat"] = job_update.last_heartbeat
+
+        # Handle phases update (replaces all phases)
+        if job_update.phases is not None:
+            phases_json = json.dumps([p.model_dump() for p in job_update.phases])
+            update_values["phases"] = phases_json
+
+        # Handle single phase update
+        if job_update.phase_update is not None:
+            # First fetch current phases
+            stmt = select(jobs_table.c.phases).where(jobs_table.c.id == job_id)
+            result = await session.execute(stmt)
+            row = result.fetchone()
+            if row and row.phases:
+                current_phases = json.loads(row.phases)
+                # Find and update the specific phase
+                for i, phase in enumerate(current_phases):
+                    if phase.get("name") == job_update.phase_update.name:
+                        # Update only provided fields
+                        if job_update.phase_update.status is not None:
+                            current_phases[i]["status"] = job_update.phase_update.status.value
+                        if job_update.phase_update.started_at is not None:
+                            current_phases[i]["started_at"] = job_update.phase_update.started_at.isoformat()
+                        if job_update.phase_update.completed_at is not None:
+                            current_phases[i]["completed_at"] = job_update.phase_update.completed_at.isoformat()
+                        if job_update.phase_update.cost is not None:
+                            current_phases[i]["cost"] = job_update.phase_update.cost
+                        if job_update.phase_update.tokens is not None:
+                            current_phases[i]["tokens"] = job_update.phase_update.tokens
+                        if job_update.phase_update.error_message is not None:
+                            current_phases[i]["error_message"] = job_update.phase_update.error_message
+                        if job_update.phase_update.output_path is not None:
+                            current_phases[i]["output_path"] = job_update.phase_update.output_path
+                        if job_update.phase_update.metadata is not None:
+                            current_phases[i]["metadata"] = job_update.phase_update.metadata
+                        break
+                update_values["phases"] = json.dumps(current_phases)
 
         if not update_values:
             # No fields to update, just fetch and return current state
@@ -720,11 +765,20 @@ async def list_config() -> List[ConfigItem]:
 def _row_to_job(row) -> Job:
     """Convert database row to Job model.
 
-    Handles JSON deserialization for agent_phases field and
+    Handles JSON deserialization for agent_phases and phases fields,
     derives project_name from project_path.
     """
     # Parse agent_phases JSON
     agent_phases = json.loads(row.agent_phases)
+
+    # Parse phases JSON (with fallback for existing rows without phases)
+    phases = []
+    if hasattr(row, 'phases') and row.phases:
+        phases_data = json.loads(row.phases)
+        phases = [JobPhase(**p) for p in phases_data]
+    else:
+        # Initialize phases from agent_phases for backward compatibility
+        phases = [JobPhase(name=name, status=PhaseStatus.pending) for name in agent_phases]
 
     # Derive project_name from project_path
     project_name = os.path.basename(row.project_path.rstrip('/'))
@@ -743,6 +797,7 @@ def _row_to_job(row) -> Job:
         actual_cost=row.actual_cost,
         agent_phases=agent_phases,
         current_phase=row.current_phase,
+        phases=phases,
         retry_count=row.retry_count,
         max_retries=row.max_retries,
         error_message=row.error_message,

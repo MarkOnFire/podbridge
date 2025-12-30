@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 
 class JobStatus(str, Enum):
@@ -13,6 +13,44 @@ class JobStatus(str, Enum):
     failed = "failed"
     cancelled = "cancelled"
     paused = "paused"
+
+
+class PhaseStatus(str, Enum):
+    """Status for individual processing phases."""
+    pending = "pending"
+    in_progress = "in_progress"
+    completed = "completed"
+    failed = "failed"
+    skipped = "skipped"
+
+
+class JobPhase(BaseModel):
+    """Represents an individual processing phase within a job.
+
+    Tracks completion status of each phase (analyst, formatter, etc.)
+    to enable resuming from the last successful phase.
+    """
+    name: str = Field(..., description="Phase identifier (e.g., 'analyst', 'formatter')")
+    status: PhaseStatus = Field(default=PhaseStatus.pending, description="Current phase status")
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    cost: float = Field(default=0.0, description="Cost incurred during this phase")
+    tokens: int = Field(default=0, description="Tokens used during this phase")
+    error_message: Optional[str] = None
+    output_path: Optional[str] = Field(None, description="Path to phase output file if applicable")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Phase-specific metadata")
+
+    def is_complete(self) -> bool:
+        """Check if phase completed successfully."""
+        return self.status == PhaseStatus.completed
+
+    def is_failed(self) -> bool:
+        """Check if phase failed."""
+        return self.status == PhaseStatus.failed
+
+    def can_resume(self) -> bool:
+        """Check if phase can be resumed (failed or pending)."""
+        return self.status in (PhaseStatus.pending, PhaseStatus.failed)
 
 
 class JobBase(BaseModel):
@@ -30,6 +68,19 @@ class JobCreate(BaseModel):
     priority: Optional[int] = Field(default=0, description="Job priority (higher = sooner)")
 
 
+class PhaseUpdate(BaseModel):
+    """Schema for updating a specific phase within a job."""
+    name: str = Field(..., description="Phase name to update")
+    status: Optional[PhaseStatus] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    cost: Optional[float] = None
+    tokens: Optional[int] = None
+    error_message: Optional[str] = None
+    output_path: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
 class JobUpdate(BaseModel):
     """Schema for partial job updates (PATCH /jobs/{id})."""
     status: Optional[JobStatus] = None
@@ -41,6 +92,8 @@ class JobUpdate(BaseModel):
     manifest_path: Optional[str] = None
     logs_path: Optional[str] = None
     last_heartbeat: Optional[datetime] = None
+    phases: Optional[List[JobPhase]] = Field(None, description="Replace all phases")
+    phase_update: Optional[PhaseUpdate] = Field(None, description="Update a single phase")
 
 
 class Job(BaseModel):
@@ -58,6 +111,10 @@ class Job(BaseModel):
     actual_cost: float
     agent_phases: List[str] = Field(default_factory=lambda: ["analyst", "formatter"])
     current_phase: Optional[str] = None
+    phases: List[JobPhase] = Field(
+        default_factory=list,
+        description="Detailed status of each processing phase"
+    )
     retry_count: int
     max_retries: int
     error_message: Optional[str] = None
@@ -68,6 +125,31 @@ class Job(BaseModel):
 
     class Config:
         from_attributes = True
+
+    def get_resume_phase(self) -> Optional[str]:
+        """Get the phase name to resume from.
+
+        Returns the first phase that is not completed, or None if all complete.
+        """
+        for phase in self.phases:
+            if not phase.is_complete():
+                return phase.name
+        return None
+
+    def get_completed_phases(self) -> List[str]:
+        """Get list of completed phase names."""
+        return [p.name for p in self.phases if p.is_complete()]
+
+    def get_phase(self, name: str) -> Optional[JobPhase]:
+        """Get a specific phase by name."""
+        for phase in self.phases:
+            if phase.name == name:
+                return phase
+        return None
+
+    def all_phases_complete(self) -> bool:
+        """Check if all phases are complete."""
+        return all(p.is_complete() for p in self.phases)
 
 
 class JobList(BaseModel):

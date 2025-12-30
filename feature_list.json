@@ -83,7 +83,7 @@
     "id": "2.2.1",
     "name": "Queue router",
     "sprint": "2.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "CRUD endpoints for queue management",
     "files": ["api/routers/queue.py"],
@@ -93,7 +93,7 @@
     "id": "2.2.2",
     "name": "Jobs router",
     "sprint": "2.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Job detail and control endpoints",
     "files": ["api/routers/jobs.py"],
@@ -103,10 +103,124 @@
     "id": "2.2.3",
     "name": "Step-level status tracking",
     "sprint": "2.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Track completion of each agent phase independently",
-    "files": ["api/models/job.py", "api/services/database.py"],
+    "files": ["api/models/job.py", "api/services/database.py", "alembic/versions/003_add_phases_column.py"],
     "exit_criteria": ["JobPhase model exists", "Jobs can resume from last successful phase"]
+  },
+  {
+    "id": "2.2.4",
+    "name": "Enhanced health endpoint with LLM status",
+    "sprint": "2.2",
+    "status": "completed",
+    "agent": "orchestrator",
+    "description": "Extend health endpoint to return queue size, active model/preset, and last cost totals",
+    "files": ["api/main.py"],
+    "exit_criteria": ["GET /health returns queue_size", "Returns active_model and preset info", "Returns last_run cost/token totals"],
+    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
+  },
+  {
+    "id": "2.2.5",
+    "name": "LLM cost tracking per run",
+    "sprint": "2.2",
+    "status": "completed",
+    "agent": "orchestrator",
+    "description": "Log per-run cost and token usage; emit worker:completed event with total_cost/total_tokens",
+    "files": ["api/services/llm.py", "api/models/events.py"],
+    "exit_criteria": ["Costs logged per LLM call", "Aggregated totals available via events"],
+    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
+  },
+  {
+    "id": "2.2.6",
+    "name": "Cost cap and model allowlist safety guards",
+    "sprint": "2.2",
+    "status": "completed",
+    "agent": "orchestrator",
+    "description": "Add per-run cost cap (env/config), model allowlist, and max $/token guard to prevent expensive auto-upgrades",
+    "files": ["api/services/llm.py", "config/llm-config.json"],
+    "exit_criteria": ["Cost cap configurable via env", "Requests blocked if cap exceeded", "Model allowlist enforced"],
+    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
+  },
+  {
+    "id": "2.2.7",
+    "name": "Timezone-aware datetime helpers",
+    "sprint": "2.2",
+    "status": "completed",
+    "agent": "orchestrator",
+    "description": "Replace datetime.utcnow() with timezone-aware utc_now_iso() utility across codebase",
+    "files": ["api/services/utils.py"],
+    "exit_criteria": ["No deprecation warnings from datetime", "All timestamps timezone-aware"],
+    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
+  },
+  {
+    "id": "3.1.0",
+    "name": "React + Vite + Tailwind scaffold",
+    "sprint": "3.1",
+    "status": "completed",
+    "agent": "orchestrator",
+    "description": "Create React web dashboard with Vite, TypeScript, Tailwind CSS, React Router. Basic page structure for /, /queue, /jobs/:id, /settings",
+    "files": ["web/package.json", "web/src/App.tsx", "web/src/components/Layout.tsx", "web/src/pages/"],
+    "exit_criteria": ["npm install succeeds", "TypeScript compiles without errors", "Basic routing works"]
+  },
+  {
+    "id": "3.1.1",
+    "name": "Dashboard: Active model/preset display",
+    "sprint": "3.1",
+    "status": "completed",
+    "agent": "orchestrator",
+    "description": "Surface active LLM model and OpenRouter preset in dashboard UI for auditing",
+    "files": ["web/src/components/StatusBar.tsx"],
+    "exit_criteria": ["Current model visible in UI", "Preset name displayed if set"],
+    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
+  },
+  {
+    "id": "4.1.1",
+    "name": "Claude Desktop agent instructions: Airtable SST integration",
+    "sprint": "4.1",
+    "status": "backlog",
+    "agent": "cli-agent/claude",
+    "description": "Update Claude Desktop copy-editor agent instructions for Airtable MCP integration (READ-ONLY). Draft copy sources: (1) Screenshots - user can paste/share a screenshot of draft copy, (2) Airtable MCP - agent uses file names (media IDs like 2WLI1209HD_midshow) to find matching Single Source of Truth records and pull Short/Long Description. Key insight: Airtable is a LIVE source throughout the workflow — user edits in Airtable, agent can re-read updated copy at any point. Agent NEVER writes to Airtable; user manually applies approved changes.",
+    "files": [".claude/agents/copy-editor.md"],
+    "exit_criteria": [
+      "Agent instructions document screenshot workflow for draft copy",
+      "Agent instructions document Airtable MCP lookup by media ID",
+      "Instructions explain Airtable as live/canonical source throughout revision cycle",
+      "Instructions include re-reading workflow (user edits in Airtable → agent reads updates)",
+      "Instructions handle graceful degradation when Airtable MCP unavailable"
+    ],
+    "source": "User conversation 2025-12-23 - Airtable MCP integration demo"
+  },
+  {
+    "id": "4.1.2",
+    "name": "Copy-editor agent: needs_review flag handling",
+    "sprint": "4.1",
+    "status": "backlog",
+    "agent": "cli-agent/claude",
+    "description": "Chat agent should check for needs_review flag on transcripts and proactively offer to resolve flagged items. When opening a transcript, agent checks manifest for needs_review:true or scans for <!-- NEEDS_REVIEW --> marker / '## Review Notes' section, then surfaces these items for user attention before proceeding with editing.",
+    "files": [".claude/agents/copy-editor.md"],
+    "exit_criteria": [
+      "Agent checks needs_review flag in manifest on transcript open",
+      "Agent scans for NEEDS_REVIEW marker as fallback",
+      "Agent proactively lists review items to user",
+      "Agent offers to resolve items (speaker names, spellings, roles)"
+    ],
+    "source": "V2_AGENT_FEEDBACK_FOR_V3.md"
+  },
+  {
+    "id": "4.1.3",
+    "name": "Revision reports: inline display in conversation",
+    "sprint": "4.1",
+    "status": "backlog",
+    "agent": "cli-agent/claude",
+    "description": "Revision reports should display inline in the conversation rather than saving to files. Agent outputs formatted revision summary directly in chat after completing edits. Airtable MCP remains READ-ONLY — agent can pull SST data but user manually updates Airtable with approved changes. This keeps human in the loop for all writes while maintaining Airtable as canonical source.",
+    "files": [".claude/agents/copy-editor.md"],
+    "exit_criteria": [
+      "Agent instructions specify inline report output (no file save)",
+      "Report template defined for consistent formatting",
+      "Instructions clarify Airtable is read-only for agent",
+      "User workflow documented: review inline report → manually update Airtable"
+    ],
+    "source": "User conversation 2025-12-23 - inline report display feedback"
   }
 ]
