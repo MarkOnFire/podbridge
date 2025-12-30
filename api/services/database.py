@@ -394,6 +394,80 @@ async def delete_job(job_id: int) -> bool:
         return result.rowcount > 0
 
 
+async def update_job_status(
+    job_id: int,
+    status: JobStatus,
+    project_path: Optional[str] = None,
+    current_phase: Optional[str] = None,
+    error_message: Optional[str] = None,
+    actual_cost: Optional[float] = None,
+) -> Optional[Job]:
+    """Convenience function to update job status with common fields.
+
+    Args:
+        job_id: Job ID to update
+        status: New job status
+        project_path: Optional project output path
+        current_phase: Optional current phase name
+        error_message: Optional error message (for failed status)
+        actual_cost: Optional actual cost
+
+    Returns:
+        Updated Job record or None if not found
+    """
+    update_data = JobUpdate(status=status)
+
+    if current_phase is not None:
+        update_data.current_phase = current_phase
+    if error_message is not None:
+        update_data.error_message = error_message
+    if actual_cost is not None:
+        update_data.actual_cost = actual_cost
+
+    job = await update_job(job_id, update_data)
+
+    # Handle project_path separately (not in JobUpdate model)
+    if project_path is not None and job is not None:
+        async with get_session() as session:
+            stmt = (
+                update(jobs_table)
+                .where(jobs_table.c.id == job_id)
+                .values(project_path=project_path)
+            )
+            await session.execute(stmt)
+
+    return job
+
+
+async def update_job_phase(job_id: int, phases: list) -> Optional[Job]:
+    """Update the phases array for a job.
+
+    Args:
+        job_id: Job ID to update
+        phases: List of phase dictionaries
+
+    Returns:
+        Updated Job or None if not found
+    """
+    async with get_session() as session:
+        phases_json = json.dumps(phases)
+        stmt = (
+            update(jobs_table)
+            .where(jobs_table.c.id == job_id)
+            .values(phases=phases_json)
+        )
+        result = await session.execute(stmt)
+
+        if result.rowcount == 0:
+            return None
+
+        # Fetch and return updated job
+        stmt = select(jobs_table).where(jobs_table.c.id == job_id)
+        result = await session.execute(stmt)
+        row = result.fetchone()
+        return _row_to_job(row) if row else None
+
+
 async def get_next_pending_job() -> Optional[Job]:
     """Get the next pending job to process.
 
@@ -836,3 +910,11 @@ def _row_to_config(row) -> ConfigItem:
         description=row.description,
         updated_at=row.updated_at,
     )
+
+
+# ============================================================================
+# Convenience Aliases for Worker
+# ============================================================================
+
+get_next_job = get_next_pending_job
+update_job_heartbeat = update_heartbeat
