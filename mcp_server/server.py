@@ -26,6 +26,7 @@ import asyncio
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -34,6 +35,18 @@ import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, Prompt, PromptMessage, PromptArgument
+
+# Load secrets from Keychain into environment (falls back to env vars)
+sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
+try:
+    from keychain_secrets import get_secret
+    for key in ["AIRTABLE_API_KEY"]:
+        if key not in os.environ:
+            value = get_secret(key)
+            if value:
+                os.environ[key] = value
+except ImportError:
+    pass  # Keychain module not available
 
 # Configuration
 API_BASE_URL = os.getenv("EDITORIAL_API_URL", "http://localhost:8000")
