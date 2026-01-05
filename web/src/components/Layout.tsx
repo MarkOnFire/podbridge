@@ -61,8 +61,13 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center space-x-4">
+              <img
+                src="https://wisconsinpublictv.s3.us-east-2.amazonaws.com/wp-content/uploads/2023/08/pbs-wisconsin-wblue-rgb-2-412x62.png"
+                alt="PBS Wisconsin"
+                className="h-6"
+              />
               <span className="text-lg font-semibold text-white">
-                Editorial Assistant
+                Digital Editorial Assistant
               </span>
               <span className="text-xs text-gray-400">v3.0</span>
             </div>
