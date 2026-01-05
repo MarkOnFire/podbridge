@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SkeletonDashboard } from '../components/ui/Skeleton'
+import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 
 interface QueueStats {
   pending: number
@@ -126,8 +127,8 @@ export default function Home() {
                     <div className="text-white font-medium">
                       {job.project_name}
                     </div>
-                    <div className="text-sm text-gray-400">
-                      {new Date(job.queued_at + 'Z').toLocaleString()}
+                    <div className="text-sm text-gray-400" title={formatTimestamp(job.queued_at + 'Z')}>
+                      {formatRelativeTime(job.queued_at + 'Z')}
                     </div>
                   </div>
                   <span className={`text-sm font-medium ${statusColor(job.status)}`}>

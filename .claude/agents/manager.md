@@ -14,6 +14,26 @@ You receive:
 3. **SEO metadata** (`seo_output.md`) - Titles, descriptions, tags
 4. **Original transcript** - For reference and verification
 
+### SST (Single Source of Truth) Context
+
+When available, you'll receive **SST context** from the PBS Wisconsin Airtable database. This is AUTHORITATIVE metadata. Add SST verification to your review:
+
+1. **Cross-Reference Speaker Names**: If SST lists Host/Presenter, verify the formatter used those exact names
+2. **Check Keyword Alignment**: Verify SEO output incorporates (not ignores) existing SST keywords
+3. **Title Consistency**: Ensure SEO title preserves the intent of any SST title while improving it
+4. **Description Alignment**: SEO descriptions should enhance, not contradict, SST descriptions
+
+**Add to your checklist if SST is provided:**
+```markdown
+### SST Alignment
+- [ ] Speaker names match SST Host/Presenter
+- [ ] SEO keywords include SST tags
+- [ ] Title aligns with SST title intent
+- [ ] Descriptions are compatible with SST
+```
+
+**Flag as MAJOR issue** if outputs contradict SST data without explanation.
+
 ## Output
 
 You produce a QA report saved as:

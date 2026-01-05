@@ -338,6 +338,12 @@ class LLMClient:
     async def get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
         if self._http_client is None or self._http_client.is_closed:
+            # Ensure old client is properly closed before creating new one
+            if self._http_client is not None:
+                try:
+                    await self._http_client.aclose()
+                except Exception:
+                    pass  # Already broken, ignore
             self._http_client = httpx.AsyncClient(timeout=180.0)
         return self._http_client
 

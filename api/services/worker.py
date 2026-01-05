@@ -69,10 +69,26 @@ class JobWorker:
     The manager phase runs last as QA review of all outputs.
     """
 
+    # Required phases that always run
     PHASES = ["analyst", "formatter", "seo", "manager"]
 
-    # Manager always runs on big-brain tier for quality oversight
+    # Optional phases with trigger conditions
+    # timestamp: Runs automatically for 30+ minute content, or when requested
+    OPTIONAL_PHASES = ["timestamp"]
+
+    # Duration threshold (in minutes) for auto-triggering timestamp phase
+    TIMESTAMP_AUTO_THRESHOLD_MINUTES = 30
+
+    # Phases that always run on big-brain tier (not configurable)
+    # - manager: QA oversight requires strong reasoning
     FORCE_BIG_BRAIN_PHASES = ["manager"]
+
+    # Minimum tier for phases (0=cheapskate, 1=default, 2=big-brain)
+    # These set a floor but can be overridden to higher tiers via UI/config
+    # - timestamp: Chapter detection needs semantic understanding, skip cheapskate
+    MINIMUM_TIER_PHASES = {
+        "timestamp": 1,  # Default tier minimum, big-brain still selectable
+    }
 
     def __init__(self, config: Optional[WorkerConfig] = None):
         self.config = config or WorkerConfig()
@@ -96,23 +112,42 @@ class JobWorker:
             }
         )
 
-        # Track active job tasks
+        # Track active job tasks and their job_ids for cleanup on failure
         active_tasks: set = set()
+        task_to_job_id: Dict[asyncio.Task, int] = {}
 
         while self.running:
             try:
                 # Clean up completed tasks
                 done_tasks = {t for t in active_tasks if t.done()}
                 for task in done_tasks:
+                    job_id = task_to_job_id.pop(task, None)
                     # Check for exceptions
                     try:
                         task.result()
                     except Exception as e:
                         logger.error(
                             "Task error",
-                            extra={"worker_id": worker_id, "error": str(e)},
+                            extra={"worker_id": worker_id, "job_id": job_id, "error": str(e)},
                             exc_info=True,
                         )
+                        # Mark job as failed if we have job_id and it escaped normal handling
+                        if job_id is not None:
+                            try:
+                                await update_job_status(job_id, JobStatus.failed)
+                                await log_event(EventCreate(
+                                    job_id=job_id,
+                                    event_type=EventType.job_failed,
+                                    data=EventData(extra={
+                                        "error": f"Unhandled task exception: {str(e)}",
+                                        "worker_id": worker_id,
+                                    }),
+                                ))
+                            except Exception as cleanup_error:
+                                logger.error(
+                                    "Failed to mark job as failed during cleanup",
+                                    extra={"job_id": job_id, "error": str(cleanup_error)}
+                                )
                 active_tasks -= done_tasks
 
                 # Claim more jobs if we have capacity
@@ -124,6 +159,7 @@ class JobWorker:
                         # Start processing as a task
                         task = asyncio.create_task(self.process_job(job_dict))
                         active_tasks.add(task)
+                        task_to_job_id[task] = job.id
                         logger.info(
                             "Job claimed",
                             extra={
@@ -307,6 +343,67 @@ class JobWorker:
                 # Add output to context for next phase
                 context[f"{phase_name}_output"] = phase_result.get("output", "")
 
+            # Process optional phases (timestamp) if conditions are met
+            srt_path = self._find_srt_file(job)
+            if self._should_run_timestamp_phase(job, transcript_metrics, srt_path):
+                phase_name = "timestamp"
+
+                # Check if phase already completed
+                existing_phase = next((p for p in phases if p["name"] == phase_name), None)
+                if not (existing_phase and existing_phase.get("status") == "completed"):
+                    # Add SRT content to context
+                    if srt_path:
+                        try:
+                            context["srt_content"] = srt_path.read_text(encoding='utf-8', errors='replace')
+                            context["srt_path"] = str(srt_path)
+                        except Exception as e:
+                            logger.warning(
+                                "Failed to read SRT file for timestamp phase",
+                                extra={"job_id": job_id, "error": str(e)}
+                            )
+
+                    # Update current phase
+                    await update_job_status(job_id, JobStatus.in_progress, current_phase=phase_name)
+
+                    # Process phase
+                    logger.info(
+                        "Running optional phase",
+                        extra={"job_id": job_id, "phase": phase_name}
+                    )
+                    phase_result = await self._run_phase(job_id, phase_name, context, project_path)
+
+                    # Update phases list
+                    phase_data = {
+                        "name": phase_name,
+                        "status": "completed" if phase_result["success"] else "failed",
+                        "cost": phase_result.get("cost", 0),
+                        "tokens": phase_result.get("tokens", 0),
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "model": phase_result.get("model"),
+                        "tier": phase_result.get("tier"),
+                        "tier_label": phase_result.get("tier_label"),
+                        "tier_reason": phase_result.get("tier_reason"),
+                        "attempts": phase_result.get("attempts", 1),
+                        "optional": True,  # Mark as optional phase
+                    }
+
+                    phases.append(phase_data)
+                    await update_job_phase(job_id, phases)
+
+                    # Optional phase failure is logged but doesn't fail the job
+                    if not phase_result["success"]:
+                        logger.warning(
+                            "Optional phase failed (non-fatal)",
+                            extra={
+                                "job_id": job_id,
+                                "phase": phase_name,
+                                "error": phase_result.get("error")
+                            }
+                        )
+
+                    # Add output to context
+                    context[f"{phase_name}_output"] = phase_result.get("output", "")
+
             # Create manifest
             await self._create_manifest(job, project_path, phases, tracker)
 
@@ -396,9 +493,18 @@ class JobWorker:
             ))
 
         finally:
-            # Stop heartbeat
+            # Stop heartbeat - properly await cancellation
             if self._heartbeat_task:
                 self._heartbeat_task.cancel()
+                try:
+                    await self._heartbeat_task  # Wait for cancellation to complete
+                except asyncio.CancelledError:
+                    pass  # Expected when cancelling
+                except Exception as e:
+                    logger.warning(
+                        "Heartbeat cleanup error",
+                        extra={"job_id": job_id, "error": str(e)}
+                    )
                 self._heartbeat_task = None
             self._current_job_id = None
 
@@ -592,6 +698,129 @@ class JobWorker:
                 exc_info=True,
             )
 
+    def _find_srt_file(self, job: Dict[str, Any]) -> Optional[Path]:
+        """Find the SRT file associated with a transcript.
+
+        Looks for an SRT file with the same base name as the transcript
+        in both the transcripts folder and archive folder.
+
+        Returns:
+            Path to SRT file if found, None otherwise.
+        """
+        transcript_file = job.get("transcript_file", "")
+        if not transcript_file:
+            return None
+
+        # Get the base name without extension
+        from api.services.utils import extract_media_id
+        media_id = extract_media_id(transcript_file)
+
+        # Look for SRT file with same base name
+        search_dirs = [TRANSCRIPTS_DIR, TRANSCRIPTS_ARCHIVE_DIR]
+
+        for search_dir in search_dirs:
+            if not search_dir.exists():
+                continue
+
+            # Try exact match first
+            srt_path = search_dir / f"{media_id}.srt"
+            if srt_path.exists():
+                return srt_path
+
+            # Try variations
+            for srt_file in search_dir.glob("*.srt"):
+                srt_media_id = extract_media_id(srt_file.name)
+                if srt_media_id == media_id:
+                    return srt_file
+
+        return None
+
+    def _get_content_duration_minutes(
+        self,
+        transcript_metrics: Dict[str, Any],
+        srt_path: Optional[Path] = None
+    ) -> float:
+        """Get content duration in minutes from SRT or transcript metrics.
+
+        Prefers SRT duration (more accurate) if available, falls back
+        to estimated duration from transcript word count.
+
+        Returns:
+            Duration in minutes.
+        """
+        # Try to get duration from SRT file (most accurate)
+        if srt_path and srt_path.exists():
+            try:
+                from api.services.utils import parse_srt, get_srt_duration
+                srt_content = srt_path.read_text(encoding='utf-8', errors='replace')
+                captions = parse_srt(srt_content)
+                if captions:
+                    duration_ms = get_srt_duration(captions)
+                    return duration_ms / 60000  # Convert ms to minutes
+            except Exception as e:
+                logger.warning(
+                    "Failed to parse SRT for duration",
+                    extra={"srt_file": str(srt_path), "error": str(e)}
+                )
+
+        # Fall back to transcript metrics (estimated from word count)
+        return transcript_metrics.get("estimated_duration_minutes", 0)
+
+    def _should_run_timestamp_phase(
+        self,
+        job: Dict[str, Any],
+        transcript_metrics: Dict[str, Any],
+        srt_path: Optional[Path]
+    ) -> bool:
+        """Determine if the timestamp phase should run.
+
+        Timestamp phase runs when:
+        1. An SRT file exists AND
+        2. Content is 30+ minutes OR job explicitly requests it
+
+        Returns:
+            True if timestamp phase should run, False otherwise.
+        """
+        # No SRT file = no timestamp phase
+        if not srt_path or not srt_path.exists():
+            logger.debug(
+                "Skipping timestamp phase: no SRT file",
+                extra={"job_id": job.get("id")}
+            )
+            return False
+
+        # Check for explicit request in job
+        include_timestamps = job.get("include_timestamps", False)
+        if include_timestamps:
+            logger.info(
+                "Timestamp phase enabled by request",
+                extra={"job_id": job.get("id")}
+            )
+            return True
+
+        # Check duration threshold
+        duration_minutes = self._get_content_duration_minutes(transcript_metrics, srt_path)
+        if duration_minutes >= self.TIMESTAMP_AUTO_THRESHOLD_MINUTES:
+            logger.info(
+                "Timestamp phase auto-triggered for long content",
+                extra={
+                    "job_id": job.get("id"),
+                    "duration_minutes": round(duration_minutes, 1),
+                    "threshold": self.TIMESTAMP_AUTO_THRESHOLD_MINUTES
+                }
+            )
+            return True
+
+        logger.debug(
+            "Skipping timestamp phase: below duration threshold",
+            extra={
+                "job_id": job.get("id"),
+                "duration_minutes": round(duration_minutes, 1),
+                "threshold": self.TIMESTAMP_AUTO_THRESHOLD_MINUTES
+            }
+        )
+        return False
+
     async def _run_phase(
         self,
         job_id: int,
@@ -626,6 +855,12 @@ class JobWorker:
             # Get initial tier based on context (duration thresholds)
             initial_tier, initial_tier_reason = self.llm.get_tier_for_phase_with_reason(phase_name, context)
 
+            # Apply minimum tier floor for certain phases (e.g., timestamp needs at least default)
+            min_tier = self.MINIMUM_TIER_PHASES.get(phase_name)
+            if min_tier is not None and initial_tier < min_tier:
+                initial_tier = min_tier
+                initial_tier_reason = f"{phase_name} phase requires minimum tier {min_tier} (default tier)"
+
         current_tier = initial_tier
         tier_reason = initial_tier_reason
         routing_config = self.llm.config.get("routing", {})
@@ -643,8 +878,9 @@ class JobWorker:
         total_tokens = 0
         last_error = None
         attempts = 0
+        max_escalation_attempts = 10  # Safety guard against infinite loops
 
-        while True:
+        while attempts < max_escalation_attempts:
             # Get backend for current tier
             backend = self.llm.get_backend_for_phase(phase_name, context, tier_override=current_tier)
             tier_label = tier_labels[current_tier] if current_tier < len(tier_labels) else f"tier-{current_tier}"
@@ -822,6 +1058,14 @@ class JobWorker:
         - FIX: Apply corrections and continue
         - FAIL: Mark as failed (truly unrecoverable)
 
+        Note: There's a theoretical race condition if the worker crashes between
+        updating phase status and completing phase execution. The phase would
+        be marked "pending" but work may have been done. This is mitigated by:
+        1. LLM calls being idempotent (re-running produces valid output)
+        2. Output files being overwritten on each run
+        3. Single-worker design (no concurrent access to same job)
+        For multi-worker deployments, distributed locking would be needed.
+
         Returns:
             Dict with recovery results including whether job was recovered
         """
@@ -994,7 +1238,8 @@ REASON: [Brief explanation - 1-2 sentences]
 
             elif action == "RETRY":
                 # Re-run the failed phase at the same tier
-                if failed_phase and failed_phase_idx >= 0:
+                # Validate index is within bounds (phases may have changed via API)
+                if failed_phase and 0 <= failed_phase_idx < len(phases):
                     logger.info(
                         "Retrying failed phase",
                         extra={"job_id": job_id, "phase": failed_phase.get("name")}
@@ -1029,7 +1274,8 @@ REASON: [Brief explanation - 1-2 sentences]
 
             elif action == "ESCALATE":
                 # Re-run with a higher tier
-                if failed_phase and failed_phase_idx >= 0:
+                # Validate index is within bounds (phases may have changed via API)
+                if failed_phase and 0 <= failed_phase_idx < len(phases):
                     current_tier = failed_phase.get("tier", 0)
                     next_tier = min(current_tier + 1, 2)
 
@@ -1079,7 +1325,8 @@ REASON: [Brief explanation - 1-2 sentences]
 
             elif action == "FIX":
                 # Manager provided a fix - extract and save it
-                if failed_phase and failed_phase_idx >= 0:
+                # Validate index is within bounds (phases may have changed via API)
+                if failed_phase and 0 <= failed_phase_idx < len(phases):
                     phase_name = failed_phase.get("name")
 
                     # The fix content is everything after the REASON line
@@ -1413,6 +1660,45 @@ Apply PBS style guidelines and improve readability while preserving speaker voic
 ---
 
 Review all outputs against PBS Wisconsin quality standards and provide your QA report."""
+            return prompt
+
+        elif phase_name == "timestamp":
+            srt_content = context.get("srt_content", "")
+            formatted = context.get("formatter_output", "")
+            analysis = context.get("analyst_output", "")
+            transcript_metrics = context.get("transcript_metrics", {})
+            duration = transcript_metrics.get("estimated_duration_minutes", 0)
+
+            prompt = f"""Process this SRT subtitle file to create refined captions, chapter markers, and a timestamped transcript.
+
+## Project Context
+"""
+            if sst_section:
+                prompt += sst_section
+            prompt += f"""
+**Estimated Duration:** {duration:.1f} minutes
+
+## Original SRT Content:
+---
+{srt_content}
+---
+
+## Formatted Transcript (for speaker identification):
+---
+{formatted[:5000]}{"..." if len(formatted) > 5000 else ""}
+---
+
+## Analyst Output (for chapter detection):
+---
+{analysis[:3000]}{"..." if len(analysis) > 3000 else ""}
+---
+
+Please generate:
+1. A refined SRT file with cleaned timing
+2. A WebVTT file for web players
+3. Chapter markers (JSON) for video navigation
+4. A timestamped transcript with section markers
+5. A summary of your processing"""
             return prompt
 
         return f"Process the following:\n\n{transcript}"

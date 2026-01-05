@@ -1,12 +1,13 @@
 """Utility functions for Editorial Assistant v3.0 API.
 
-Provides timezone-aware datetime handling and common utilities.
+Provides timezone-aware datetime handling, SRT parsing, and common utilities.
 """
 
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 
 def utc_now() -> datetime:
@@ -168,7 +169,7 @@ def extract_media_id(filename: str) -> str:
 
     Removes common suffixes and extensions to extract the core media identifier.
     Handles PBS Wisconsin naming conventions including _ForClaude suffix,
-    revision date suffixes (_REV\d+), and standard file extensions.
+    revision date suffixes (_REV followed by digits), and standard file extensions.
 
     Args:
         filename: Transcript filename (with or without extension)
@@ -199,3 +200,340 @@ def extract_media_id(filename: str) -> str:
     stem = re.sub(r'(_ForClaude)?(_REV\d+)?$', '', stem, flags=re.IGNORECASE)
 
     return stem
+
+
+# =============================================================================
+# SRT Parsing Utilities
+# =============================================================================
+
+@dataclass
+class SRTCaption:
+    """Represents a single SRT caption entry."""
+    index: int
+    start_ms: int  # Start time in milliseconds
+    end_ms: int    # End time in milliseconds
+    text: str      # Caption text (may be multiline)
+
+    @property
+    def start_timecode(self) -> str:
+        """Return start time as SRT timecode (HH:MM:SS,mmm)."""
+        return ms_to_srt_timecode(self.start_ms)
+
+    @property
+    def end_timecode(self) -> str:
+        """Return end time as SRT timecode (HH:MM:SS,mmm)."""
+        return ms_to_srt_timecode(self.end_ms)
+
+    @property
+    def duration_ms(self) -> int:
+        """Return duration in milliseconds."""
+        return self.end_ms - self.start_ms
+
+    def to_srt(self) -> str:
+        """Convert to SRT format string."""
+        return f"{self.index}\n{self.start_timecode} --> {self.end_timecode}\n{self.text}\n"
+
+    def to_vtt(self) -> str:
+        """Convert to WebVTT format string (no index, period for ms)."""
+        start_vtt = ms_to_vtt_timecode(self.start_ms)
+        end_vtt = ms_to_vtt_timecode(self.end_ms)
+        return f"{start_vtt} --> {end_vtt}\n{self.text}\n"
+
+
+def srt_timecode_to_ms(timecode: str) -> int:
+    """Convert SRT timecode string to milliseconds.
+
+    Args:
+        timecode: SRT format timecode "HH:MM:SS,mmm"
+
+    Returns:
+        Total milliseconds
+
+    Examples:
+        >>> srt_timecode_to_ms("00:00:01,500")
+        1500
+        >>> srt_timecode_to_ms("01:30:45,123")
+        5445123
+        >>> srt_timecode_to_ms("00:02:30,000")
+        150000
+    """
+    # Handle both , and . as millisecond separator
+    timecode = timecode.replace('.', ',')
+    match = re.match(r'(\d{1,2}):(\d{2}):(\d{2}),(\d{3})', timecode.strip())
+    if not match:
+        raise ValueError(f"Invalid SRT timecode: {timecode}")
+
+    hours, minutes, seconds, ms = map(int, match.groups())
+    total_ms = (hours * 3600 + minutes * 60 + seconds) * 1000 + ms
+    return total_ms
+
+
+def ms_to_srt_timecode(ms: int) -> str:
+    """Convert milliseconds to SRT timecode string.
+
+    Args:
+        ms: Total milliseconds
+
+    Returns:
+        SRT format timecode "HH:MM:SS,mmm"
+
+    Examples:
+        >>> ms_to_srt_timecode(1500)
+        '00:00:01,500'
+        >>> ms_to_srt_timecode(5445123)
+        '01:30:45,123'
+        >>> ms_to_srt_timecode(150000)
+        '00:02:30,000'
+    """
+    if ms < 0:
+        ms = 0
+
+    hours = ms // 3600000
+    ms %= 3600000
+    minutes = ms // 60000
+    ms %= 60000
+    seconds = ms // 1000
+    milliseconds = ms % 1000
+
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
+
+
+def ms_to_vtt_timecode(ms: int) -> str:
+    """Convert milliseconds to WebVTT timecode string.
+
+    Args:
+        ms: Total milliseconds
+
+    Returns:
+        WebVTT format timecode "HH:MM:SS.mmm"
+
+    Examples:
+        >>> ms_to_vtt_timecode(1500)
+        '00:00:01.500'
+        >>> ms_to_vtt_timecode(5445123)
+        '01:30:45.123'
+    """
+    srt_tc = ms_to_srt_timecode(ms)
+    return srt_tc.replace(',', '.')
+
+
+def ms_to_display_timecode(ms: int, include_hours: bool = False) -> str:
+    """Convert milliseconds to display-friendly timecode.
+
+    Args:
+        ms: Total milliseconds
+        include_hours: Always include hours, even if 0
+
+    Returns:
+        Display format "MM:SS" or "H:MM:SS"
+
+    Examples:
+        >>> ms_to_display_timecode(150000)
+        '02:30'
+        >>> ms_to_display_timecode(150000, include_hours=True)
+        '0:02:30'
+        >>> ms_to_display_timecode(5445000)
+        '1:30:45'
+    """
+    if ms < 0:
+        ms = 0
+
+    total_seconds = ms // 1000
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    if hours > 0 or include_hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    else:
+        return f"{minutes:02d}:{seconds:02d}"
+
+
+def parse_srt(content: str) -> List[SRTCaption]:
+    """Parse SRT file content into list of caption objects.
+
+    Args:
+        content: Full SRT file content as string
+
+    Returns:
+        List of SRTCaption objects in order
+
+    Raises:
+        ValueError: If content cannot be parsed
+
+    Examples:
+        >>> srt = '''1
+        ... 00:00:01,000 --> 00:00:03,000
+        ... Hello world
+        ...
+        ... 2
+        ... 00:00:04,000 --> 00:00:06,000
+        ... Second caption
+        ... '''
+        >>> captions = parse_srt(srt)
+        >>> len(captions)
+        2
+        >>> captions[0].text
+        'Hello world'
+    """
+    captions = []
+
+    # Split into blocks (separated by blank lines)
+    blocks = re.split(r'\n\s*\n', content.strip())
+
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+
+        lines = block.split('\n')
+        if len(lines) < 3:
+            continue
+
+        try:
+            # Line 1: Index number
+            index = int(lines[0].strip())
+
+            # Line 2: Timecodes
+            time_match = re.match(
+                r'(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})',
+                lines[1].strip()
+            )
+            if not time_match:
+                continue
+
+            start_ms = srt_timecode_to_ms(time_match.group(1))
+            end_ms = srt_timecode_to_ms(time_match.group(2))
+
+            # Lines 3+: Caption text
+            text = '\n'.join(lines[2:]).strip()
+
+            captions.append(SRTCaption(
+                index=index,
+                start_ms=start_ms,
+                end_ms=end_ms,
+                text=text
+            ))
+        except (ValueError, IndexError):
+            # Skip malformed entries
+            continue
+
+    return captions
+
+
+def generate_srt(captions: List[SRTCaption]) -> str:
+    """Generate SRT file content from list of captions.
+
+    Args:
+        captions: List of SRTCaption objects
+
+    Returns:
+        Complete SRT file content as string
+    """
+    # Renumber captions sequentially
+    output_parts = []
+    for i, caption in enumerate(captions, 1):
+        caption.index = i
+        output_parts.append(caption.to_srt())
+
+    return '\n'.join(output_parts)
+
+
+def generate_vtt(captions: List[SRTCaption]) -> str:
+    """Generate WebVTT file content from list of captions.
+
+    Args:
+        captions: List of SRTCaption objects
+
+    Returns:
+        Complete WebVTT file content as string
+    """
+    output_parts = ["WEBVTT", ""]
+
+    for caption in captions:
+        output_parts.append(caption.to_vtt())
+
+    return '\n'.join(output_parts)
+
+
+def clean_srt_captions(
+    captions: List[SRTCaption],
+    min_gap_ms: int = 50,
+    max_duration_ms: int = 7000,
+    merge_threshold_ms: int = 1000
+) -> List[SRTCaption]:
+    """Clean and normalize SRT captions.
+
+    Fixes common issues:
+    - Removes duplicate consecutive captions
+    - Fixes overlapping timecodes
+    - Merges very short captions
+    - Ensures minimum gap between captions
+
+    Args:
+        captions: List of SRTCaption objects
+        min_gap_ms: Minimum gap between captions (default 50ms)
+        max_duration_ms: Maximum caption duration (default 7000ms)
+        merge_threshold_ms: Merge captions shorter than this (default 1000ms)
+
+    Returns:
+        Cleaned list of SRTCaption objects
+    """
+    if not captions:
+        return []
+
+    cleaned = []
+    prev_caption = None
+
+    for caption in captions:
+        # Skip empty captions
+        if not caption.text.strip():
+            continue
+
+        # Skip duplicates
+        if prev_caption and caption.text.strip() == prev_caption.text.strip():
+            # Extend previous caption's end time if needed
+            if caption.end_ms > prev_caption.end_ms:
+                prev_caption.end_ms = caption.end_ms
+            continue
+
+        # Fix negative duration
+        if caption.end_ms <= caption.start_ms:
+            caption.end_ms = caption.start_ms + 1000  # Default 1 second
+
+        # Fix overlaps with previous caption
+        if prev_caption and caption.start_ms < prev_caption.end_ms + min_gap_ms:
+            # Adjust start time to maintain minimum gap
+            caption.start_ms = prev_caption.end_ms + min_gap_ms
+
+        # Merge very short captions with previous if possible
+        if (prev_caption and
+            caption.duration_ms < merge_threshold_ms and
+            caption.start_ms - prev_caption.end_ms < 500):  # Close in time
+            # Merge into previous caption
+            prev_caption.text = prev_caption.text + '\n' + caption.text
+            prev_caption.end_ms = caption.end_ms
+            continue
+
+        cleaned.append(caption)
+        prev_caption = caption
+
+    # Renumber
+    for i, caption in enumerate(cleaned, 1):
+        caption.index = i
+
+    return cleaned
+
+
+def get_srt_duration(captions: List[SRTCaption]) -> int:
+    """Get total duration from captions in milliseconds.
+
+    Args:
+        captions: List of SRTCaption objects
+
+    Returns:
+        End time of last caption in milliseconds
+    """
+    if not captions:
+        return 0
+    return max(c.end_ms for c in captions)

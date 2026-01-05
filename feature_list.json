@@ -491,7 +491,7 @@
     "id": "6.2.1",
     "name": "Fetch SST fields on job start",
     "sprint": "6.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Worker fetches SST metadata (title, descriptions, keywords, tags, host, presenter) when starting job processing",
     "files": [
@@ -508,7 +508,7 @@
     "id": "6.2.2",
     "name": "Update analyst prompt with SST context",
     "sprint": "6.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Update analyst agent to receive and use SST metadata for enhanced analysis",
     "files": [
@@ -525,7 +525,7 @@
     "id": "6.2.3",
     "name": "Update formatter prompt with SST context",
     "sprint": "6.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Update formatter agent with SST speaker/topic hints from Host and Presenter fields",
     "files": [
@@ -541,7 +541,7 @@
     "id": "6.2.4",
     "name": "Update SEO prompt with SST context",
     "sprint": "6.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Update SEO agent to align recommendations with existing SST descriptions and keywords",
     "files": [
@@ -558,7 +558,7 @@
     "id": "6.2.5",
     "name": "Update manager prompt for SST cross-reference",
     "sprint": "6.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "description": "Update manager agent to cross-reference outputs against SST metadata for consistency",
     "files": [
@@ -706,10 +706,10 @@
     "id": "7.3.1",
     "name": "Timestamp agent (optional)",
     "sprint": "7.3",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "low",
-    "description": "Dedicated agent for timestamp refinement, SRT parsing and regeneration",
+    "description": "Dedicated agent for timestamp refinement, SRT parsing and regeneration. Auto-triggers for 30+ minute content.",
     "files": [
       ".claude/agents/timestamp.md",
       "api/services/worker.py",
@@ -717,8 +717,8 @@
     ],
     "exit_criteria": [
       "Timestamp agent instructions defined",
-      "Optional phase in worker",
-      "SRT parsing utility"
+      "Optional phase in worker (auto for 30+ min)",
+      "SRT parsing utility with clean/generate/VTT"
     ],
     "source": "ROADMAP_v3.1.md - Sprint 7.3"
   },
@@ -1126,7 +1126,7 @@
     "id": "8.4.1",
     "name": "Refactor Settings page with tabs",
     "sprint": "8.4",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "medium",
     "description": "Break 630-line Settings page into tabbed sections: Agents, Routing, Worker, Accessibility. Complex multi-file refactor.",
@@ -1145,8 +1145,8 @@
     "id": "8.4.2",
     "name": "Simplify StatusBar information",
     "sprint": "8.4",
-    "status": "pending",
-    "agent": "the-drone",
+    "status": "completed",
+    "agent": "orchestrator",
     "priority": "medium",
     "description": "Reduce StatusBar density by moving details to dropdown. Show only connection status and queue count by default.",
     "files": [
@@ -1163,8 +1163,8 @@
     "id": "8.4.3",
     "name": "Add relative time display utilities",
     "sprint": "8.4",
-    "status": "pending",
-    "agent": "cli-agent/gemini",
+    "status": "completed",
+    "agent": "orchestrator",
     "priority": "medium",
     "description": "Create formatRelativeTime, formatDuration, formatTimestamp utilities for human-friendly time display.",
     "files": [
@@ -1181,8 +1181,8 @@
     "id": "8.4.4",
     "name": "Apply relative times throughout app",
     "sprint": "8.4",
-    "status": "pending",
-    "agent": "the-drone",
+    "status": "completed",
+    "agent": "orchestrator",
     "priority": "medium",
     "description": "Replace absolute timestamps with relative times. Show full timestamp on hover with title attribute.",
     "files": [
@@ -1202,8 +1202,8 @@
     "id": "8.4.5",
     "name": "Add duration to completed jobs",
     "sprint": "8.4",
-    "status": "pending",
-    "agent": "the-drone",
+    "status": "completed",
+    "agent": "orchestrator",
     "priority": "medium",
     "description": "Show processing duration for completed jobs in JobDetail timeline and Queue table.",
     "files": [
@@ -1412,7 +1412,7 @@
     "id": "9.3.1",
     "name": "Second round code review",
     "sprint": "9.3",
-    "status": "pending",
+    "status": "completed",
     "agent": "cli-agent/gemini",
     "priority": "high",
     "description": "After Sprint 9.1 bug fixes complete, perform a second comprehensive code review to catch any issues missed in the truncated first review. Focus on API services, database operations, and worker logic.",
@@ -1619,13 +1619,12 @@
     "id": "10.2.1",
     "name": "MCP resource: SST context integration",
     "sprint": "10.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "medium",
     "description": "Integrate Airtable SST lookup into load_project_for_editing. When project has linked SST record, include title, descriptions, keywords, tags, host, presenter in the context bundle. READ-ONLY.",
     "files": [
-      "mcp_server/tools/projects.py",
-      "mcp_server/services/airtable.py"
+      "mcp_server/server.py"
     ],
     "exit_criteria": [
       "SST data included when available",
@@ -1638,12 +1637,12 @@
     "id": "10.2.2",
     "name": "MCP tool: search_projects",
     "sprint": "10.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "medium",
     "description": "Search projects by program name, topic, date range, status. Supports filtering and pagination for large project lists.",
     "files": [
-      "mcp_server/tools/projects.py"
+      "mcp_server/server.py"
     ],
     "exit_criteria": [
       "Text search works",
@@ -1656,12 +1655,12 @@
     "id": "10.2.3",
     "name": "MCP prompts for common workflows",
     "sprint": "10.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "medium",
-    "description": "MCP prompts for copy editing workflows: start_edit_session, review_brainstorming, analyze_seo. Pre-built prompts with variable substitution that align with EDITOR_AGENT_INSTRUCTIONS.md phases.",
+    "description": "MCP prompts for copy editing workflows: start_edit_session, review_brainstorming, analyze_seo, fact_check. Pre-built prompts with variable substitution that align with EDITOR_AGENT_INSTRUCTIONS.md phases.",
     "files": [
-      "mcp_server/prompts/editing.py"
+      "mcp_server/server.py"
     ],
     "exit_criteria": [
       "Prompts registered in MCP server",

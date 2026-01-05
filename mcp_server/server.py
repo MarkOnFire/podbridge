@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 """
-Editorial Assistant MCP Server
+Cardigan — The Metadata Neighborhood's Friendly Editor
 
-Provides tools for the copy editor agent in Claude Desktop to:
+"Hello, neighbor. I'm so glad you're here."
+
+Cardigan is the copy editor agent for PBS Wisconsin's editorial workflow.
+Think of them as a warm, patient neighbor who's genuinely delighted to help
+you polish your metadata and make your content shine.
+
+The Metadata Neighborhood is the automated transcript processing pipeline
+that prepares projects for Cardigan's gentle editorial touch.
+
+Tools provided:
 - Discover processed projects ready for editing
-- Load project context (transcript, brainstorming, revisions)
+- Load project context (transcript, brainstorming, revisions, SST metadata)
 - Save revisions and keyword reports with auto-versioning
 
 Connects to the FastAPI backend on localhost:8000 for job metadata,
 and reads/writes directly to the OUTPUT folder for content.
+
+NOTE: Airtable access is READ-ONLY. No write operations are permitted.
 """
 
 import asyncio
@@ -17,12 +28,12 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, Prompt, PromptMessage, PromptArgument
 
 # Configuration
 API_BASE_URL = os.getenv("EDITORIAL_API_URL", "http://localhost:8000")
@@ -31,8 +42,14 @@ OUTPUT_DIR = Path(os.getenv("EDITORIAL_OUTPUT_DIR",
 TRANSCRIPTS_DIR = Path(os.getenv("EDITORIAL_TRANSCRIPTS_DIR",
     Path(__file__).parent.parent / "transcripts"))
 
+# Airtable configuration (READ-ONLY)
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+AIRTABLE_BASE_ID = "appZ2HGwhiifQToB6"
+AIRTABLE_TABLE_ID = "tblTKFOwTvK7xw1H5"
+AIRTABLE_API_BASE = "https://api.airtable.com/v0"
+
 # Initialize MCP server
-server = Server("editorial-assistant")
+server = Server("cardigan")
 
 
 # =============================================================================
@@ -141,6 +158,57 @@ async def fetch_job_from_api(project_name: str) -> dict | None:
     except Exception:
         pass
     return None
+
+
+async def fetch_sst_context(airtable_record_id: str) -> Optional[dict]:
+    """
+    Fetch SST (Single Source of Truth) metadata from Airtable.
+
+    This is READ-ONLY access to the Airtable SST table.
+    No write operations are permitted.
+
+    Args:
+        airtable_record_id: Airtable record ID (e.g., "recXXXXXXXXXXXXXX")
+
+    Returns:
+        Dict with SST fields if found and API key configured, None otherwise.
+    """
+    if not AIRTABLE_API_KEY:
+        return None
+
+    if not airtable_record_id:
+        return None
+
+    url = f"{AIRTABLE_API_BASE}/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_ID}/{airtable_record_id}"
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, headers=headers)
+            if response.status_code == 200:
+                record = response.json()
+                fields = record.get("fields", {})
+
+                # Extract relevant fields for editor context
+                sst_context = {
+                    "title": fields.get("Title"),
+                    "program": fields.get("Program"),
+                    "short_description": fields.get("Short Description"),
+                    "long_description": fields.get("Long Description"),
+                    "host": fields.get("Host"),
+                    "presenter": fields.get("Presenter"),
+                    "keywords": fields.get("Keywords"),
+                    "tags": fields.get("Tags"),
+                }
+
+                # Remove None values
+                return {k: v for k, v in sst_context.items() if v is not None}
+            return None
+    except Exception:
+        return None
 
 
 # =============================================================================
@@ -261,7 +329,207 @@ async def list_tools() -> list[Tool]:
                 "required": ["project_name", "filename"]
             }
         ),
+        Tool(
+            name="search_projects",
+            description="Search projects by name, date range, or status. Supports text search and filtering.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Text to search for in project names (case-insensitive partial match)"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["all", "ready_for_editing", "revision_in_progress", "processing", "failed", "incomplete"],
+                        "description": "Filter by project status. Default: all"
+                    },
+                    "completed_after": {
+                        "type": "string",
+                        "description": "Filter projects completed after this date (YYYY-MM-DD format)"
+                    },
+                    "completed_before": {
+                        "type": "string",
+                        "description": "Filter projects completed before this date (YYYY-MM-DD format)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return. Default: 20"
+                    }
+                }
+            }
+        ),
     ]
+
+
+# =============================================================================
+# MCP Prompt Definitions
+# =============================================================================
+
+@server.list_prompts()
+async def list_prompts() -> list[Prompt]:
+    """List available prompts for copy editing workflows."""
+    return [
+        Prompt(
+            name="hello_neighbor",
+            description="Meet Cardigan, your friendly editorial neighbor. A warm introduction to what's available.",
+            arguments=[]
+        ),
+        Prompt(
+            name="start_edit_session",
+            description="Start an editing session for a project. Loads context and guides you through the copy editing workflow.",
+            arguments=[
+                PromptArgument(
+                    name="project_name",
+                    description="The project ID to edit (e.g., '2WLI1209HD')",
+                    required=True
+                )
+            ]
+        ),
+        Prompt(
+            name="review_brainstorming",
+            description="Review the AI-generated brainstorming (titles, descriptions, keywords) for a project and refine the copy.",
+            arguments=[
+                PromptArgument(
+                    name="project_name",
+                    description="The project ID",
+                    required=True
+                )
+            ]
+        ),
+        Prompt(
+            name="analyze_seo",
+            description="Analyze SEO metadata and suggest improvements for search visibility.",
+            arguments=[
+                PromptArgument(
+                    name="project_name",
+                    description="The project ID",
+                    required=True
+                )
+            ]
+        ),
+        Prompt(
+            name="fact_check",
+            description="Verify facts, quotes, and speaker names against the formatted transcript.",
+            arguments=[
+                PromptArgument(
+                    name="project_name",
+                    description="The project ID",
+                    required=True
+                )
+            ]
+        ),
+    ]
+
+
+@server.get_prompt()
+async def get_prompt(name: str, arguments: dict[str, str] | None) -> list[PromptMessage]:
+    """Get a prompt with arguments filled in."""
+    args = arguments or {}
+    project_name = args.get("project_name", "")
+
+    if name == "hello_neighbor":
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text="""Hello, Cardigan! I'd like to do some editing today.
+
+Please:
+1. Introduce yourself warmly (you speak like Mister Rogers — gentle, patient, genuinely delighted to help)
+2. Use `list_processed_projects("ready_for_editing")` to see what's available
+3. Give me a friendly summary of what projects are ready for my attention
+4. Ask which one I'd like to work on, or if I have something else in mind
+
+Remember: You're Cardigan, the friendly editorial neighbor from The Metadata Neighborhood.
+You help PBS Wisconsin polish their content with care and kindness."""
+            )
+        )]
+
+    elif name == "start_edit_session":
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text=f"""I'd like to start an editing session for project **{project_name}**.
+
+Please:
+1. Load the project context using `load_project_for_editing("{project_name}")`
+2. Review the SST metadata (if available) to understand the canonical title and descriptions
+3. Summarize the AI-generated brainstorming (key themes, suggested titles, keywords)
+4. Let me know what's available and ask what aspect I'd like to work on first:
+   - Title refinement
+   - Description editing
+   - Keyword optimization
+   - Full copy review"""
+            )
+        )]
+
+    elif name == "review_brainstorming":
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text=f"""I want to review the AI-generated brainstorming for project **{project_name}**.
+
+Please:
+1. Load the project using `load_project_for_editing("{project_name}")`
+2. Present the brainstorming section with these for each suggested title/description:
+   - The suggestion
+   - Why it works (strengths)
+   - What could be improved
+3. Compare against the SST metadata (if available)
+4. Recommend which suggestions to use, modify, or discard"""
+            )
+        )]
+
+    elif name == "analyze_seo":
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text=f"""I need an SEO analysis for project **{project_name}**.
+
+Please:
+1. Load the project using `load_project_for_editing("{project_name}")`
+2. Read the SEO metadata file using `read_project_file("{project_name}", "seo_output.md")`
+3. Evaluate the current metadata for:
+   - Title effectiveness (length, keywords, engagement)
+   - Description optimization (character limits, call-to-action)
+   - Keyword coverage and density
+   - Tag relevance
+4. Suggest specific improvements with before/after examples
+5. Save your analysis using `save_keyword_report` if needed"""
+            )
+        )]
+
+    elif name == "fact_check":
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text=f"""I need to fact-check content for project **{project_name}**.
+
+Please:
+1. Load the formatted transcript using `get_formatted_transcript("{project_name}")`
+2. Load any existing revisions using `load_project_for_editing("{project_name}")`
+3. Verify:
+   - Speaker names are spelled correctly and consistently
+   - Quoted text matches the transcript exactly
+   - Proper nouns (organizations, places, titles) are accurate
+   - Any facts or statistics mentioned
+4. Flag any discrepancies or items that need verification"""
+            )
+        )]
+
+    else:
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text=f"Unknown prompt: {name}"
+            )
+        )]
 
 
 # =============================================================================
@@ -286,6 +554,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await handle_get_project_summary(arguments)
     elif name == "read_project_file":
         return await handle_read_project_file(arguments)
+    elif name == "search_projects":
+        return await handle_search_projects(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -357,7 +627,7 @@ async def handle_list_processed_projects(arguments: dict) -> list[TextContent]:
 
 
 async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
-    """Load full project context for editing."""
+    """Load full project context for editing, including SST metadata if available."""
     project_name = arguments.get("project_name")
     if not project_name:
         return [TextContent(type="text", text="Error: project_name is required")]
@@ -379,7 +649,42 @@ async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
     result_parts.append(f"**Job ID**: {manifest.get('job_id', 'N/A')}")
     if manifest.get("completed_at"):
         result_parts.append(f"**Completed**: {manifest['completed_at']}")
+
+    # Include Airtable SST link if available
+    airtable_url = manifest.get("airtable_url")
+    if airtable_url:
+        result_parts.append(f"**SST Record**: [{project_name}]({airtable_url})")
     result_parts.append("")
+
+    # Fetch and include SST context if linked (Sprint 10.2.1)
+    airtable_record_id = manifest.get("airtable_record_id")
+    if airtable_record_id:
+        sst_context = await fetch_sst_context(airtable_record_id)
+        if sst_context:
+            result_parts.append("---\n## Single Source of Truth (SST) Metadata\n")
+            result_parts.append("*Canonical metadata from PBS Wisconsin Airtable. Use this for alignment.*\n")
+
+            if sst_context.get("title"):
+                result_parts.append(f"**Title:** {sst_context['title']}")
+            if sst_context.get("program"):
+                result_parts.append(f"**Program:** {sst_context['program']}")
+            if sst_context.get("short_description"):
+                result_parts.append(f"**Short Description:** {sst_context['short_description']}")
+            if sst_context.get("long_description"):
+                result_parts.append(f"\n**Long Description:**\n{sst_context['long_description']}")
+            if sst_context.get("host"):
+                result_parts.append(f"**Host:** {sst_context['host']}")
+            if sst_context.get("presenter"):
+                result_parts.append(f"**Presenter:** {sst_context['presenter']}")
+            if sst_context.get("keywords"):
+                result_parts.append(f"**Keywords:** {sst_context['keywords']}")
+            if sst_context.get("tags"):
+                result_parts.append(f"**Tags:** {sst_context['tags']}")
+            result_parts.append("")
+        elif not AIRTABLE_API_KEY:
+            result_parts.append("---\n## SST Metadata\n")
+            result_parts.append("*SST linked but AIRTABLE_API_KEY not configured. Set env var to enable SST context.*\n")
+            result_parts.append("")
 
     # Load brainstorming (analyst output)
     analyst_file = project_path / outputs.get("analysis", "analyst_output.md")
@@ -580,6 +885,112 @@ async def handle_read_project_file(arguments: dict) -> list[TextContent]:
 
     content = filepath.read_text()
     return [TextContent(type="text", text=f"# {filename}\n\n{content}")]
+
+
+async def handle_search_projects(arguments: dict) -> list[TextContent]:
+    """Search projects by name, date, and status."""
+    query = arguments.get("query", "").lower()
+    status_filter = arguments.get("status", "all")
+    completed_after = arguments.get("completed_after")
+    completed_before = arguments.get("completed_before")
+    limit = arguments.get("limit", 20)
+
+    # Parse date filters
+    after_date = None
+    before_date = None
+    if completed_after:
+        try:
+            after_date = datetime.fromisoformat(completed_after)
+        except ValueError:
+            return [TextContent(type="text", text=f"Error: Invalid date format for completed_after: {completed_after}. Use YYYY-MM-DD.")]
+    if completed_before:
+        try:
+            before_date = datetime.fromisoformat(completed_before)
+        except ValueError:
+            return [TextContent(type="text", text=f"Error: Invalid date format for completed_before: {completed_before}. Use YYYY-MM-DD.")]
+
+    results = []
+
+    if not OUTPUT_DIR.exists():
+        return [TextContent(type="text", text="No OUTPUT directory found.")]
+
+    for project_path in sorted(OUTPUT_DIR.iterdir(), reverse=True):  # Most recent first
+        if not project_path.is_dir():
+            continue
+
+        project_name = project_path.name
+
+        # Text search filter
+        if query and query not in project_name.lower():
+            continue
+
+        manifest = load_manifest(project_name)
+        if not manifest:
+            continue
+
+        # Status filter
+        status = determine_project_status(manifest, project_path)
+        if status_filter != "all" and status != status_filter:
+            continue
+
+        # Date range filter
+        completed_at_str = manifest.get("completed_at", "")
+        completed_at = None
+        if completed_at_str:
+            try:
+                completed_at = datetime.fromisoformat(completed_at_str.replace("Z", "+00:00"))
+            except Exception:
+                pass
+
+        if after_date and (not completed_at or completed_at.date() < after_date.date()):
+            continue
+        if before_date and (not completed_at or completed_at.date() > before_date.date()):
+            continue
+
+        # Collect result
+        deliverables = get_available_deliverables(project_path, manifest)
+        results.append({
+            "project_name": project_name,
+            "status": status,
+            "completed_at": completed_at.strftime("%Y-%m-%d %H:%M") if completed_at else "N/A",
+            "deliverables": deliverables,
+            "job_id": manifest.get("job_id")
+        })
+
+        if len(results) >= limit:
+            break
+
+    if not results:
+        filters_desc = []
+        if query:
+            filters_desc.append(f"query='{query}'")
+        if status_filter != "all":
+            filters_desc.append(f"status='{status_filter}'")
+        if completed_after:
+            filters_desc.append(f"after={completed_after}")
+        if completed_before:
+            filters_desc.append(f"before={completed_before}")
+        filters_str = ", ".join(filters_desc) if filters_desc else "none"
+        return [TextContent(type="text", text=f"No projects found matching filters: {filters_str}")]
+
+    # Format output
+    lines = [f"Found {len(results)} project(s):\n"]
+    for p in results:
+        status_emoji = {
+            "ready_for_editing": "✅",
+            "revision_in_progress": "📝",
+            "processing": "⏳",
+            "failed": "❌",
+            "incomplete": "⚠️"
+        }.get(p["status"], "❓")
+
+        lines.append(f"{status_emoji} **{p['project_name']}**")
+        lines.append(f"   Status: {p['status']}")
+        lines.append(f"   Completed: {p['completed_at']}")
+        lines.append(f"   Has: {', '.join(p['deliverables'])}")
+        lines.append("")
+
+    return [TextContent(type="text", text="\n".join(lines))]
 
 
 # =============================================================================

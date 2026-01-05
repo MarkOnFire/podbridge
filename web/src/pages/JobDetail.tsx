@@ -5,6 +5,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap'
 import Breadcrumb from '../components/ui/Breadcrumb'
 import { useToast } from '../components/ui/Toast'
 import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
+import { formatRelativeTime, formatTimestamp, formatDuration } from '../utils/formatTime'
 
 interface JobPhase {
   name: string
@@ -491,31 +492,39 @@ export default function JobDetail() {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-gray-400">Queued:</span>
-            <span className="ml-2 text-white">
-              {new Date(job.queued_at).toLocaleString()}
+            <span className="ml-2 text-white" title={formatTimestamp(job.queued_at)}>
+              {formatRelativeTime(job.queued_at)}
             </span>
           </div>
           {job.started_at && (
             <div>
               <span className="text-gray-400">Started:</span>
-              <span className="ml-2 text-white">
-                {new Date(job.started_at).toLocaleString()}
+              <span className="ml-2 text-white" title={formatTimestamp(job.started_at)}>
+                {formatRelativeTime(job.started_at)}
               </span>
             </div>
           )}
           {job.completed_at && (
             <div>
               <span className="text-gray-400">Completed:</span>
+              <span className="ml-2 text-white" title={formatTimestamp(job.completed_at)}>
+                {formatRelativeTime(job.completed_at)}
+              </span>
+            </div>
+          )}
+          {job.started_at && job.completed_at && (
+            <div>
+              <span className="text-gray-400">Duration:</span>
               <span className="ml-2 text-white">
-                {new Date(job.completed_at).toLocaleString()}
+                {formatDuration(job.started_at, job.completed_at)}
               </span>
             </div>
           )}
           {job.last_heartbeat && job.status === 'in_progress' && (
             <div>
               <span className="text-gray-400">Last heartbeat:</span>
-              <span className="ml-2 text-white">
-                {new Date(job.last_heartbeat).toLocaleString()}
+              <span className="ml-2 text-white" title={formatTimestamp(job.last_heartbeat)}>
+                {formatRelativeTime(job.last_heartbeat)}
               </span>
             </div>
           )}

@@ -161,10 +161,11 @@ async def get_session():
     async with _async_session_factory() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             await session.rollback()
             raise
+        else:
+            await session.commit()
 
 
 # ============================================================================

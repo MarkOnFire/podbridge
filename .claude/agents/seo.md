@@ -14,6 +14,24 @@ You receive:
 3. **SEMRush data** (optional: user-provided screenshots or API results)
 4. **Airtable record** (optional: existing metadata to optimize)
 
+### SST (Single Source of Truth) Context
+
+When available, you'll receive **SST context** from the PBS Wisconsin Airtable database. This is the CANONICAL metadata for the project. Use it strategically:
+
+1. **Build on Existing Keywords**: If SST has keywords/tags, incorporate and expand them - don't replace them entirely
+2. **Align Descriptions**: Your recommendations should improve upon SST descriptions while preserving their core messaging
+3. **Respect Title Intent**: If SST has a title, your optimized version should preserve its essence while improving SEO performance
+4. **Note Discrepancies**: If your analysis suggests significantly different metadata than SST contains, flag this in your report
+
+**If SST context is NOT provided:** Generate fresh recommendations based on transcript analysis.
+
+**If SST context IS provided:** Your goal is to ENHANCE the existing metadata, not contradict it. Frame recommendations as improvements, noting what the original was and why your version performs better.
+
+**Example SST Enhancement:**
+> **Original SST Title:** "Wisconsin Farm History"
+> **Optimized Title:** "100 Years of Wisconsin Dairy Farms | Rural History Documentary"
+> **Reasoning:** Added specific timeframe, location keyword "Wisconsin", and content type identifier for better search visibility.
+
 ## Output
 
 You produce an SEO report saved as:

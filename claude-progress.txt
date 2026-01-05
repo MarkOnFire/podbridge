@@ -1,7 +1,7 @@
 # Editorial Assistant v3.0 - Development Progress
 
-Last updated: 2025-12-30
-Current sprint: 8.1 COMPLETE, 8.2 MOSTLY COMPLETE, 9.2.1 COMPLETE, 10.1 COMPLETE
+Last updated: 2025-12-31
+Current sprint: 6.2 COMPLETE, 7.3 COMPLETE, 8.4 COMPLETE, 10.2 COMPLETE
 
 ## Sprint Status
 
@@ -79,8 +79,8 @@ Current sprint: 8.1 COMPLETE, 8.2 MOSTLY COMPLETE, 9.2.1 COMPLETE, 10.1 COMPLETE
 ### Sprint 7.2: Web UI Bulk Uploader - PLANNED (LOW PRIORITY)
 - [ ] 7.2.1 Web UI bulk transcript uploader (watch_transcripts.py works for now)
 
-### Sprint 7.3: Timestamp Agent - PLANNED (OPTIONAL)
-- [ ] 7.3.1 Timestamp agent (optional)
+### Sprint 7.3: Timestamp Agent - COMPLETE
+- [x] 7.3.1 Timestamp agent with SRT parsing, chapter markers, and auto-trigger for 30+ min content
 
 ### Sprint 8.1: Critical Accessibility - COMPLETE
 - [x] 8.1.1 Add skip navigation link (Layout.tsx has skip link)
@@ -109,12 +109,12 @@ Current sprint: 8.1 COMPLETE, 8.2 MOSTLY COMPLETE, 9.2.1 COMPLETE, 10.1 COMPLETE
 - [ ] 8.3.5 Implement instant search with debounce
 - [ ] 8.3.6 Add keyboard shortcuts
 
-### Sprint 8.4: Cognitive Load Reduction - PLANNED (MEDIUM)
-- [ ] 8.4.1 Refactor Settings page with tabs
-- [ ] 8.4.2 Simplify StatusBar information
-- [ ] 8.4.3 Add relative time display utilities
-- [ ] 8.4.4 Apply relative times throughout app
-- [ ] 8.4.5 Add duration to completed jobs
+### Sprint 8.4: Cognitive Load Reduction - COMPLETE
+- [x] 8.4.1 Refactor Settings page with tabs (Agents, Routing, Worker tabs with full accessibility)
+- [x] 8.4.2 Simplify StatusBar information (collapsible More/Less panel)
+- [x] 8.4.3 Add relative time display utilities (formatRelativeTime, formatDuration, formatTimestamp)
+- [x] 8.4.4 Apply relative times throughout app (Queue, Home, JobDetail, Projects with tooltips)
+- [x] 8.4.5 Add duration to completed jobs (JobDetail timeline shows processing duration)
 
 ### Sprint 8.5: Accessibility Preferences - PLANNED (LOW)
 - [ ] 8.5.1 Create Preferences context
@@ -152,12 +152,166 @@ Primary interface for copy editor agent in Claude Desktop. Tool names match EDIT
 - [x] 10.1.9 Claude Desktop configuration docs
 - [x] 10.1.10 Web UI: Copy Editor handoff messaging (direct users to Claude Desktop)
 
-### Sprint 10.2: MCP Server Enhancements - MEDIUM
-- [ ] 10.2.1 SST context integration into load_project_for_editing (Airtable READ-ONLY)
-- [ ] 10.2.2 search_projects - Text search, status filter, date range
-- [ ] 10.2.3 MCP prompts for common workflows (start_edit_session, etc.)
+### Sprint 10.2: MCP Server Enhancements - COMPLETE
+- [x] 10.2.1 SST context integration into load_project_for_editing (Airtable READ-ONLY)
+- [x] 10.2.2 search_projects - Text search, status filter, date range
+- [x] 10.2.3 MCP prompts for common workflows (start_edit_session, review_brainstorming, analyze_seo, fact_check)
 
 ## Session Notes
+
+### 2025-12-31 - Sprint 7.3: Timestamp Agent
+
+**Completed:** All tasks for timestamp agent implementation
+
+**New Files:**
+- `.claude/agents/timestamp.md` - Comprehensive agent instructions for SRT processing
+
+**Changes to `api/services/utils.py`:**
+- Added `SRTCaption` dataclass for caption entries
+- Added `srt_timecode_to_ms()` and `ms_to_srt_timecode()` conversions
+- Added `ms_to_vtt_timecode()` for WebVTT format
+- Added `ms_to_display_timecode()` for human-readable format
+- Added `parse_srt()` to parse SRT content into caption objects
+- Added `generate_srt()` and `generate_vtt()` for output generation
+- Added `clean_srt_captions()` for deduplication, overlap fixes, merging
+- Added `get_srt_duration()` to extract total duration
+
+**Changes to `api/services/worker.py`:**
+- Added `OPTIONAL_PHASES = ["timestamp"]` for optional phase tracking
+- Added `TIMESTAMP_AUTO_THRESHOLD_MINUTES = 30` threshold constant
+- Added `_find_srt_file()` to locate SRT files for transcripts
+- Added `_get_content_duration_minutes()` to determine content length
+- Added `_should_run_timestamp_phase()` with auto-trigger logic
+- Added optional phase processing after required phases complete
+- Added timestamp-specific prompt building in `_build_phase_prompt()`
+- Optional phase failures logged but don't fail the job
+
+**Trigger Conditions:**
+- **Automatic**: Content 30+ minutes AND SRT file exists
+- **Manual**: Job has `include_timestamps: true`
+- **Skipped**: No SRT file or under 30 minutes without request
+
+**Build verified:** Python syntax compiles successfully
+
+### 2025-12-31 - Sprint 10.2: MCP Server Enhancements
+
+**Completed:** All 3 tasks (10.2.1-10.2.3)
+
+**Changes to `mcp_server/server.py`:**
+
+1. **SST Context Integration (10.2.1)**
+   - Added `fetch_sst_context()` function for READ-ONLY Airtable access
+   - Updated `load_project_for_editing()` to include SST metadata when linked
+   - Shows title, program, descriptions, host, presenter, keywords, tags
+   - Graceful handling when Airtable API key not configured
+
+2. **Search Projects Tool (10.2.2)**
+   - New `search_projects` tool with filtering options:
+     - `query`: Text search in project names (case-insensitive)
+     - `status`: Filter by project status
+     - `completed_after`/`completed_before`: Date range filtering
+     - `limit`: Pagination support
+   - Results sorted by most recent first
+
+3. **Workflow Prompts (10.2.3)**
+   - Added 4 MCP prompts for guided workflows:
+     - `start_edit_session`: Full editing session startup
+     - `review_brainstorming`: Review AI-generated suggestions
+     - `analyze_seo`: SEO metadata analysis
+     - `fact_check`: Verify quotes and speaker names
+   - Prompts guide the agent through tool calls
+
+**Build verified:** Python syntax compiles successfully
+
+### 2025-12-31 - Sprint 8.4: Cognitive Load Reduction
+
+**Completed:** All 5 tasks (8.4.1-8.4.5)
+
+**Changes:**
+
+1. **Relative Time Utilities** (`web/src/utils/formatTime.ts`)
+   - `formatRelativeTime()` - "just now", "5m ago", "2h ago", "3d ago", or full date for >7 days
+   - `formatDuration()` - calculates duration between timestamps (e.g., "2m 34s")
+   - `formatTimestamp()` - full timestamp with timezone (e.g., "Dec 31, 2025, 3:45 PM CST")
+   - `formatTime()` / `formatDate()` - individual components
+
+2. **Applied Relative Times Throughout App**
+   - Queue.tsx: queued_at shows relative time with tooltip for full timestamp
+   - Home.tsx: Recent jobs use relative time with tooltip
+   - JobDetail.tsx: Timeline events use relative time
+   - Projects.tsx: Completion times use relative time
+
+3. **Duration for Completed Jobs** (`web/src/pages/JobDetail.tsx`)
+   - Shows processing duration in job timeline for completed jobs
+   - Format: "Completed X ago (took Ym Zs)"
+
+4. **Simplified StatusBar** (`web/src/components/StatusBar.tsx`)
+   - Default: Connection status, queue total, last updated
+   - Expandable "More/Less" panel reveals: queue breakdown, LLM config, last run stats
+   - Click-based toggle (not hover) for mobile-friendliness
+
+5. **Settings Page Tabs** (`web/src/pages/Settings.tsx`)
+   - Refactored 678-line file into 3 tabs: Agents, Routing, Worker
+   - Full ARIA accessibility (role=tablist, aria-selected, aria-controls, aria-labelledby)
+   - Keyboard navigation support
+   - Toggle component for cleaner switch rendering
+
+**Build verified:** TypeScript compiles, production build succeeds
+
+### 2025-12-31 - Sprint 6.2: SST Context Injection
+
+**Completed:** All 5 tasks (6.2.1-6.2.5)
+
+SST context (title, descriptions, keywords, host, presenter, etc.) is now:
+1. Fetched from Airtable on job start (already implemented in worker.py)
+2. Injected into user prompts for all phases (already implemented in _build_phase_prompt)
+3. Documented in agent instruction files with guidance on how to use it:
+   - **Analyst** (`.claude/agents/analyst.md`): Align analysis with SST metadata, use host/presenter names
+   - **Formatter** (`.claude/agents/formatter.md`): Use SST names for speaker attribution
+   - **SEO** (`.claude/agents/seo.md`): Build on existing keywords, enhance (not replace) SST descriptions
+   - **Manager** (`.claude/agents/manager.md`): Cross-reference outputs against SST for consistency
+
+**Tests:** 25 worker tests pass
+
+### 2025-12-30 - Sprint 9.3.1 Code Review & Critical Bug Fixes
+
+**Code review completed** - Reviewed 4,167 lines across 5 core files (database.py, worker.py, llm.py, jobs.py, queue.py)
+
+**Critical issues fixed (8):**
+
+1. **Session commit/rollback order** (`database.py:161-168`)
+   - Fixed try/except to use `else` clause for commit
+   - Prevents partial transaction commits on exception
+
+2. **Path traversal vulnerability** (`jobs.py:295-304`)
+   - Added path validation in get_job_output()
+   - Resolved paths must be within OUTPUT directory
+
+3. **Heartbeat cleanup exception** (`worker.py:398-412`)
+   - Properly await cancelled heartbeat task
+   - Handle CancelledError and other exceptions
+
+4. **Infinite loop guard** (`worker.py:655-657`)
+   - Added max_escalation_attempts=10 to tier escalation loop
+   - Prevents hangs on misconfigured tier routing
+
+5. **Worker task exception handling** (`worker.py:99-146`)
+   - Track job_id with each task for cleanup on failure
+   - Mark jobs as failed if exception escapes normal handling
+
+6. **Unsafe phase index access** (`worker.py:1007, 1043, 1094`)
+   - Added bounds validation: `0 <= idx < len(phases)`
+   - Prevents IndexError if phases modified externally
+
+7. **HTTP client resource leak** (`llm.py:338-348`)
+   - Close old client before creating new one
+   - Prevents connection pool exhaustion
+
+8. **Manager recovery race condition** (documented)
+   - Added docstring explaining the limitation
+   - Mitigated by idempotent LLM calls, single-worker design
+
+**Tests:** 65 worker/llm tests pass, TypeScript compiles
 
 ### 2025-12-30 - Sprint 8.x Accessibility & Interactive Feedback
 

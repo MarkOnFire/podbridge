@@ -292,7 +292,16 @@ async def get_job_output(job_id: int, filename: str):
             detail="Job has no output directory configured"
         )
 
-    file_path = Path(job.project_path) / filename
+    # Security: Resolve paths and validate within OUTPUT directory
+    output_dir = Path(os.getenv("OUTPUT_DIR", "OUTPUT")).resolve()
+    file_path = (Path(job.project_path) / filename).resolve()
+
+    # Prevent path traversal attacks
+    if not file_path.is_relative_to(output_dir):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid project path - outside output directory"
+        )
 
     if not file_path.exists():
         raise HTTPException(

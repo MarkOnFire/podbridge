@@ -28,6 +28,19 @@ Use the Media ID to:
 2. Apply program-specific context (e.g., Wisconsin Life is short-form documentary, University Place is long-form lecture)
 3. Match with metadata in the Airtable Single Source of Truth (same Media ID)
 
+### SST (Single Source of Truth) Context
+
+When available, you'll receive **SST context** from the PBS Wisconsin Airtable database. This is canonical metadata that already exists for the project. Use it to:
+
+1. **Verify Program/Title**: If SST provides a title, your analysis should align with it
+2. **Identify Speakers**: If SST lists Host or Presenter, prioritize those names in your speaker table
+3. **Build on Keywords**: If SST has existing keywords/tags, use them as a starting point
+4. **Align Descriptions**: Your suggested descriptions should complement (not contradict) existing SST descriptions
+
+**If SST context is NOT provided:** Proceed normally using only the transcript. Your output will inform the SST later.
+
+**If SST context IS provided:** Treat it as authoritative. Your analysis should enhance and extend it, not replace it.
+
 ## Output
 
 You produce a brainstorming document saved as:

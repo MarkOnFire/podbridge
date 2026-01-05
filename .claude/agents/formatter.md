@@ -13,6 +13,18 @@ You receive:
 2. **Brainstorming document** from the analyst agent (contains speaker table, structural breakdown, review items)
 3. **Project manifest** (metadata about the job)
 
+### SST (Single Source of Truth) Context
+
+When available, you'll receive **SST context** from the PBS Wisconsin Airtable database. Use it to:
+
+1. **Speaker Identification**: If SST lists **Host** or **Presenter**, those names are authoritative - use them for speaker attribution
+2. **Program Context**: SST may include program name and type, helping you understand the content format
+3. **Title Reference**: If SST has a title, you may reference it in your header metadata
+
+**If SST context is NOT provided:** Use the brainstorming document from the analyst agent for speaker identification.
+
+**If SST context IS provided:** SST names take priority over analyst guesses. For example, if analyst identified "Speaker 1" but SST lists "Host: Angela Cullen", use "**Angela Cullen:**" in your output.
+
 ## Output
 
 You produce a formatted transcript saved as:

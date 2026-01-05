@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 
 interface CompletedJob {
   id: number
@@ -191,7 +192,6 @@ export default function Projects() {
   }
 
   const formatCost = (cost: number) => `$${cost.toFixed(4)}`
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleString()
 
   const getPhaseIcon = (status: string) => {
     switch (status) {
@@ -286,8 +286,11 @@ export default function Projects() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-medium text-white">{job.project_name}</div>
-                      <div className="text-sm text-gray-400">
-                        {job.completed_at ? formatDate(job.completed_at) : 'Processing...'}
+                      <div
+                        className="text-sm text-gray-400"
+                        title={job.completed_at ? formatTimestamp(job.completed_at) : undefined}
+                      >
+                        {job.completed_at ? formatRelativeTime(job.completed_at) : 'Processing...'}
                       </div>
                     </div>
                     <div className="text-right">

@@ -4,6 +4,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import { useToast } from '../components/ui/Toast'
 import { SkeletonQueue } from '../components/ui/Skeleton'
 import { useDebounce } from '../hooks/useDebounce'
+import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 
 interface Job {
   id: number
@@ -371,8 +372,11 @@ export default function Queue() {
                   <td className="px-4 py-3 text-gray-300 text-sm">
                     {job.current_phase || '-'}
                   </td>
-                  <td className="px-4 py-3 text-gray-300 text-sm">
-                    {new Date(job.queued_at + 'Z').toLocaleString()}
+                  <td
+                    className="px-4 py-3 text-gray-300 text-sm"
+                    title={formatTimestamp(job.queued_at + 'Z')}
+                  >
+                    {formatRelativeTime(job.queued_at + 'Z')}
                   </td>
                   <td className="px-4 py-3 text-gray-300 text-sm">
                     {job.priority}

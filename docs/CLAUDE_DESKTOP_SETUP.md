@@ -1,11 +1,13 @@
-# Claude Desktop Setup for Editorial Assistant
+# Claude Desktop Setup for Cardigan
 
-This guide explains how to configure Claude Desktop to use the Editorial Assistant MCP server for interactive copy editing.
+Meet **Cardigan**, your friendly editorial neighbor from **The Metadata Neighborhood**.
+
+Cardigan is a warm, patient copy editor who speaks like Mister Rogers — genuinely delighted to help you polish your PBS Wisconsin metadata with care and kindness.
 
 ## Prerequisites
 
 1. **Claude Desktop** installed on your Mac
-2. **Editorial Assistant v3** running locally
+2. **The Metadata Neighborhood** (this project) running locally
 3. **Python 3.10+** with the project's virtual environment
 
 ## Quick Setup
@@ -17,14 +19,14 @@ This guide explains how to configure Claude Desktop to use the Editorial Assista
 ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
-### 2. Add the Editorial Assistant MCP server
+### 2. Add Cardigan to your MCP servers
 
-Edit the config file and add the `editorial-assistant` server:
+Edit the config file and add the `cardigan` server:
 
 ```json
 {
   "mcpServers": {
-    "editorial-assistant": {
+    "cardigan": {
       "command": "/Users/YOUR_USERNAME/Developer/ai-editorial-assistant-v3/venv/bin/python",
       "args": [
         "-m",
@@ -42,17 +44,17 @@ Edit the config file and add the `editorial-assistant` server:
 
 Quit and reopen Claude Desktop for the changes to take effect.
 
-### 4. Verify the connection
+### 4. Say hello
 
-In a new Claude Desktop conversation, you should be able to say:
+In a new Claude Desktop conversation, just say:
 
-> "What projects are ready for editing?"
+> "Hello, Cardigan!"
 
-Claude will use the `list_processed_projects()` tool to show you available projects.
+Or use the `hello_neighbor` prompt to get a warm introduction.
 
 ## Available Tools
 
-Once configured, Claude has access to these tools:
+Once configured, Cardigan has access to these tools:
 
 | Tool | Description |
 |------|-------------|
@@ -63,16 +65,33 @@ Once configured, Claude has access to these tools:
 | `save_keyword_report(name, content)` | Save SEO/keyword report |
 | `get_project_summary(name)` | Quick status check |
 | `read_project_file(name, filename)` | Read specific project file |
+| `search_projects()` | Search by name, status, or date range |
+
+## Available Prompts
+
+| Prompt | Description |
+|--------|-------------|
+| `hello_neighbor` | Warm introduction from Cardigan |
+| `start_edit_session` | Begin editing a specific project |
+| `review_brainstorming` | Review AI-generated titles/descriptions |
+| `analyze_seo` | Deep-dive into SEO optimization |
+| `fact_check` | Verify facts against the transcript |
 
 ## Usage Examples
 
-### Start an editing session
+### Start your day with Cardigan
 
-Just tell Claude what you want to do:
+Just say hello:
+
+> "Hello, Cardigan! What's ready for me today?"
+
+Cardigan will warmly greet you and show you what projects need attention.
+
+### Start an editing session
 
 > "I'd like to edit 2WLI1209HD"
 
-Claude will:
+Cardigan will:
 1. Load the project context (brainstorming, existing revisions)
 2. Present the AI-generated content for review
 3. Ask how you'd like to proceed
@@ -89,15 +108,15 @@ or
 
 > "Can you check the speaker names in this description against the transcript?"
 
-Claude will load the formatted transcript and verify accuracy.
+Cardigan will load the formatted transcript and verify accuracy with care.
 
 ### Save your work
 
-When you approve a revision, Claude will automatically save it:
+When you approve a revision, Cardigan will save it:
 
 > "This looks good, please save it"
 
-Claude saves with auto-versioning (v1, v2, v3...) and confirms the file path.
+Cardigan saves with auto-versioning (v1, v2, v3...) and confirms the file path.
 
 ## Troubleshooting
 
@@ -116,7 +135,6 @@ Claude saves with auto-versioning (v1, v2, v3...) and confirms the file path.
 
 Claude Desktop logs MCP server output. Check:
 ```bash
-# Claude Desktop logs
 ~/Library/Logs/Claude/
 ```
 
@@ -127,26 +145,26 @@ cd /Users/YOUR_USERNAME/Developer/ai-editorial-assistant-v3
 ./venv/bin/python -m mcp_server.server
 ```
 
-This runs in stdio mode - you'll see it waiting for input (that's normal).
+This runs in stdio mode — you'll see it waiting for input (that's normal).
 
 ## Project Knowledge Folder
 
 For the best experience, add these to your Claude Desktop project's knowledge folder:
 
-1. **`agent-instructions/EDITOR_AGENT_INSTRUCTIONS.md`** - Full editing workflow and templates
+1. **`.claude/agents/copy-editor.md`** - Full editing workflow and Cardigan's personality
 2. **AP Stylebook reference** (if you have a PDF)
 3. **Program-specific style guides** (University Place, Here and Now, etc.)
 
-This gives Claude the context to follow PBS Wisconsin's editorial standards.
+This gives Cardigan the context to follow PBS Wisconsin's editorial standards.
 
 ## Full Config Example
 
-Here's a complete example config with the Editorial Assistant:
+Here's a complete example config with Cardigan:
 
 ```json
 {
   "mcpServers": {
-    "editorial-assistant": {
+    "cardigan": {
       "command": "/Users/mriechers/Developer/ai-editorial-assistant-v3/venv/bin/python",
       "args": ["-m", "mcp_server.server"],
       "cwd": "/Users/mriechers/Developer/ai-editorial-assistant-v3"
@@ -161,21 +179,22 @@ The MCP server supports these environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EDITORIAL_API_URL` | `http://localhost:8000` | FastAPI backend URL |
+| `EDITORIAL_API_URL` | `http://localhost:8000` | The Metadata Neighborhood API URL |
 | `EDITORIAL_OUTPUT_DIR` | `./OUTPUT` | Project output directory |
 | `EDITORIAL_TRANSCRIPTS_DIR` | `./transcripts` | Transcript source directory |
+| `AIRTABLE_API_KEY` | (none) | For SST metadata lookup (READ-ONLY) |
 
 You can set these in the Claude Desktop config:
 
 ```json
 {
   "mcpServers": {
-    "editorial-assistant": {
+    "cardigan": {
       "command": "/path/to/venv/bin/python",
       "args": ["-m", "mcp_server.server"],
       "cwd": "/path/to/ai-editorial-assistant-v3",
       "env": {
-        "EDITORIAL_API_URL": "http://localhost:8000"
+        "AIRTABLE_API_KEY": "your-api-key-here"
       }
     }
   }
