@@ -7,8 +7,10 @@ Cardigan is a warm, patient copy editor who speaks like Mister Rogers — genuin
 ## Prerequisites
 
 1. **Claude Desktop** installed on your Mac
-2. **The Metadata Neighborhood** (this project) running locally
-3. **Python 3.10+** with the project's virtual environment
+2. **Python 3.10+** with the project's virtual environment
+3. **API server running** — Start with `./scripts/start.sh` before using Cardigan
+   - Cardigan queries the API for job status and metadata
+   - Without the API, you can still browse OUTPUT folders but won't see job details
 
 ## Quick Setup
 
@@ -128,8 +130,9 @@ Cardigan saves with auto-versioning (v1, v2, v3...) and confirms the file path.
 
 ### "Project not found" errors
 
-1. **Ensure the API is running**: Start with `uvicorn api.main:app --reload`
+1. **Ensure the API is running**: Start with `./scripts/start.sh` or `uvicorn api.main:app --reload`
 2. **Check OUTPUT folder**: Projects must have a `manifest.json` in `OUTPUT/{project_name}/`
+3. **Process a transcript first**: Upload via web dashboard or place in `transcripts/` folder
 
 ### Viewing server logs
 
@@ -151,7 +154,7 @@ This runs in stdio mode — you'll see it waiting for input (that's normal).
 
 For the best experience, add these to your Claude Desktop project's knowledge folder:
 
-1. **`.claude/agents/copy-editor.md`** - Full editing workflow and Cardigan's personality
+1. **`.claude/agents/copy_editor.md`** — Full editing workflow and Cardigan's personality
 2. **AP Stylebook reference** (if you have a PDF)
 3. **Program-specific style guides** (University Place, Here and Now, etc.)
 
