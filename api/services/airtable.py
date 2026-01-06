@@ -34,6 +34,7 @@ class AirtableClient:
     BASE_ID = "appZ2HGwhiifQToB6"
     TABLE_ID = "tblTKFOwTvK7xw1H5"
     TABLE_NAME = "✔️Single Source of Truth"
+    INTERFACE_PAGE_ID = "pagCh7J2dYzqPC3bH"  # SST interface view
     MEDIA_ID_FIELD = "Media ID"
     MEDIA_ID_FIELD_ID = "fld8k42kJeWMHA963"
     API_BASE_URL = "https://api.airtable.com/v0"
@@ -136,13 +137,15 @@ class AirtableClient:
         """
         Generate Airtable web interface URL for a record.
 
+        Opens the record within the SST interface view for a better UX.
+
         Args:
             record_id: Airtable record ID (e.g., "recXXXXXXXXXXXXXX")
 
         Returns:
-            Full Airtable URL to the record
+            Full Airtable URL to the record in the interface view
         """
-        return f"https://airtable.com/{self.BASE_ID}/{self.TABLE_ID}/{record_id}"
+        return f"https://airtable.com/{self.BASE_ID}/{self.INTERFACE_PAGE_ID}/{record_id}"
 
 
 # Factory function for dependency injection
