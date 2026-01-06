@@ -7,9 +7,20 @@ CRITICAL: This service is intentionally READ-ONLY. No write operations are permi
 """
 
 import os
+import sys
+from pathlib import Path
 from typing import Optional
 import httpx
 from datetime import datetime
+
+# Load secrets from Keychain (the-lodge shared utility)
+sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
+try:
+    from keychain_secrets import get_secret
+except ImportError:
+    # Fallback if keychain_secrets not available
+    def get_secret(key: str, required: bool = False) -> Optional[str]:
+        return os.environ.get(key)
 
 
 class AirtableClient:
@@ -32,15 +43,15 @@ class AirtableClient:
         Initialize Airtable client.
 
         Args:
-            api_key: Airtable API key. If not provided, uses AIRTABLE_API_KEY env var.
+            api_key: Airtable API key. If not provided, checks Keychain then env var.
 
         Raises:
-            ValueError: If no API key is provided or found in environment.
+            ValueError: If no API key is provided or found.
         """
-        self.api_key = api_key or os.getenv("AIRTABLE_API_KEY")
+        self.api_key = api_key or get_secret("AIRTABLE_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "Airtable API key required. Provide via constructor or AIRTABLE_API_KEY env var."
+                "Airtable API key required. Add to Keychain or set AIRTABLE_API_KEY env var."
             )
 
         self.headers = {
