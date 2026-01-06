@@ -3,12 +3,41 @@ import { Outlet, NavLink } from 'react-router-dom'
 import StatusBar from './StatusBar'
 import { useKeyboardShortcuts, getKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { usePreferences } from '../context/PreferencesContext'
 
 export default function Layout() {
   useKeyboardShortcuts()
+  const { preferences } = usePreferences()
   const [showHelp, setShowHelp] = useState(false)
   const helpModalRef = useFocusTrap(showHelp)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
+
+  // Apply preferences to document root
+  useEffect(() => {
+    const root = document.documentElement
+
+    // Text size - set CSS custom property
+    const textScaleMap = {
+      default: 1,
+      large: 1.125,   // 18px base
+      larger: 1.25,   // 20px base
+    }
+    root.style.setProperty('--text-scale', textScaleMap[preferences.textSize].toString())
+
+    // Reduce motion - add class to root
+    if (preferences.reduceMotion) {
+      root.classList.add('reduce-motion')
+    } else {
+      root.classList.remove('reduce-motion')
+    }
+
+    // High contrast - add class to root
+    if (preferences.highContrast) {
+      root.classList.add('high-contrast')
+    } else {
+      root.classList.remove('high-contrast')
+    }
+  }, [preferences])
 
   // Listen for '?' to show help
   useEffect(() => {

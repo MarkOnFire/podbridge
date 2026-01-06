@@ -7,12 +7,15 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: dark light;
+  --text-scale: 1;
 }
 
+/* Apply text scaling and base styles */
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-size: calc(16px * var(--text-scale));
 }
 
 /* Focus-visible styles for keyboard navigation */
@@ -54,4 +57,52 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* User-activated reduced motion */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* High contrast mode enhancements */
+.high-contrast {
+  --text-contrast-boost: 1.2;
+}
+
+.high-contrast body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.high-contrast .bg-gray-900 {
+  background-color: #000000 !important;
+}
+
+.high-contrast .bg-gray-800 {
+  background-color: #111111 !important;
+}
+
+.high-contrast .bg-gray-700 {
+  background-color: #1a1a1a !important;
+}
+
+.high-contrast .text-gray-400 {
+  color: #cccccc !important;
+}
+
+.high-contrast .text-gray-300 {
+  color: #e5e5e5 !important;
+}
+
+.high-contrast .border-gray-700 {
+  border-color: #444444 !important;
+}
+
+.high-contrast .border-gray-600 {
+  border-color: #555555 !important;
 }

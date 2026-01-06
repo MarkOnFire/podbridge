@@ -279,7 +279,17 @@ async def create_job(job: JobCreate) -> Job:
         result = await session.execute(stmt)
         row = result.fetchone()
 
-        return _row_to_job(row)
+        job = _row_to_job(row)
+
+        # Broadcast job creation to WebSocket clients
+        try:
+            from api.routers.websocket import broadcast_job_update
+            await broadcast_job_update(job, event_type="job_created")
+        except Exception:
+            # Don't fail job creation if broadcast fails
+            pass
+
+        return job
 
 
 async def get_job(job_id: int) -> Optional[Job]:
@@ -531,7 +541,27 @@ async def update_job(job_id: int, job_update: JobUpdate) -> Optional[Job]:
         result = await session.execute(stmt)
         row = result.fetchone()
 
-        return _row_to_job(row)
+        job = _row_to_job(row)
+
+        # Broadcast job update to WebSocket clients
+        try:
+            from api.routers.websocket import broadcast_job_update
+
+            # Determine event type based on status
+            event_type = "job_updated"
+            if job.status == JobStatus.completed:
+                event_type = "job_completed"
+            elif job.status == JobStatus.failed:
+                event_type = "job_failed"
+            elif job.status == JobStatus.in_progress:
+                event_type = "job_started"
+
+            await broadcast_job_update(job, event_type=event_type)
+        except Exception:
+            # Don't fail job update if broadcast fails
+            pass
+
+        return job
 
 
 async def delete_job(job_id: int) -> bool:

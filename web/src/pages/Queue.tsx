@@ -4,7 +4,9 @@ import ConfirmDialog from '../components/ui/ConfirmDialog'
 import { useToast } from '../components/ui/Toast'
 import { SkeletonQueue } from '../components/ui/Skeleton'
 import { useDebounce } from '../hooks/useDebounce'
+import { useJobsWebSocket } from '../hooks/useWebSocket'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
+import TranscriptUploader from '../components/TranscriptUploader'
 
 interface Job {
   id: number
@@ -40,6 +42,7 @@ export default function Queue() {
   const [filter, setFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<QueueStats | null>(null)
+  const [showUploader, setShowUploader] = useState(false)
 
   // Pagination and search state
   const [page, setPage] = useState(1)
@@ -64,6 +67,39 @@ export default function Queue() {
   })
 
   const { toast } = useToast()
+
+  // WebSocket connection for real-time updates
+  const { isConnected } = useJobsWebSocket({
+    onJobUpdate: (job, eventType) => {
+      // Update jobs list when we receive updates
+      setJobs((currentJobs) => {
+        // If job is in current filter, update it
+        const existingIndex = currentJobs.findIndex((j) => j.id === job.id)
+
+        if (existingIndex !== -1) {
+          // Update existing job
+          const newJobs = [...currentJobs]
+          newJobs[existingIndex] = job as Job
+          return newJobs
+        } else if (filter === 'all' || filter === job.status) {
+          // Add new job if it matches current filter
+          return [job as Job, ...currentJobs]
+        }
+
+        return currentJobs
+      })
+
+      // Show toast for certain events
+      if (eventType === 'job_completed') {
+        toast(`Job #${job.id} completed successfully`, 'success')
+      } else if (eventType === 'job_failed') {
+        toast(`Job #${job.id} failed`, 'error')
+      }
+    },
+    onStatsUpdate: (newStats) => {
+      setStats(newStats)
+    },
+  })
 
   const handlePrioritize = async (jobId: number) => {
     try {
@@ -181,7 +217,20 @@ export default function Queue() {
   useEffect(() => {
     fetchJobs()
     fetchStats()
-  }, [fetchJobs, fetchStats])
+
+    // Fallback polling if WebSocket is not connected
+    // Poll less frequently since WebSocket handles real-time updates
+    const pollInterval = isConnected ? 30000 : 5000 // 30s if WS connected, 5s if not
+
+    const interval = setInterval(() => {
+      fetchStats() // Always refresh stats periodically
+      if (!isConnected) {
+        fetchJobs() // Only poll jobs if WebSocket is down
+      }
+    }, pollInterval)
+
+    return () => clearInterval(interval)
+  }, [fetchJobs, fetchStats, isConnected])
 
   // Update URL when search changes
   useEffect(() => {
@@ -232,6 +281,13 @@ export default function Queue() {
     }
   }
 
+  const handleUploadComplete = () => {
+    // Refresh jobs and stats after upload
+    fetchJobs()
+    fetchStats()
+    setShowUploader(false)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Title, Search, and Count */}
@@ -245,8 +301,17 @@ export default function Queue() {
           </span>
         </div>
 
-        {/* Clear Button and Search */}
+        {/* Upload, Clear Button and Search */}
         <div className="flex items-center gap-4">
+          {/* Upload Button */}
+          <button
+            onClick={() => setShowUploader(!showUploader)}
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-md transition-colors"
+            title="Upload transcript files"
+          >
+            {showUploader ? 'Hide Upload' : '+ Upload'}
+          </button>
+
           {/* Clear Failed/Cancelled Button */}
           <button
             onClick={() => handleClearJobs(['failed', 'cancelled'])}
@@ -284,6 +349,11 @@ export default function Queue() {
           </div>
         </div>
       </div>
+
+      {/* Upload Component */}
+      {showUploader && (
+        <TranscriptUploader onUploadComplete={handleUploadComplete} />
+      )}
 
       {/* Filter Tabs */}
       <div className="flex items-center space-x-1 bg-gray-800 rounded-lg p-1 w-fit">

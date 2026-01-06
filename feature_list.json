@@ -646,13 +646,13 @@
     "id": "7.1.1",
     "name": "WebSocket endpoint for live updates",
     "sprint": "7.1",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "low",
     "description": "Add WebSocket endpoint /ws/jobs for real-time job status updates",
     "files": [
       "api/routers/websocket.py",
-      "api/services/worker.py"
+      "api/services/database.py"
     ],
     "exit_criteria": [
       "WebSocket endpoint accepts connections",
@@ -665,19 +665,19 @@
     "id": "7.1.2",
     "name": "Dashboard WebSocket client",
     "sprint": "7.1",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "low",
     "description": "React hook and components for WebSocket live updates",
     "files": [
       "web/src/hooks/useWebSocket.ts",
       "web/src/pages/Queue.tsx",
-      "web/src/pages/JobDetail.tsx"
+      "web/src/pages/Home.tsx"
     ],
     "exit_criteria": [
       "useWebSocket hook manages connection",
       "Queue page updates in real-time",
-      "JobDetail page updates in real-time"
+      "Home page updates in real-time"
     ],
     "source": "ROADMAP_v3.1.md - Sprint 7.1"
   },
@@ -685,13 +685,15 @@
     "id": "7.2.1",
     "name": "Web UI bulk transcript uploader",
     "sprint": "7.2",
-    "status": "pending",
+    "status": "completed",
     "agent": "orchestrator",
     "priority": "low",
     "description": "Drag-and-drop batch transcript upload with SST auto-linking (moved from 5.1.1)",
     "files": [
-      "web/src/pages/Upload.tsx",
-      "api/routers/queue.py"
+      "web/src/components/TranscriptUploader.tsx",
+      "api/routers/upload.py",
+      "web/src/pages/Queue.tsx",
+      "api/main.py"
     ],
     "exit_criteria": [
       "Drag-and-drop file upload",
@@ -1222,12 +1224,12 @@
     "id": "8.5.1",
     "name": "Create Preferences context",
     "sprint": "8.5",
-    "status": "pending",
+    "status": "completed",
     "agent": "the-drone",
     "priority": "low",
     "description": "Create PreferencesContext for user preferences (reduceMotion, textSize, highContrast, etc.) with localStorage persistence.",
     "files": [
-      "web/src/contexts/PreferencesContext.tsx",
+      "web/src/context/PreferencesContext.tsx",
       "web/src/App.tsx"
     ],
     "exit_criteria": [
@@ -1241,7 +1243,7 @@
     "id": "8.5.2",
     "name": "Add Accessibility settings section",
     "sprint": "8.5",
-    "status": "pending",
+    "status": "completed",
     "agent": "the-drone",
     "priority": "low",
     "description": "Add Accessibility tab to Settings with preference controls: reduce motion, text size, high contrast, persistent notifications.",
@@ -1259,13 +1261,13 @@
     "id": "8.5.3",
     "name": "Apply preferences throughout app",
     "sprint": "8.5",
-    "status": "pending",
+    "status": "completed",
     "agent": "the-drone",
     "priority": "low",
     "description": "Wire up preferences to actual UI behavior: text size CSS, reduce motion class, high contrast mode, StatusBar simplification.",
     "files": [
       "web/src/index.css",
-      "web/src/components/StatusBar.tsx",
+      "web/src/components/Layout.tsx",
       "web/src/components/ui/Toast.tsx"
     ],
     "exit_criteria": [

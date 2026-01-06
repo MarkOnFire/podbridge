@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { SkeletonDashboard } from '../components/ui/Skeleton'
+import { useJobsWebSocket } from '../hooks/useWebSocket'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 
 interface QueueStats {
@@ -24,31 +25,60 @@ export default function Home() {
   const [recentJobs, setRecentJobs] = useState<RecentJob[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsRes, jobsRes] = await Promise.all([
-          fetch('/api/queue/stats'),
-          fetch('/api/queue/?page=1&page_size=5&sort=newest'),
-        ])
+  // WebSocket connection for real-time updates
+  const { isConnected } = useJobsWebSocket({
+    onJobUpdate: (job) => {
+      // Update recent jobs list when we receive updates
+      setRecentJobs((currentJobs) => {
+        const existingIndex = currentJobs.findIndex((j) => j.id === job.id)
 
-        if (statsRes.ok) {
-          setStats(await statsRes.json())
+        if (existingIndex !== -1) {
+          // Update existing job
+          const newJobs = [...currentJobs]
+          newJobs[existingIndex] = job as RecentJob
+          return newJobs
+        } else {
+          // Add new job to top of list, keep only 5 most recent
+          return [job as RecentJob, ...currentJobs].slice(0, 5)
         }
-        if (jobsRes.ok) {
-          const data = await jobsRes.json()
-          // API returns paginated response with jobs array
-          setRecentJobs(data.jobs || [])
-        }
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err)
-      } finally {
-        setLoading(false)
+      })
+    },
+    onStatsUpdate: (newStats) => {
+      setStats(newStats)
+    },
+  })
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [statsRes, jobsRes] = await Promise.all([
+        fetch('/api/queue/stats'),
+        fetch('/api/queue/?page=1&page_size=5&sort=newest'),
+      ])
+
+      if (statsRes.ok) {
+        setStats(await statsRes.json())
       }
+      if (jobsRes.ok) {
+        const data = await jobsRes.json()
+        // API returns paginated response with jobs array
+        setRecentJobs(data.jobs || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err)
+    } finally {
+      setLoading(false)
     }
-
-    fetchData()
   }, [])
+
+  useEffect(() => {
+    fetchData()
+
+    // Fallback polling - poll less frequently when WebSocket is connected
+    const pollInterval = isConnected ? 30000 : 10000
+
+    const interval = setInterval(fetchData, pollInterval)
+    return () => clearInterval(interval)
+  }, [fetchData, isConnected])
 
   const statusColor = (status: string) => {
     switch (status) {
