@@ -271,7 +271,7 @@ cd web && npm run build
 ./init.sh
 
 # Check current progress
-cat claude-progress.txt
+cat planning/claude-progress.txt
 cat feature_list.json | jq '.[] | select(.status == "pending")'
 ```
 
@@ -307,7 +307,7 @@ Edit `config/llm-config.json` to customize:
 | [QUICK_START.md](docs/QUICK_START.md) | 5-minute setup guide |
 | [CLAUDE_DESKTOP_SETUP.md](docs/CLAUDE_DESKTOP_SETUP.md) | MCP integration setup |
 | [WEBSOCKET_IMPLEMENTATION.md](docs/WEBSOCKET_IMPLEMENTATION.md) | Real-time updates architecture |
-| [DESIGN_v3.0.md](DESIGN_v3.0.md) | Full design specification |
+| [DESIGN_v3.0.md](planning/DESIGN_v3.0.md) | Full design specification |
 | [ROADMAP_v3.1.md](docs/ROADMAP_v3.1.md) | Development roadmap |
 
 ---

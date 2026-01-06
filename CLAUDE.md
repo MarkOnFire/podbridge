@@ -59,13 +59,14 @@ editorial-assistant-v3/
 ├── tests/                  # Test suite
 ├── docs/                   # Documentation
 ├── feature_list.json       # Development task queue
-├── claude-progress.txt     # Progress tracking
-└── DESIGN_v3.0.md          # Full design specification
+└── planning/               # Historical planning docs
+    ├── claude-progress.txt # Progress tracking
+    └── DESIGN_v3.0.md      # Full design specification
 ```
 
 ## Long-Running Development Harness
 
-Start every session with `./init.sh`, then read `claude-progress.txt` and `feature_list.json` to select the next feature.
+Start every session with `./init.sh`, then read `planning/claude-progress.txt` and `feature_list.json` to select the next feature.
 
 ### Workflow
 
@@ -74,7 +75,7 @@ Start every session with `./init.sh`, then read `claude-progress.txt` and `featu
 3. **Update status**: Mark as `in_progress`
 4. **Implement**: Complete the feature with tests
 5. **Verify**: Run tests, ensure exit criteria met
-6. **Update tracking**: Mark `completed`, update `claude-progress.txt`
+6. **Update tracking**: Mark `completed`, update `planning/claude-progress.txt`
 7. **Commit**: Create attributed commit
 
 ### Agent Assignment
@@ -99,7 +100,7 @@ Detailed description...
 
 ## Design Reference
 
-The full v3.0 design specification is in `DESIGN_v3.0.md`. Key sections:
+The full v3.0 design specification is in `planning/DESIGN_v3.0.md`. Key sections:
 - Part 4: API Specification
 - Part 5: Web Dashboard Design
 - Part 9: Development Roadmap
@@ -109,7 +110,7 @@ The full v3.0 design specification is in `DESIGN_v3.0.md`. Key sections:
 
 **Sprint 2.1: Foundation & Infrastructure Reliability**
 
-See `feature_list.json` for task queue and `claude-progress.txt` for status.
+See `feature_list.json` for task queue and `planning/claude-progress.txt` for status.
 
 ## Airtable Integration (CRITICAL)
 
