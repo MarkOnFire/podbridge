@@ -21,5 +21,12 @@ else
     echo "ℹ️  Worker was not running"
 fi
 
+# Stop watcher
+if pkill -f 'watch_transcripts.py'; then
+    echo "✅ Watcher stopped"
+else
+    echo "ℹ️  Watcher was not running"
+fi
+
 echo ""
 echo "The Neighborhood is closed. 👋"

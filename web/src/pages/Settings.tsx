@@ -75,21 +75,36 @@ const TIER_STYLES: Record<string, { bg: string; border: string; text: string }> 
   purple: { bg: 'bg-purple-900/20', border: 'border-purple-500/30', text: 'text-purple-400' },
 }
 
-type TabId = 'agents' | 'routing' | 'worker' | 'accessibility'
+type TabId = 'agents' | 'routing' | 'worker' | 'system' | 'accessibility'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'agents', label: 'Agents', icon: '🤖' },
   { id: 'routing', label: 'Routing', icon: '🔀' },
   { id: 'worker', label: 'Worker', icon: '⚙️' },
+  { id: 'system', label: 'System', icon: '🖥️' },
   { id: 'accessibility', label: 'Accessibility', icon: '♿' },
 ]
+
+interface ComponentStatus {
+  name: string
+  running: boolean
+  pid: number | null
+}
+
+interface SystemStatus {
+  api: ComponentStatus
+  worker: ComponentStatus
+  watcher: ComponentStatus
+}
 
 export default function Settings() {
   const { preferences, updatePreferences } = usePreferences()
   const [routing, setRouting] = useState<RoutingConfig | null>(null)
   const [worker, setWorker] = useState<WorkerConfig | null>(null)
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [restarting, setRestarting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('agents')
@@ -127,9 +142,54 @@ export default function Settings() {
     }
   }, [])
 
+  const fetchSystemStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/system/status')
+      if (res.ok) {
+        const data = await res.json()
+        setSystemStatus(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch system status:', err)
+    }
+  }, [])
+
+  const handleComponentAction = async (component: 'worker' | 'watcher', action: 'start' | 'stop' | 'restart') => {
+    setRestarting(`${component}-${action}`)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const res = await fetch(`/api/system/${component}/${action}`, { method: 'POST' })
+      const data = await res.json()
+
+      if (res.ok && data.success) {
+        setSuccess(data.message)
+        // Refresh status after a short delay
+        setTimeout(() => fetchSystemStatus(), 1000)
+      } else {
+        setError(data.message || data.detail || `Failed to ${action} ${component}`)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to ${action} ${component}`)
+    } finally {
+      setRestarting(null)
+      setTimeout(() => setSuccess(null), 5000)
+    }
+  }
+
   useEffect(() => {
     fetchConfig()
-  }, [fetchConfig])
+    fetchSystemStatus()
+  }, [fetchConfig, fetchSystemStatus])
+
+  // Poll system status when on System tab
+  useEffect(() => {
+    if (activeTab !== 'system') return
+
+    const interval = setInterval(fetchSystemStatus, 5000)
+    return () => clearInterval(interval)
+  }, [activeTab, fetchSystemStatus])
 
   const handlePhaseBaseTierChange = (phase: string, tier: number) => {
     const current = pendingRouting?.phase_base_tiers || routing?.phase_base_tiers || {}
@@ -630,6 +690,166 @@ export default function Settings() {
                     <span>1s</span>
                     <span>15s</span>
                     <span>30s</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* SYSTEM TAB */}
+        {activeTab === 'system' && (
+          <div className="space-y-6">
+            {/* Component Status */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">System Components</h2>
+              <p className="text-sm text-gray-400 mb-6">
+                Monitor and control the background processes that power The Metadata Neighborhood.
+              </p>
+
+              <div className="space-y-4">
+                {/* API Server */}
+                <div className="p-4 bg-gray-900 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${systemStatus?.api.running ? 'bg-green-400' : 'bg-red-400'}`} />
+                      <div>
+                        <div className="font-medium text-white">API Server</div>
+                        <div className="text-sm text-gray-400">
+                          {systemStatus?.api.running
+                            ? `Running (PID ${systemStatus.api.pid})`
+                            : 'Not running'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Restart via terminal
+                    </div>
+                  </div>
+                </div>
+
+                {/* Worker */}
+                <div className="p-4 bg-gray-900 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${systemStatus?.worker.running ? 'bg-green-400' : 'bg-red-400'}`} />
+                      <div>
+                        <div className="font-medium text-white">Worker</div>
+                        <div className="text-sm text-gray-400">
+                          {systemStatus?.worker.running
+                            ? `Running (PID ${systemStatus.worker.pid})`
+                            : 'Not running'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {systemStatus?.worker.running ? (
+                        <>
+                          <button
+                            onClick={() => handleComponentAction('worker', 'restart')}
+                            disabled={restarting !== null}
+                            className="px-3 py-1 text-sm bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white rounded transition-colors"
+                          >
+                            {restarting === 'worker-restart' ? 'Restarting...' : 'Restart'}
+                          </button>
+                          <button
+                            onClick={() => handleComponentAction('worker', 'stop')}
+                            disabled={restarting !== null}
+                            className="px-3 py-1 text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded transition-colors"
+                          >
+                            {restarting === 'worker-stop' ? 'Stopping...' : 'Stop'}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleComponentAction('worker', 'start')}
+                          disabled={restarting !== null}
+                          className="px-3 py-1 text-sm bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded transition-colors"
+                        >
+                          {restarting === 'worker-start' ? 'Starting...' : 'Start'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Watcher */}
+                <div className="p-4 bg-gray-900 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${systemStatus?.watcher.running ? 'bg-green-400' : 'bg-red-400'}`} />
+                      <div>
+                        <div className="font-medium text-white">Transcript Watcher</div>
+                        <div className="text-sm text-gray-400">
+                          {systemStatus?.watcher.running
+                            ? `Running (PID ${systemStatus.watcher.pid})`
+                            : 'Not running'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {systemStatus?.watcher.running ? (
+                        <>
+                          <button
+                            onClick={() => handleComponentAction('watcher', 'restart')}
+                            disabled={restarting !== null}
+                            className="px-3 py-1 text-sm bg-yellow-600 hover:bg-yellow-500 disabled:opacity-50 text-white rounded transition-colors"
+                          >
+                            {restarting === 'watcher-restart' ? 'Restarting...' : 'Restart'}
+                          </button>
+                          <button
+                            onClick={() => handleComponentAction('watcher', 'stop')}
+                            disabled={restarting !== null}
+                            className="px-3 py-1 text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded transition-colors"
+                          >
+                            {restarting === 'watcher-stop' ? 'Stopping...' : 'Stop'}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleComponentAction('watcher', 'start')}
+                          disabled={restarting !== null}
+                          className="px-3 py-1 text-sm bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white rounded transition-colors"
+                        >
+                          {restarting === 'watcher-start' ? 'Starting...' : 'Start'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Folder Paths */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Folder Paths</h2>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between p-3 bg-gray-900 rounded">
+                  <span className="text-gray-400">Transcripts (input)</span>
+                  <code className="text-cyan-400">transcripts/</code>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-900 rounded">
+                  <span className="text-gray-400">Output (processed)</span>
+                  <code className="text-cyan-400">OUTPUT/</code>
+                </div>
+                <div className="flex justify-between p-3 bg-gray-900 rounded">
+                  <span className="text-gray-400">Logs</span>
+                  <code className="text-cyan-400">logs/</code>
+                </div>
+              </div>
+            </div>
+
+            {/* Terminal Commands */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <div className="flex items-start space-x-3">
+                <span className="text-blue-400 text-xl">💡</span>
+                <div>
+                  <h3 className="text-sm font-medium text-white">Terminal Commands</h3>
+                  <p className="text-xs text-gray-400 mt-1 mb-2">
+                    For full system restart, use the terminal scripts:
+                  </p>
+                  <div className="space-y-1 text-xs font-mono">
+                    <div className="text-gray-300">./scripts/stop.sh && ./scripts/start.sh</div>
                   </div>
                 </div>
               </div>

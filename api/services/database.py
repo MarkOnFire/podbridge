@@ -345,6 +345,39 @@ async def find_jobs_by_transcript(
         return [_row_to_job(row) for row in rows]
 
 
+async def find_jobs_by_media_id(
+    media_id: str,
+    exclude_cancelled: bool = True,
+) -> List[Job]:
+    """Find existing jobs for a media ID.
+
+    Used for duplicate detection - checks if content with this media ID
+    has already been processed or is currently in queue.
+
+    Args:
+        media_id: The media ID to search for (e.g., "2WLI1209HD")
+        exclude_cancelled: Whether to exclude cancelled jobs (default: True)
+
+    Returns:
+        List of Job records matching the media ID
+    """
+    async with get_session() as session:
+        stmt = select(jobs_table).where(
+            jobs_table.c.media_id == media_id
+        )
+
+        if exclude_cancelled:
+            stmt = stmt.where(jobs_table.c.status != JobStatus.cancelled.value)
+
+        # Order by newest first
+        stmt = stmt.order_by(jobs_table.c.queued_at.desc())
+
+        result = await session.execute(stmt)
+        rows = result.fetchall()
+
+        return [_row_to_job(row) for row in rows]
+
+
 async def list_jobs(
     status: Optional[JobStatus] = None,
     limit: int = 50,

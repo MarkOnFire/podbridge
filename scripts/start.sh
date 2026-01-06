@@ -49,6 +49,11 @@ echo "👷 Starting worker..."
 ./venv/bin/python run_worker.py >> logs/worker.log 2>&1 &
 WORKER_PID=$!
 
+# Start transcript watcher
+echo "👀 Starting transcript watcher..."
+./venv/bin/python watch_transcripts.py >> logs/watcher.log 2>&1 &
+WATCHER_PID=$!
+
 # Wait a moment for startup
 sleep 2
 
@@ -57,9 +62,10 @@ if lsof -i :8000 > /dev/null 2>&1; then
     echo ""
     echo "✅ The Metadata Neighborhood is open!"
     echo ""
-    echo "   API:    http://metadata.neighborhood:8000"
-    echo "   Health: http://metadata.neighborhood:8000/api/system/health"
-    echo "   Logs:   tail -f logs/api.log logs/worker.log"
+    echo "   API:     http://metadata.neighborhood:8000"
+    echo "   Health:  http://metadata.neighborhood:8000/api/system/health"
+    echo "   Watcher: Monitoring transcripts/ folder"
+    echo "   Logs:    tail -f logs/api.log logs/worker.log logs/watcher.log"
     echo ""
     echo "   Stop with: ./scripts/stop.sh"
 else

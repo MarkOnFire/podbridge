@@ -125,12 +125,25 @@ async def upload_transcripts(
                 transcript_file=file.filename or "",
             )
 
+            # Check for duplicate by media ID
+            media_id = extract_media_id(job_create.transcript_file)
+            existing_jobs = await database.find_jobs_by_media_id(media_id)
+            if existing_jobs:
+                existing = existing_jobs[0]
+                results.append(UploadStatus(
+                    filename=file.filename or "unknown",
+                    success=False,
+                    error=f"Already exists as job {existing.id} ({existing.status.value})"
+                ))
+                failed_count += 1
+                logger.warning(f"Skipping {file.filename}: duplicate media ID {media_id}")
+                continue
+
             # Create job
             job = await database.create_job(job_create)
 
             # Attempt auto-link to Airtable SST record
             try:
-                media_id = extract_media_id(job_create.transcript_file)
                 airtable_client = AirtableClient()
                 record = await airtable_client.search_sst_by_media_id(media_id)
 

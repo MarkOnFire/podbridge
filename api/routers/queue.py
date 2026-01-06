@@ -113,9 +113,17 @@ async def add_to_queue(
     Raises:
         HTTPException: 409 if transcript already processed (unless force=true)
     """
-    # Check for existing jobs with this transcript (unless force=true)
+    # Extract media ID for duplicate detection and Airtable lookup
+    media_id = extract_media_id(job_create.transcript_file)
+
+    # Check for existing jobs with this transcript or media ID (unless force=true)
     if not force:
+        # First check by exact transcript filename
         existing_jobs = await database.find_jobs_by_transcript(job_create.transcript_file)
+
+        # Also check by media ID (catches .srt vs .txt variants)
+        if not existing_jobs and media_id:
+            existing_jobs = await database.find_jobs_by_media_id(media_id)
 
         if existing_jobs:
             # Find most relevant existing job
@@ -154,9 +162,6 @@ async def add_to_queue(
 
     # Attempt to auto-link SST record from Airtable
     try:
-        # Extract media ID from filename
-        media_id = extract_media_id(job_create.transcript_file)
-
         # Try to lookup SST record if Airtable is configured
         airtable_client = AirtableClient()
         record = await airtable_client.search_sst_by_media_id(media_id)

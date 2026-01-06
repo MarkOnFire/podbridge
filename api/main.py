@@ -108,14 +108,10 @@ async def health():
 
 
 # Register routers
-from api.routers import jobs, queue, config, websocket, upload
+from api.routers import jobs, queue, config, websocket, upload, system
 app.include_router(queue.router, prefix="/api/queue", tags=["queue"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(config.router, prefix="/api", tags=["config"])
 app.include_router(websocket.router, prefix="/api", tags=["websocket"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
-
-# Additional routers will be added here as they're implemented:
-# from api.routers import system, analytics
-# app.include_router(system.router, prefix="/api/system", tags=["system"])
-# app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(system.router, prefix="/api/system", tags=["system"])
