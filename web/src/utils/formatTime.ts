@@ -6,6 +6,39 @@
  */
 
 /**
+ * Normalize a date input to a Date object, handling timezone issues.
+ * API returns naive UTC timestamps without 'Z' suffix, so we append it.
+ *
+ * @param date - Date string, Date object, or timestamp
+ * @returns Normalized Date object or null if invalid
+ */
+function normalizeDate(date: string | Date | number | null | undefined): Date | null {
+  if (!date) return null
+
+  // If it's already a Date object, use it directly
+  if (date instanceof Date) {
+    return isNaN(date.getTime()) ? null : date
+  }
+
+  // If it's a number (timestamp), convert directly
+  if (typeof date === 'number') {
+    const d = new Date(date)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // It's a string - check if it needs UTC indicator
+  // ISO strings without timezone are assumed to be UTC from our API
+  let dateStr = date
+  if (typeof dateStr === 'string' && !dateStr.endsWith('Z') && !dateStr.includes('+') && !dateStr.includes('-', 10)) {
+    // Append Z to indicate UTC (the -', 10' check avoids matching the date separator)
+    dateStr = dateStr + 'Z'
+  }
+
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? null : d
+}
+
+/**
  * Format a date as relative time ("2 hours ago", "3 days ago", etc.)
  * Shows "just now" for times less than 1 minute ago.
  *
@@ -13,14 +46,10 @@
  * @returns Human-readable relative time string
  */
 export function formatRelativeTime(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
+  const then = normalizeDate(date)
+  if (!then) return '-'
 
   const now = new Date()
-  const then = new Date(date)
-
-  // Handle invalid dates
-  if (isNaN(then.getTime())) return '-'
-
   const diffMs = now.getTime() - then.getTime()
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
@@ -80,13 +109,11 @@ export function formatDuration(
   start: string | Date | number | null | undefined,
   end?: string | Date | number | null
 ): string {
-  if (!start) return '-'
+  const startDate = normalizeDate(start)
+  if (!startDate) return '-'
 
-  const startDate = new Date(start)
-  const endDate = end ? new Date(end) : new Date()
-
-  // Handle invalid dates
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return '-'
+  const endDate = end ? normalizeDate(end) : new Date()
+  if (!endDate) return '-'
 
   const diffMs = endDate.getTime() - startDate.getTime()
 
@@ -131,12 +158,8 @@ export function formatDuration(
  * @returns Full localized timestamp string
  */
 export function formatTimestamp(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
-
-  const d = new Date(date)
-
-  // Handle invalid dates
-  if (isNaN(d.getTime())) return '-'
+  const d = normalizeDate(date)
+  if (!d) return '-'
 
   return d.toLocaleString()
 }
@@ -148,12 +171,8 @@ export function formatTimestamp(date: string | Date | number | null | undefined)
  * @returns Localized time string (e.g., "2:30:45 PM")
  */
 export function formatTime(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
-
-  const d = new Date(date)
-
-  // Handle invalid dates
-  if (isNaN(d.getTime())) return '-'
+  const d = normalizeDate(date)
+  if (!d) return '-'
 
   return d.toLocaleTimeString()
 }
@@ -165,12 +184,8 @@ export function formatTime(date: string | Date | number | null | undefined): str
  * @returns Localized date string (e.g., "12/31/2025")
  */
 export function formatDate(date: string | Date | number | null | undefined): string {
-  if (!date) return '-'
-
-  const d = new Date(date)
-
-  // Handle invalid dates
-  if (isNaN(d.getTime())) return '-'
+  const d = normalizeDate(date)
+  if (!d) return '-'
 
   return d.toLocaleDateString()
 }
