@@ -483,6 +483,11 @@ Before starting v4.0 development:
 2. **Cost tracking validated** - Predictable LLM spend patterns established
 3. **User workflows documented** - Clear understanding of how the tool is actually used
 4. **API contract frozen** - v3.0 API shouldn't have breaking changes during v4.0
+5. **Agent Instruction Files convention** - Migrate to the workspace-wide Agent Instruction Files Convention (`the-lodge/conventions/AGENT_INSTRUCTION_FILES.md`). This means:
+   - Create AGENTS.md as the primary, model-agnostic instruction file
+   - Reduce CLAUDE.md to a redirect + Claude-specific notes only
+   - Remove duplicate content between files
+   - See audit report: `the-lodge/reports/agent-instruction-audit-2026-01-06.md`
 
 ---
 
