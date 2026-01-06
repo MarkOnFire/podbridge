@@ -103,6 +103,8 @@ class JobUpdate(BaseModel):
     airtable_record_id: Optional[str] = None
     airtable_url: Optional[str] = None
     media_id: Optional[str] = None
+    duration_minutes: Optional[float] = Field(None, description="Transcript duration in minutes")
+    word_count: Optional[int] = Field(None, description="Transcript word count")
     phases: Optional[List[JobPhase]] = Field(None, description="Replace all phases")
     phase_update: Optional[PhaseUpdate] = Field(None, description="Update a single phase")
 
@@ -144,6 +146,8 @@ class Job(BaseModel):
     airtable_record_id: Optional[str] = Field(None, description="Airtable record ID (e.g., 'recXXXXXXXXXXXXXX')")
     airtable_url: Optional[str] = Field(None, description="Full URL to the Airtable record")
     media_id: Optional[str] = Field(None, description="Extracted media ID from filename (e.g., '2WLI1209HD')")
+    duration_minutes: Optional[float] = Field(None, description="Transcript duration in minutes (from SRT or estimated)")
+    word_count: Optional[int] = Field(None, description="Transcript word count")
     outputs: Optional[JobOutputs] = Field(None, description="Output files from manifest")
 
     class Config:

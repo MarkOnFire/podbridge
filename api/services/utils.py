@@ -167,15 +167,19 @@ def calculate_transcript_metrics(
 def extract_media_id(filename: str) -> str:
     """Extract Media ID from transcript filename.
 
-    Removes common suffixes and extensions to extract the core media identifier.
-    Handles PBS Wisconsin naming conventions including _ForClaude suffix,
-    revision date suffixes (_REV followed by digits), and standard file extensions.
+    Removes processing suffixes but PRESERVES revision identifiers.
+    Handles PBS Wisconsin naming conventions:
+    - _ForClaude suffix: Stripped (processing artifact)
+    - _REV[date] suffix: PRESERVED (distinct Media ID for revised content)
+
+    Revised video files are denoted as original Media ID plus _REV followed by
+    the revision date (e.g., _REV20260102). This creates a new, distinct Media ID.
 
     Args:
         filename: Transcript filename (with or without extension)
 
     Returns:
-        Extracted media ID (base filename without suffixes/extensions)
+        Extracted media ID (base filename without processing suffixes)
 
     Examples:
         >>> extract_media_id("2WLI1209HD_ForClaude.txt")
@@ -183,11 +187,11 @@ def extract_media_id(filename: str) -> str:
         >>> extract_media_id("9UNP2005HD.srt")
         '9UNP2005HD'
         >>> extract_media_id("2BUC0000HDWEB02_REV20251202.srt")
-        '2BUC0000HDWEB02'
+        '2BUC0000HDWEB02_REV20251202'
         >>> extract_media_id("Some_Project_Name.txt")
         'Some_Project_Name'
         >>> extract_media_id("2WLI1209HD_ForClaude_REV20251202.txt")
-        '2WLI1209HD'
+        '2WLI1209HD_REV20251202'
     """
     # Get filename without path
     base_name = Path(filename).name
@@ -195,9 +199,9 @@ def extract_media_id(filename: str) -> str:
     # Remove extension
     stem = Path(base_name).stem
 
-    # Remove all known suffixes (can appear in any combination)
-    # Pattern matches: _ForClaude, _REV followed by digits, or both
-    stem = re.sub(r'(_ForClaude)?(_REV\d+)?$', '', stem, flags=re.IGNORECASE)
+    # Remove only _ForClaude suffix (processing artifact)
+    # PRESERVE _REV[date] suffix as it denotes a distinct revised Media ID
+    stem = re.sub(r'_ForClaude', '', stem, flags=re.IGNORECASE)
 
     return stem
 

@@ -71,6 +71,8 @@ jobs_table = Table(
     Column("airtable_record_id", Text, nullable=True),
     Column("airtable_url", Text, nullable=True),
     Column("media_id", Text, nullable=True),
+    Column("duration_minutes", Float, nullable=True),
+    Column("word_count", Integer, nullable=True),
 )
 
 # Define session_stats table
@@ -514,6 +516,12 @@ async def update_job(job_id: int, job_update: JobUpdate) -> Optional[Job]:
 
         if job_update.media_id is not None:
             update_values["media_id"] = job_update.media_id
+
+        if job_update.duration_minutes is not None:
+            update_values["duration_minutes"] = job_update.duration_minutes
+
+        if job_update.word_count is not None:
+            update_values["word_count"] = job_update.word_count
 
         # Handle phases update (replaces all phases)
         if job_update.phases is not None:
@@ -1186,6 +1194,8 @@ def _row_to_job(row) -> Job:
         airtable_record_id=getattr(row, 'airtable_record_id', None),
         airtable_url=getattr(row, 'airtable_url', None),
         media_id=getattr(row, 'media_id', None),
+        duration_minutes=getattr(row, 'duration_minutes', None),
+        word_count=getattr(row, 'word_count', None),
         outputs=outputs,
     )
 

@@ -36,6 +36,15 @@ interface PaginatedResponse {
   total_pages: number
 }
 
+interface SSTMetadata {
+  media_id: string | null
+  release_title: string | null
+  short_description: string | null
+  media_manager_url: string | null
+  youtube_url: string | null
+  airtable_url: string | null
+}
+
 export default function Projects() {
   const [jobs, setJobs] = useState<CompletedJob[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,6 +56,8 @@ export default function Projects() {
     isJson: boolean
   } | null>(null)
   const [loadingArtifact, setLoadingArtifact] = useState(false)
+  const [sstMetadata, setSstMetadata] = useState<SSTMetadata | null>(null)
+  const [loadingSst, setLoadingSst] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const modalRef = useFocusTrap(!!viewingArtifact)
 
@@ -101,10 +112,26 @@ export default function Projects() {
     setPage(1)
   }
 
-  const selectProject = (job: CompletedJob) => {
+  const selectProject = async (job: CompletedJob) => {
     setSelectedProject(job)
     // Generate artifacts from completed phases
     setArtifacts(getExpectedArtifacts(job))
+
+    // Fetch SST metadata from Airtable
+    setSstMetadata(null)
+    setLoadingSst(true)
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/sst-metadata`)
+      if (response.ok) {
+        const data: SSTMetadata = await response.json()
+        setSstMetadata(data)
+      }
+      // If 404/503, just don't show metadata (no Airtable link or not configured)
+    } catch {
+      // Silently fail - SST metadata is optional enhancement
+    } finally {
+      setLoadingSst(false)
+    }
   }
 
   const handleViewArtifact = async (artifact: ProjectArtifact, event: React.MouseEvent<HTMLButtonElement>) => {
@@ -320,6 +347,74 @@ export default function Projects() {
                     View full job →
                   </Link>
                 </div>
+
+                {/* SST Context from Airtable */}
+                {loadingSst ? (
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+                    <div className="text-gray-400 text-sm">Loading metadata...</div>
+                  </div>
+                ) : sstMetadata && (
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-4 space-y-3">
+                    {/* Title Row */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {sstMetadata.release_title && (
+                          <h3 className="text-white font-medium truncate" title={sstMetadata.release_title}>
+                            {sstMetadata.release_title}
+                          </h3>
+                        )}
+                        {sstMetadata.media_id && (
+                          <span className="text-xs text-gray-400 font-mono">
+                            {sstMetadata.media_id}
+                          </span>
+                        )}
+                      </div>
+                      {sstMetadata.airtable_url && (
+                        <a
+                          href={sstMetadata.airtable_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-400 hover:text-blue-300 whitespace-nowrap"
+                        >
+                          SST →
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    {sstMetadata.short_description && (
+                      <p className="text-sm text-gray-300 line-clamp-3">
+                        {sstMetadata.short_description}
+                      </p>
+                    )}
+
+                    {/* Links */}
+                    {(sstMetadata.media_manager_url || sstMetadata.youtube_url) && (
+                      <div className="flex gap-3 text-xs">
+                        {sstMetadata.media_manager_url && (
+                          <a
+                            href={sstMetadata.media_manager_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300"
+                          >
+                            PBS Website
+                          </a>
+                        )}
+                        {sstMetadata.youtube_url && (
+                          <a
+                            href={sstMetadata.youtube_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            YouTube
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Phase Stats */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">

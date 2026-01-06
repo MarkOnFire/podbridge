@@ -595,16 +595,19 @@ function InfoCard({ label, value }: { label: string; value: string }) {
 }
 
 function CopyEditorHandoff({ projectName }: { projectName: string }) {
-  const [copied, setCopied] = useState(false)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
   const promptText = `I'd like to edit ${projectName}`
 
   const handleCopyPrompt = async () => {
     try {
       await navigator.clipboard.writeText(promptText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopyState('copied')
+      setTimeout(() => setCopyState('idle'), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
+      // Fallback: select text for manual copy
+      setCopyState('error')
+      setTimeout(() => setCopyState('idle'), 3000)
     }
   }
 
@@ -634,21 +637,32 @@ function CopyEditorHandoff({ projectName }: { projectName: string }) {
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <span className="text-gray-400 text-sm">Say:</span>
-                <p className="text-white font-medium mt-1 truncate">
+                <p className="text-white font-medium mt-1 truncate select-all cursor-text">
                   "{promptText}"
                 </p>
               </div>
               <button
                 onClick={handleCopyPrompt}
-                className="ml-4 flex-shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-medium transition-colors flex items-center space-x-1.5"
+                className={`ml-4 flex-shrink-0 px-3 py-1.5 text-white rounded-md text-sm font-medium transition-colors flex items-center space-x-1.5 ${
+                  copyState === 'error'
+                    ? 'bg-red-600 hover:bg-red-500'
+                    : 'bg-emerald-600 hover:bg-emerald-500'
+                }`}
                 aria-label="Copy prompt to clipboard"
               >
-                {copied ? (
+                {copyState === 'copied' ? (
                   <>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>Copied!</span>
+                  </>
+                ) : copyState === 'error' ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Select text</span>
                   </>
                 ) : (
                   <>

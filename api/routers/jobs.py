@@ -4,11 +4,13 @@ Provides endpoints for job detail retrieval, updates, and control operations.
 """
 
 import os
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import PlainTextResponse
-from typing import List
+from pydantic import BaseModel
+from typing import List, Optional
 
 from api.models.job import Job, JobUpdate, JobStatus
 from api.models.events import SessionEvent
@@ -17,6 +19,19 @@ from api.services.database import (
     update_job,
     get_events_for_job,
 )
+from api.services.airtable import AirtableClient
+
+logger = logging.getLogger(__name__)
+
+
+class SSTMetadata(BaseModel):
+    """SST (Single Source of Truth) metadata from Airtable."""
+    media_id: Optional[str] = None
+    release_title: Optional[str] = None
+    short_description: Optional[str] = None
+    media_manager_url: Optional[str] = None
+    youtube_url: Optional[str] = None
+    airtable_url: Optional[str] = None
 
 
 router = APIRouter()
@@ -317,3 +332,68 @@ async def get_job_output(job_id: int, filename: str):
         return PlainTextResponse(content, media_type="application/json")
     else:
         return PlainTextResponse(content, media_type="text/markdown")
+
+
+@router.get("/{job_id}/sst-metadata", response_model=SSTMetadata)
+async def get_sst_metadata(job_id: int):
+    """Retrieve SST (Single Source of Truth) metadata from Airtable for a job.
+
+    Returns contextual metadata from PBS Wisconsin's Airtable SST table,
+    including release title, descriptions, and external links.
+
+    This is a READ-ONLY operation against Airtable.
+
+    Args:
+        job_id: Job ID to get SST metadata for
+
+    Returns:
+        SSTMetadata with available fields from Airtable
+
+    Raises:
+        HTTPException: 404 if job not found or no Airtable record linked
+    """
+    job = await get_job(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    if not job.airtable_record_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} has no linked Airtable record"
+        )
+
+    try:
+        client = AirtableClient()
+        record = await client.get_sst_record(job.airtable_record_id)
+
+        if record is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Airtable record {job.airtable_record_id} not found"
+            )
+
+        fields = record.get("fields", {})
+
+        return SSTMetadata(
+            media_id=fields.get("Media ID"),
+            release_title=fields.get("Release Title"),
+            short_description=fields.get("Short Description"),
+            media_manager_url=fields.get("Final Website Link"),  # PBS Wisconsin website URL
+            youtube_url=fields.get("YouTube Link"),
+            airtable_url=client.get_sst_url(job.airtable_record_id),
+        )
+
+    except ValueError as e:
+        # Airtable API key not configured
+        logger.warning(f"Airtable not configured: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Airtable integration not configured"
+        )
+    except Exception as e:
+        logger.error(f"Failed to fetch SST metadata: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to fetch metadata from Airtable"
+        )
