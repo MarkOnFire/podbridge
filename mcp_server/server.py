@@ -48,6 +48,20 @@ try:
 except ImportError:
     pass  # Keychain module not available
 
+# Fallback: Direct Keychain lookup if still missing
+if "AIRTABLE_API_KEY" not in os.environ:
+    try:
+        import subprocess
+        user = os.getenv("USER") or os.getlogin()
+        # Try to find the key with the specific service name used in .env.example
+        cmd = ["security", "find-generic-password", "-s", "developer.workspace.AIRTABLE_API_KEY", "-a", user, "-w"]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        key_value = result.stdout.strip()
+        if key_value:
+            os.environ["AIRTABLE_API_KEY"] = key_value
+    except Exception:
+        pass
+
 # Configuration
 API_BASE_URL = os.getenv("EDITORIAL_API_URL", "http://localhost:8000")
 OUTPUT_DIR = Path(os.getenv("EDITORIAL_OUTPUT_DIR",

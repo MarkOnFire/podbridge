@@ -4,6 +4,28 @@ Editorial Assistant v3.0 - FastAPI Application
 Main entry point for the API server.
 """
 
+import os
+import sys
+from pathlib import Path
+
+# Load secrets from Keychain into environment (falls back to .env)
+# This must happen before any imports that use the secrets
+sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
+try:
+    from keychain_secrets import get_secret
+    # Load known secrets into environment if not already set
+    for key in ["OPENROUTER_API_KEY", "AIRTABLE_API_KEY"]:
+        if key not in os.environ:
+            value = get_secret(key)
+            if value:
+                os.environ[key] = value
+except ImportError:
+    pass  # Keychain module not available (e.g., CI/Docker)
+
+# Load remaining environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

@@ -198,6 +198,141 @@ class JobWorker:
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
 
+    async def retry_single_phase(self, job_id: int, phase_name: str) -> Dict[str, Any]:
+        """Retry a single phase for a completed job.
+
+        This allows regenerating one output (e.g., timestamp) without
+        re-running the entire pipeline.
+
+        Args:
+            job_id: The job ID to retry a phase for
+            phase_name: The phase to retry (e.g., 'timestamp', 'seo', 'analyst')
+
+        Returns:
+            Dict with status, phase result, and any errors
+        """
+        from api.services.database import get_job, update_job
+
+        # Validate phase name
+        valid_phases = set(self.PHASES + self.OPTIONAL_PHASES)
+        if phase_name not in valid_phases:
+            return {"success": False, "error": f"Invalid phase: {phase_name}. Valid: {valid_phases}"}
+
+        # Load job
+        job = await get_job(job_id)
+        if not job:
+            return {"success": False, "error": f"Job {job_id} not found"}
+
+        job_dict = job.model_dump() if hasattr(job, 'model_dump') else dict(job)
+
+        # Get project path
+        project_path = Path(job_dict.get("project_path", ""))
+        if not project_path.exists():
+            return {"success": False, "error": f"Project path not found: {project_path}"}
+
+        # Build context from existing outputs
+        context = {
+            "project_name": job_dict.get("project_name", "Unknown"),
+            "transcript_metrics": {
+                "word_count": job_dict.get("word_count", 0),
+                "estimated_duration_minutes": job_dict.get("duration_minutes", 0),
+            },
+        }
+
+        # Load existing phase outputs for context
+        for existing_phase in self.PHASES:
+            output_file = project_path / f"{existing_phase}_output.md"
+            if output_file.exists():
+                context[f"{existing_phase}_output"] = output_file.read_text()
+
+        # Load transcript
+        try:
+            transcript_content = self._load_transcript(job_dict)
+            context["transcript"] = transcript_content
+        except Exception as e:
+            logger.warning(f"Could not load transcript for phase retry: {e}")
+
+        # For timestamp phase, load SRT content
+        if phase_name == "timestamp":
+            srt_path = self._find_srt_file(job_dict)
+            if srt_path and srt_path.exists():
+                try:
+                    context["srt_content"] = srt_path.read_text(encoding="utf-8")
+                except Exception as e:
+                    logger.warning(f"Could not load SRT for timestamp retry: {e}")
+
+        # Fetch SST context if available
+        sst_context = await self._fetch_sst_context(job_dict)
+        if sst_context:
+            context["sst_context"] = sst_context
+
+        # Run the phase
+        try:
+            logger.info(
+                "Retrying single phase",
+                extra={"job_id": job_id, "phase": phase_name}
+            )
+
+            phase_result = await self._run_phase(
+                job_id=job_id,
+                phase_name=phase_name,
+                context=context,
+                project_path=project_path,
+            )
+
+            # Update phase status in job record
+            phases = job_dict.get("phases", [])
+            if isinstance(phases, str):
+                phases = json.loads(phases)
+
+            # Convert any datetime objects to ISO strings for JSON serialization
+            for p in phases:
+                for key in ["started_at", "completed_at"]:
+                    if key in p and p[key] is not None:
+                        if hasattr(p[key], 'isoformat'):
+                            p[key] = p[key].isoformat()
+
+            # Find and update the phase
+            phase_updated = False
+            for p in phases:
+                if p.get("name") == phase_name:
+                    p["status"] = phase_result.get("status", "completed")
+                    p["cost"] = phase_result.get("cost", 0)
+                    p["tokens"] = phase_result.get("tokens", 0)
+                    p["model"] = phase_result.get("model")
+                    p["completed_at"] = datetime.now(timezone.utc).isoformat()
+                    phase_updated = True
+                    break
+
+            if not phase_updated and phase_result.get("status") == "completed":
+                # Add the phase if it didn't exist
+                phases.append({
+                    "name": phase_name,
+                    "status": "completed",
+                    "cost": phase_result.get("cost", 0),
+                    "tokens": phase_result.get("tokens", 0),
+                    "model": phase_result.get("model"),
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                })
+
+            # Save updated phases
+            from api.models.job import JobUpdate
+            await update_job(job_id, JobUpdate(phases=phases))
+
+            return {
+                "success": True,
+                "phase": phase_name,
+                "result": phase_result,
+            }
+
+        except Exception as e:
+            logger.error(
+                "Phase retry failed",
+                extra={"job_id": job_id, "phase": phase_name, "error": str(e)},
+                exc_info=True
+            )
+            return {"success": False, "error": str(e)}
+
     async def process_job(self, job: Dict[str, Any]):
         """Process a single job through all phases."""
         job_id = job["id"]
@@ -1668,37 +1803,36 @@ Review all outputs against PBS Wisconsin quality standards and provide your QA r
             analysis = context.get("analyst_output", "")
             transcript_metrics = context.get("transcript_metrics", {})
             duration = transcript_metrics.get("estimated_duration_minutes", 0)
+            project_name = context.get("project_name", "Unknown")
 
-            prompt = f"""Process this SRT subtitle file to create refined captions, chapter markers, and a timestamped transcript.
+            prompt = f"""Create a timestamp report with chapter markers for this video content.
 
-## Project Context
+## Project: {project_name}
 """
             if sst_section:
                 prompt += sst_section
             prompt += f"""
 **Estimated Duration:** {duration:.1f} minutes
 
-## Original SRT Content:
+## Original SRT Content (use these timecodes):
 ---
-{srt_content}
----
-
-## Formatted Transcript (for speaker identification):
----
-{formatted[:5000]}{"..." if len(formatted) > 5000 else ""}
+{srt_content[:15000]}{"..." if len(srt_content) > 15000 else ""}
 ---
 
-## Analyst Output (for chapter detection):
+## Analyst Output (use this to identify chapter boundaries):
 ---
-{analysis[:3000]}{"..." if len(analysis) > 3000 else ""}
+{analysis[:4000]}{"..." if len(analysis) > 4000 else ""}
 ---
 
-Please generate:
-1. A refined SRT file with cleaned timing
-2. A WebVTT file for web players
-3. Chapter markers (JSON) for video navigation
-4. A timestamped transcript with section markers
-5. A summary of your processing"""
+## Your Task
+
+Identify 3-8 logical chapter breaks based on topic transitions, speaker changes, and segment markers in the content above.
+
+Output a timestamp report with TWO sections:
+1. **Media Manager Format** - Table with Title, Start Time (H:MM:SS.000), End Time (H:MM:SS.999)
+2. **YouTube Format** - Simple list like "0:00 Introduction" for video descriptions
+
+Follow the exact format specified in your system instructions."""
             return prompt
 
         return f"Process the following:\n\n{transcript}"

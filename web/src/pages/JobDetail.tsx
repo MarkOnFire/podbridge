@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import Breadcrumb from '../components/ui/Breadcrumb'
 import { useToast } from '../components/ui/Toast'
@@ -25,7 +26,19 @@ interface JobOutputs {
   analysis?: string
   formatted_transcript?: string
   seo_metadata?: string
+  qa_review?: string
+  timestamp_report?: string
   copy_edited?: string
+  recovery_analysis?: string
+}
+
+interface SSTMetadata {
+  media_id?: string
+  release_title?: string
+  short_description?: string
+  media_manager_url?: string
+  youtube_url?: string
+  airtable_url?: string
 }
 
 interface JobDetail {
@@ -57,6 +70,7 @@ const OUTPUT_FILES: Record<string, { label: string; filename: string }> = {
   formatted_transcript: { label: 'Formatted Transcript', filename: 'formatter_output.md' },
   seo_metadata: { label: 'SEO Metadata', filename: 'seo_output.md' },
   qa_review: { label: 'QA Review', filename: 'manager_output.md' },
+  timestamp_report: { label: 'Timestamps', filename: 'timestamp_output.md' },
   copy_edited: { label: 'Copy Edited', filename: 'copy_editor_output.md' },
   recovery_analysis: { label: 'Recovery Analysis', filename: 'recovery_analysis.md' },
 }
@@ -73,6 +87,9 @@ export default function JobDetail() {
     isJson: boolean
   } | null>(null)
   const [loadingOutput, setLoadingOutput] = useState(false)
+  const [sstMetadata, setSstMetadata] = useState<SSTMetadata | null>(null)
+  const [sstLoading, setSstLoading] = useState(false)
+  const [retryingPhase, setRetryingPhase] = useState<string | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const modalRef = useFocusTrap(!!viewingOutput)
   const { toast } = useToast()
@@ -103,6 +120,28 @@ export default function JobDetail() {
 
     return () => clearInterval(interval)
   }, [id, job?.status])
+
+  // Fetch SST metadata when job has an airtable_record_id
+  useEffect(() => {
+    const fetchSstMetadata = async () => {
+      if (!job?.airtable_record_id) return
+
+      setSstLoading(true)
+      try {
+        const response = await fetch(`/api/jobs/${id}/sst-metadata`)
+        if (response.ok) {
+          setSstMetadata(await response.json())
+        }
+      } catch (err) {
+        // Silently fail - SST metadata is supplementary
+        console.error('Failed to fetch SST metadata:', err)
+      } finally {
+        setSstLoading(false)
+      }
+    }
+
+    fetchSstMetadata()
+  }, [id, job?.airtable_record_id])
 
   const handleAction = async (action: string) => {
     const actionLabels: Record<string, { success: string; error: string }> = {
@@ -153,6 +192,33 @@ export default function JobDetail() {
       console.error('Failed to load output:', err)
     } finally {
       setLoadingOutput(false)
+    }
+  }
+
+  const handleRetryPhase = async (outputKey: string) => {
+    setRetryingPhase(outputKey)
+    try {
+      const response = await fetch(`/api/jobs/${id}/phases/${outputKey}/retry`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        toast('Phase retry started. Refresh in a moment to see results.', 'success')
+        // Auto-refresh after a delay
+        setTimeout(async () => {
+          const updated = await fetch(`/api/jobs/${id}`)
+          if (updated.ok) {
+            setJob(await updated.json())
+          }
+        }, 5000)
+      } else {
+        const data = await response.json()
+        toast(data.detail || 'Failed to retry phase', 'error')
+      }
+    } catch (err) {
+      console.error('Failed to retry phase:', err)
+      toast('Failed to retry phase', 'error')
+    } finally {
+      setRetryingPhase(null)
     }
   }
 
@@ -301,52 +367,125 @@ export default function JobDetail() {
         </div>
       </div>
 
-      {/* SST Record & Media ID */}
-      {(job.airtable_url || job.media_id) && (
+      {/* AirTable Metadata Panel */}
+      {(job.airtable_url || job.media_id || sstMetadata) && (
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-medium text-white">AirTable Metadata</h2>
             {job.airtable_url && (
-              <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">
-                  SST Record
-                </div>
-                <a
-                  href={job.airtable_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-blue-400 hover:text-blue-300 transition-colors"
+              <a
+                href={job.airtable_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <span>Open in AirTable</span>
+                <svg
+                  className="ml-1.5 w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <span>View in Airtable</span>
-                  <svg
-                    className="ml-1.5 w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                </a>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
+            )}
+          </div>
+
+          {sstLoading ? (
+            <div className="text-gray-400 text-sm">Loading metadata...</div>
+          ) : (
+            <div className="space-y-4">
+              {/* Release Title */}
+              {sstMetadata?.release_title && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+                    Release Title
+                  </div>
+                  <div className="text-white">{sstMetadata.release_title}</div>
+                </div>
+              )}
+
+              {/* Short Description */}
+              {sstMetadata?.short_description && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+                    Short Description
+                    <span className="ml-2 text-gray-500">
+                      ({sstMetadata.short_description.length}/90 chars)
+                    </span>
+                  </div>
+                  <div className="text-white text-sm">{sstMetadata.short_description}</div>
+                </div>
+              )}
+
+              {/* Media ID & Links Row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-gray-700">
+                {job.media_id && (
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+                      Media ID
+                    </div>
+                    <div className="text-white font-mono text-sm">{job.media_id}</div>
+                  </div>
+                )}
+
+                {sstMetadata?.youtube_url && (
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+                      YouTube
+                    </div>
+                    <a
+                      href={sstMetadata.youtube_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-red-400 hover:text-red-300 text-sm inline-flex items-center"
+                    >
+                      Watch
+                      <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+
+                {sstMetadata?.media_manager_url && (
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+                      Website
+                    </div>
+                    <a
+                      href={sstMetadata.media_manager_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-400 hover:text-green-300 text-sm inline-flex items-center"
+                    >
+                      View
+                      <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                )}
+
                 {job.airtable_record_id && (
-                  <div className="text-xs text-gray-500 mt-1 font-mono">
-                    {job.airtable_record_id}
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">
+                      Record ID
+                    </div>
+                    <div className="text-gray-500 font-mono text-xs truncate" title={job.airtable_record_id}>
+                      {job.airtable_record_id}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
-            {job.media_id && (
-              <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wide mb-2">
-                  Media ID
-                </div>
-                <div className="text-white font-mono">{job.media_id}</div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -454,17 +593,38 @@ export default function JobDetail() {
             {Object.entries(job.outputs).map(([key, filename]) => {
               const fileInfo = OUTPUT_FILES[key]
               if (!fileInfo || !filename) return null
+              // Use actual filename from API (handles dynamic revision filenames)
+              const actualFilename = filename as string
+              // For copy_edited, show version if it's a revision file
+              const label = key === 'copy_edited' && actualFilename.includes('revision')
+                ? `Copy Edited (${actualFilename.match(/v\d+/)?.[0] || ''})`
+                : fileInfo.label
+              const isRetrying = retryingPhase === key
               return (
-                <button
-                  key={key}
-                  onClick={(e) => handleViewOutput(key, fileInfo.filename, e)}
-                  disabled={loadingOutput}
-                  className="flex items-center justify-center px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm text-white transition-colors disabled:opacity-50"
-                  aria-label={`View ${fileInfo.label}`}
-                >
-                  <span className="mr-2">&#128196;</span>
-                  {fileInfo.label}
-                </button>
+                <div key={key} className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => handleViewOutput(key, actualFilename, e)}
+                    disabled={loadingOutput}
+                    className="flex-1 flex items-center justify-center px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-l-md text-sm text-white transition-colors disabled:opacity-50"
+                    aria-label={`View ${label}`}
+                  >
+                    <span className="mr-2">&#128196;</span>
+                    {label}
+                  </button>
+                  <button
+                    onClick={() => handleRetryPhase(key)}
+                    disabled={isRetrying || retryingPhase !== null}
+                    className="px-2 py-2 bg-gray-600 hover:bg-orange-600 rounded-r-md text-sm text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+                    aria-label={`Retry ${label}`}
+                    title={`Regenerate ${label}`}
+                  >
+                    {isRetrying ? (
+                      <span className="animate-spin">&#8635;</span>
+                    ) : (
+                      <span>&#8635;</span>
+                    )}
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -571,8 +731,8 @@ export default function JobDetail() {
                   {viewingOutput.content}
                 </pre>
               ) : (
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{viewingOutput.content}</ReactMarkdown>
+                <div className="prose prose-invert prose-sm max-w-none prose-table:border-collapse prose-th:border prose-th:border-gray-600 prose-th:p-2 prose-th:bg-gray-800 prose-td:border prose-td:border-gray-700 prose-td:p-2">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewingOutput.content}</ReactMarkdown>
                 </div>
               )}
             </div>

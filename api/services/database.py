@@ -3,6 +3,7 @@
 Provides async database operations using SQLAlchemy 2.0+ with aiosqlite.
 Thread-safe connection pool and CRUD operations for jobs, events, and config.
 """
+import glob
 import json
 import os
 from datetime import datetime, timezone
@@ -525,7 +526,8 @@ async def update_job(job_id: int, job_update: JobUpdate) -> Optional[Job]:
 
         # Handle phases update (replaces all phases)
         if job_update.phases is not None:
-            phases_json = json.dumps([p.model_dump() for p in job_update.phases])
+            # Use mode='json' to serialize datetime objects to ISO strings
+            phases_json = json.dumps([p.model_dump(mode='json') for p in job_update.phases])
             update_values["phases"] = phases_json
 
         # Handle single phase update
@@ -1157,7 +1159,7 @@ def _row_to_job(row) -> Job:
     # Derive project_name from project_path
     project_name = os.path.basename(row.project_path.rstrip('/'))
 
-    # Load outputs from manifest.json if it exists
+    # Load outputs from manifest.json if it exists, but only include files that actually exist
     outputs = None
     manifest_path = os.path.join(row.project_path, "manifest.json")
     if os.path.exists(manifest_path):
@@ -1165,7 +1167,29 @@ def _row_to_job(row) -> Job:
             with open(manifest_path, 'r') as f:
                 manifest = json.load(f)
                 if "outputs" in manifest:
-                    outputs = JobOutputs(**manifest["outputs"])
+                    # Filter to only include outputs where the file actually exists
+                    manifest_outputs = manifest["outputs"]
+                    filtered_outputs = {}
+                    for key, filename in manifest_outputs.items():
+                        if filename:
+                            file_path = os.path.join(row.project_path, filename)
+                            if os.path.exists(file_path):
+                                filtered_outputs[key] = filename
+
+                    # Check for revision files (created by copy editor in Claude Desktop)
+                    revision_files = sorted(glob.glob(os.path.join(row.project_path, "copy_revision_v*.md")), reverse=True)
+                    if revision_files:
+                        # Use latest revision as copy_edited
+                        latest_revision = os.path.basename(revision_files[0])
+                        filtered_outputs["copy_edited"] = latest_revision
+
+                    # Check for timestamp report (may not be in manifest)
+                    timestamp_file = os.path.join(row.project_path, "timestamp_output.md")
+                    if os.path.exists(timestamp_file):
+                        filtered_outputs["timestamp_report"] = "timestamp_output.md"
+
+                    if filtered_outputs:
+                        outputs = JobOutputs(**filtered_outputs)
         except (json.JSONDecodeError, IOError):
             pass  # Ignore errors reading manifest
 

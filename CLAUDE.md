@@ -123,6 +123,25 @@ See `feature_list.json` for task queue and `planning/claude-progress.txt` for st
 
 This constraint exists for data integrity and safety. The Airtable Single Source of Truth (SST) is the canonical metadata store for all PBS Wisconsin projects and must only be modified by authorized humans.
 
+### Quick Reference
+
+**See `docs/AIRTABLE_CHEATSHEET.md`** for token-efficient AirTable lookups:
+- Direct table IDs (skip `list_tables` calls)
+- Key fields for editorial workflows
+- Ready-to-use filter formulas
+- Program-specific query patterns
+
+**Key Table IDs:**
+| Table | ID |
+|-------|-----|
+| Single Source of Truth | `tblTKFOwTvK7xw1H5` |
+| Projects | `tblU9LfZeVNicdB5e` |
+| Segments | `tblb6x1BhkdhKrmT6` |
+| Contacts | `tblJc6JpKVcmwg0XV` |
+| Staff | `tblEjbbFzmpGZgbXF` |
+
+**Base ID:** `appZ2HGwhiifQToB6`
+
 ## Notes for Claude Code
 
 1. **Check feature_list.json** before starting work

@@ -4,13 +4,14 @@ Provides endpoints for job detail retrieval, updates, and control operations.
 """
 
 import os
+import re
 import logging
 from pathlib import Path
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
-from typing import List, Optional
 
 from api.models.job import Job, JobUpdate, JobStatus
 from api.models.events import SessionEvent
@@ -289,12 +290,17 @@ async def get_job_output(job_id: int, filename: str):
         "formatter_output.md",
         "seo_output.md",
         "manager_output.md",
+        "timestamp_output.md",
         "copy_editor_output.md",
         "recovery_analysis.md",
         "manifest.json",
     }
 
-    if filename not in allowed_files:
+    # Also allow versioned revision and keyword report files
+    is_revision_file = bool(re.match(r'^copy_revision_v\d+\.md$', filename))
+    is_keyword_report = bool(re.match(r'^keyword_report_v\d+\.md$', filename))
+
+    if filename not in allowed_files and not is_revision_file and not is_keyword_report:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid filename. Allowed files: {', '.join(sorted(allowed_files))}"
@@ -397,3 +403,77 @@ async def get_sst_metadata(job_id: int):
             status_code=502,
             detail="Failed to fetch metadata from Airtable"
         )
+
+
+class PhaseRetryResponse(BaseModel):
+    """Response for phase retry request."""
+    success: bool
+    phase: Optional[str] = None
+    message: str
+    cost: Optional[float] = None
+    tokens: Optional[int] = None
+
+
+# Map output keys to phase names
+OUTPUT_TO_PHASE = {
+    "analysis": "analyst",
+    "formatted_transcript": "formatter",
+    "seo_metadata": "seo",
+    "qa_review": "manager",
+    "timestamp_report": "timestamp",
+}
+
+
+@router.post("/{job_id}/phases/{phase_name}/retry", response_model=PhaseRetryResponse)
+async def retry_phase(job_id: int, phase_name: str, background_tasks: BackgroundTasks):
+    """Retry a single phase for a job.
+
+    This allows regenerating one output (e.g., timestamp) without
+    re-running the entire pipeline. The phase runs in the background.
+
+    Args:
+        job_id: Job ID to retry a phase for
+        phase_name: Phase name (analyst, formatter, seo, manager, timestamp)
+                   OR output key (analysis, seo_metadata, timestamp_report, etc.)
+
+    Returns:
+        PhaseRetryResponse with status
+
+    Raises:
+        HTTPException: 404 if job not found, 400 if invalid phase
+    """
+    # Map output key to phase name if needed
+    if phase_name in OUTPUT_TO_PHASE:
+        phase_name = OUTPUT_TO_PHASE[phase_name]
+
+    # Validate phase name
+    valid_phases = {"analyst", "formatter", "seo", "manager", "timestamp"}
+    if phase_name not in valid_phases:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid phase: {phase_name}. Valid phases: {', '.join(sorted(valid_phases))}"
+        )
+
+    # Verify job exists
+    job = await get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    # Run the phase retry in the background
+    async def run_retry():
+        from api.services.worker import JobWorker
+        worker = JobWorker()
+        result = await worker.retry_single_phase(job_id, phase_name)
+        if not result.get("success"):
+            logger.error(
+                "Phase retry failed",
+                extra={"job_id": job_id, "phase": phase_name, "error": result.get("error")}
+            )
+
+    background_tasks.add_task(run_retry)
+
+    return PhaseRetryResponse(
+        success=True,
+        phase=phase_name,
+        message=f"Phase '{phase_name}' retry started for job {job_id}. Refresh to see results.",
+    )

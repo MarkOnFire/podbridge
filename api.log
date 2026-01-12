@@ -56696,3 +56696,365 @@ INFO:     Waiting for application startup.
 {"timestamp": "2025-12-31T05:41:55.614575+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
 {"timestamp": "2025-12-31T05:41:55.614951+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
 INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/routers/jobs.py', 'api/services/database.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:54:02.190339+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:54:02.191524+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [13001]
+INFO:     Started server process [16372]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:54:02.736510+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:54:02.747673+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:54:02.748076+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:54:24.765813+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:54:24.766342+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16372]
+INFO:     Started server process [16414]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:54:25.172510+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:54:25.180640+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:54:25.180867+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:54:49.522063+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:54:49.522615+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16414]
+INFO:     Started server process [16618]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:54:49.910129+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:54:49.917713+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:54:49.917945+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:55:14.664465+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:55:14.664852+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16618]
+INFO:     Started server process [16646]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:55:15.042812+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:55:15.050339+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:55:15.050624+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:55:21.821869+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:55:21.822430+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16646]
+INFO:     Started server process [16654]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:55:22.213116+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:55:22.220233+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:55:22.220433+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:55:42.635895+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:55:42.636683+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16654]
+INFO:     Started server process [16681]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:55:43.020295+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:55:43.027445+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:55:43.027666+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/llm.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:55:43.230666+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:55:43.231125+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16681]
+INFO:     Started server process [16682]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:55:43.606713+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:55:43.614144+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:55:43.614358+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:56:32.904034+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:56:32.904503+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16682]
+INFO:     Started server process [16781]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:56:33.271670+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:56:33.278766+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:56:33.278945+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T05:57:12.982127+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T05:57:12.983193+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16781]
+INFO:     Started server process [16812]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T05:57:13.446539+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T05:57:13.455834+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T05:57:13.456187+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:46:44.074769+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:46:44.077575+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [16812]
+INFO:     Started server process [19991]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:46:44.563148+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:46:44.572988+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:46:44.573393+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:47:02.707620+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:47:02.708368+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [19991]
+INFO:     Started server process [20019]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:47:03.161385+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:47:03.170341+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:47:03.170677+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:47:50.728421+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:47:50.729065+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20019]
+INFO:     Started server process [20051]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:47:51.082674+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:47:51.088887+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:47:51.089047+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:48:31.839691+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:48:31.840807+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20051]
+INFO:     Started server process [20169]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:48:32.317299+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:48:32.326579+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:48:32.326987+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:48:41.692828+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:48:41.693528+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20169]
+INFO:     Started server process [20181]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:48:42.040534+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:48:42.046849+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:48:42.047042+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:49:12.702744+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:49:12.703319+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20181]
+INFO:     Started server process [20204]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:49:13.159750+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:49:13.168980+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:49:13.169315+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:49:31.814297+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:49:31.815272+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20204]
+INFO:     Started server process [20238]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:49:32.278016+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:49:32.287166+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:49:32.287500+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'mcp_server/server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T06:50:14.957888+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T06:50:14.958512+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20238]
+INFO:     Started server process [20268]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T06:50:15.408702+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T06:50:15.417539+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T06:50:15.417862+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/utils.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:37:18.216870+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:37:18.219356+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [20268]
+/Users/mriechers/Developer/ai-editorial-assistant-v3/api/services/utils.py:172: SyntaxWarning: "\d" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\d"? A raw string is also an option.
+  revision date suffixes (_REV\d+), and standard file extensions.
+INFO:     Started server process [66911]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:37:18.769458+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:37:18.781229+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:37:18.781687+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/utils.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:37:56.568749+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:37:56.569287+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [66911]
+/Users/mriechers/Developer/ai-editorial-assistant-v3/api/services/utils.py:172: SyntaxWarning: "\d" is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\d"? A raw string is also an option.
+  revision date suffixes (_REV\d+), and standard file extensions.
+INFO:     Started server process [66939]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:37:56.932699+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:37:56.939965+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:37:56.940160+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:49:56.652987+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:49:56.655475+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [66939]
+INFO:     Started server process [67841]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:49:57.183558+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:49:57.193874+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:49:57.194292+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:50:42.171192+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:50:42.172230+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [67841]
+INFO:     Started server process [67889]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:50:42.686509+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:50:42.697311+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:50:42.697746+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:51:07.346265+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:51:07.346615+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [67889]
+INFO:     Started server process [67933]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:51:07.822613+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:51:07.833328+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:51:07.833749+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:51:46.223288+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:51:46.223907+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [67933]
+INFO:     Started server process [68206]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:51:46.728324+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:51:46.739647+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:51:46.740138+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/utils.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T17:52:04.422622+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T17:52:04.423411+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [68206]
+INFO:     Started server process [68245]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T17:52:04.795007+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T17:52:04.802124+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T17:52:04.802354+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T18:06:46.398979+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T18:06:46.400412+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [68245]
+INFO:     Started server process [69673]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T18:06:46.905348+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T18:06:46.915673+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T18:06:46.916112+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T18:07:47.545762+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T18:07:47.547882+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [69673]
+INFO:     Started server process [69709]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T18:07:48.049802+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T18:07:48.060490+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T18:07:48.060928+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'api/services/worker.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2025-12-31T18:08:14.009810+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2025-12-31T18:08:14.010517+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [69709]
+INFO:     Started server process [69738]
+INFO:     Waiting for application startup.
+{"timestamp": "2025-12-31T18:08:14.494277+00:00", "level": "INFO", "logger": "api.main", "message": "Starting Editorial Assistant API v3.0", "extra": {}}
+{"timestamp": "2025-12-31T18:08:14.504895+00:00", "level": "INFO", "logger": "api.main", "message": "Database initialized", "extra": {}}
+{"timestamp": "2025-12-31T18:08:14.505283+00:00", "level": "INFO", "logger": "api.main", "message": "LLM client initialized", "extra": {}}
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+{"timestamp": "2026-01-04T20:04:44.814388+00:00", "level": "INFO", "logger": "api.main", "message": "Shutting down API server", "extra": {}}
+{"timestamp": "2026-01-04T20:04:44.879416+00:00", "level": "INFO", "logger": "api.main", "message": "Shutdown complete", "extra": {}}
+INFO:     Application shutdown complete.
+INFO:     Finished server process [69738]
+INFO:     Stopping reloader process [57297]

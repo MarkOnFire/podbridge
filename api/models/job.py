@@ -114,7 +114,10 @@ class JobOutputs(BaseModel):
     analysis: Optional[str] = None
     formatted_transcript: Optional[str] = None
     seo_metadata: Optional[str] = None
+    qa_review: Optional[str] = None
+    timestamp_report: Optional[str] = None
     copy_edited: Optional[str] = None
+    recovery_analysis: Optional[str] = None
 
 
 class Job(BaseModel):

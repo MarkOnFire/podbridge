@@ -20,7 +20,22 @@ try:
 except ImportError:
     # Fallback if keychain_secrets not available
     def get_secret(key: str, required: bool = False) -> Optional[str]:
-        return os.environ.get(key)
+        val = os.environ.get(key)
+        if val:
+            return val
+
+        # Try macOS Keychain directly for known keys
+        if key == "AIRTABLE_API_KEY":
+            try:
+                import subprocess
+                user = os.environ.get("USER") or os.getlogin()
+                cmd = ["security", "find-generic-password", "-s", "developer.workspace.AIRTABLE_API_KEY", "-a", user, "-w"]
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                return result.stdout.strip()
+            except Exception:
+                pass
+        
+        return None
 
 
 class AirtableClient:

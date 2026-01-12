@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 
@@ -558,8 +559,8 @@ export default function Projects() {
                   {JSON.stringify(JSON.parse(viewingArtifact.content), null, 2)}
                 </pre>
               ) : (
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{viewingArtifact.content}</ReactMarkdown>
+                <div className="prose prose-invert prose-sm max-w-none prose-table:border-collapse prose-th:border prose-th:border-gray-600 prose-th:p-2 prose-th:bg-gray-800 prose-td:border prose-td:border-gray-700 prose-td:p-2">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewingArtifact.content}</ReactMarkdown>
                 </div>
               )}
             </div>

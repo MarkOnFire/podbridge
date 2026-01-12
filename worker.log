@@ -1,1 +1,10 @@
 {"timestamp": "2025-12-30T22:04:39.901378+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-56568", "poll_interval": 5, "max_concurrent": 3}}
+[worker-56568] Starting Editorial Assistant job worker...
+[worker-56568] Poll interval: 30s
+[worker-56568] Concurrent jobs: 1
+[worker-56568] Max retries: 3
+[worker-56568] Press Ctrl+C to stop
+
+
+[Worker] Shutdown signal received, stopping...
+[Worker] Shutdown complete
