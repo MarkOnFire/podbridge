@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import ModelStatsWidget from '../components/ModelStatsWidget'
+import PhaseStatsWidget from '../components/PhaseStatsWidget'
 
 interface PresetInfo {
   description: string
@@ -334,6 +336,14 @@ export default function System() {
         </div>
       )}
 
+      {/* Actual Model Usage from Langfuse - Show when connected */}
+      {isConnected && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <ModelStatsWidget />
+          <PhaseStatsWidget />
+        </div>
+      )}
+
       {/* Agent Roster - Show when connected */}
       {isConnected && health?.llm?.phase_backends && (
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
@@ -429,6 +439,15 @@ export default function System() {
           </div>
           <div className="text-gray-400">
             <span className="text-yellow-400">PATCH</span> /api/jobs/:id
+          </div>
+          <div className="text-gray-400">
+            <span className="text-blue-400">GET</span> /api/langfuse/model-stats
+          </div>
+          <div className="text-gray-400">
+            <span className="text-blue-400">GET</span> /api/langfuse/phase-stats
+          </div>
+          <div className="text-gray-400">
+            <span className="text-blue-400">GET</span> /api/langfuse/status
           </div>
         </div>
       </div>

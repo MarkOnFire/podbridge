@@ -14,6 +14,7 @@ from pathlib import Path
 
 from api.models.events import EventType, EventCreate, EventData
 from api.services.database import log_event
+from api.services.langfuse_client import get_langfuse_client
 
 
 # Cost cap and safety configuration - can be overridden via environment
@@ -539,6 +540,9 @@ class LLMClient:
         model: Optional[str] = None,
         preset: Optional[str] = None,
         job_id: Optional[int] = None,
+        phase: Optional[str] = None,
+        tier: Optional[int] = None,
+        tier_label: Optional[str] = None,
         **kwargs,
     ) -> LLMResponse:
         """Make a chat completion request.
@@ -549,6 +553,9 @@ class LLMClient:
             model: Model override (default: backend's configured model)
             preset: OpenRouter preset override (default: backend's configured preset)
             job_id: Job ID for event logging
+            phase: Agent phase name for observability (analyst, formatter, etc.)
+            tier: Tier index for observability (0=cheapskate, 1=default, 2=big-brain)
+            tier_label: Human-readable tier name
             **kwargs: Additional parameters passed to the API
 
         Returns:
@@ -622,6 +629,26 @@ class LLMClient:
             ),
         ))
 
+        # Send trace to Langfuse for observability
+        langfuse = get_langfuse_client()
+        if langfuse.is_available():
+            langfuse.trace_generation(
+                name=f"{phase}-generation" if phase else "llm-generation",
+                model=response.model,
+                input_messages=messages,
+                output=response.content,
+                input_tokens=response.input_tokens,
+                output_tokens=response.output_tokens,
+                total_tokens=response.total_tokens,
+                cost=response.cost,
+                duration_ms=duration_ms,
+                job_id=job_id,
+                phase=phase,
+                tier=tier,
+                tier_label=tier_label,
+                backend=backend_name,
+            )
+
         return response
 
     async def _call_openrouter(
@@ -653,6 +680,29 @@ class LLMClient:
             headers=headers,
             json=payload,
         )
+
+        # Log error details before raising
+        if response.status_code >= 400:
+            try:
+                error_body = response.json()
+                logger.error(
+                    "OpenRouter API error",
+                    extra={
+                        "status_code": response.status_code,
+                        "model": model,
+                        "error": error_body,
+                    }
+                )
+            except Exception:
+                logger.error(
+                    "OpenRouter API error (non-JSON response)",
+                    extra={
+                        "status_code": response.status_code,
+                        "model": model,
+                        "response_text": response.text[:500],
+                    }
+                )
+
         response.raise_for_status()
 
         data = response.json()
