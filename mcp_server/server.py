@@ -69,6 +69,23 @@ OUTPUT_DIR = Path(os.getenv("EDITORIAL_OUTPUT_DIR",
 TRANSCRIPTS_DIR = Path(os.getenv("EDITORIAL_TRANSCRIPTS_DIR",
     Path(__file__).parent.parent / "transcripts"))
 
+# Artifact display labels - maps technical filenames to user-friendly names
+ARTIFACT_LABELS = {
+    "analyst_output.md": "Analysis",
+    "formatter_output.md": "Formatted Transcript",
+    "seo_output.md": "SEO Metadata",
+    "manager_output.md": "QA Review",
+    "timestamp_output.md": "Timestamps",
+    "copy_editor_output.md": "Copy Edited",
+    "recovery_analysis.md": "Recovery Analysis",
+    "investigation_report.md": "Failure Investigation",
+    "manifest.json": "Job Manifest",
+}
+
+def get_artifact_label(filename: str) -> str:
+    """Get a friendly label for a filename, or return the filename if unknown."""
+    return ARTIFACT_LABELS.get(filename, filename)
+
 # Airtable configuration (READ-ONLY)
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = "appZ2HGwhiifQToB6"
@@ -115,6 +132,36 @@ def get_next_version(project_path: Path, prefix: str) -> int:
     return max_version + 1
 
 
+def infer_content_type(manifest: dict, project_name: str) -> tuple[str, str]:
+    """Infer the content type (segment vs digital_short) from available data.
+
+    Returns:
+        Tuple of (content_type, confidence) where confidence is 'explicit', 'inferred', or 'unknown'
+    """
+    # Check if explicitly set in manifest
+    if manifest.get("content_type"):
+        return manifest["content_type"], "explicit"
+
+    # Check duration if available
+    duration_minutes = manifest.get("duration_minutes")
+    if duration_minutes is not None:
+        # PBS Wisconsin convention: < 3 minutes = digital short, >= 3 minutes = segment
+        if duration_minutes < 3.0:
+            return "digital_short", "inferred"
+        return "segment", "inferred"
+
+    # Infer from project name patterns
+    project_lower = project_name.lower()
+    if "sm" in project_lower or "short" in project_lower or "ds" in project_lower:
+        return "digital_short", "inferred"
+
+    # Default to segment for Wisconsin Life (2WLI prefix) and other standard content
+    if project_name.startswith("2WLI") or project_name.startswith("9UNP"):
+        return "segment", "inferred"
+
+    return "segment", "unknown"  # Default assumption
+
+
 def determine_project_status(manifest: dict, project_path: Path) -> str:
     """Determine the editing status of a project."""
     phases = manifest.get("phases", [])
@@ -143,26 +190,28 @@ def determine_project_status(manifest: dict, project_path: Path) -> str:
 
 
 def get_available_deliverables(project_path: Path, manifest: dict) -> list[str]:
-    """List available deliverables for a project."""
+    """List available deliverables for a project using friendly labels."""
     deliverables = []
     outputs = manifest.get("outputs", {})
 
     if (project_path / outputs.get("analysis", "")).exists():
-        deliverables.append("brainstorming")
+        deliverables.append("Analysis")
     if (project_path / outputs.get("formatted_transcript", "")).exists():
-        deliverables.append("formatted_transcript")
+        deliverables.append("Formatted Transcript")
     if (project_path / outputs.get("seo_metadata", "")).exists():
-        deliverables.append("seo_metadata")
+        deliverables.append("SEO Metadata")
+    if (project_path / outputs.get("qa_review", "")).exists():
+        deliverables.append("QA Review")
 
     # Check for revisions
     revisions = list(project_path.glob("copy_revision_v*.md"))
     if revisions:
-        deliverables.append(f"revisions ({len(revisions)})")
+        deliverables.append(f"Revisions ({len(revisions)})")
 
     # Check for keyword reports
     keyword_reports = list(project_path.glob("keyword_report_v*.md"))
     if keyword_reports:
-        deliverables.append(f"keyword_reports ({len(keyword_reports)})")
+        deliverables.append(f"Keyword Reports ({len(keyword_reports)})")
 
     return deliverables
 
@@ -189,7 +238,7 @@ async def fetch_job_from_api(project_name: str) -> dict | None:
 
 async def fetch_sst_context(airtable_record_id: str) -> Optional[dict]:
     """
-    Fetch SST (Single Source of Truth) metadata from Airtable.
+    Fetch SST (Single Source of Truth) metadata from Airtable by record ID.
 
     This is READ-ONLY access to the Airtable SST table.
     No write operations are permitted.
@@ -217,25 +266,79 @@ async def fetch_sst_context(airtable_record_id: str) -> Optional[dict]:
             response = await client.get(url, headers=headers)
             if response.status_code == 200:
                 record = response.json()
-                fields = record.get("fields", {})
-
-                # Extract relevant fields for editor context
-                sst_context = {
-                    "title": fields.get("Title"),
-                    "program": fields.get("Program"),
-                    "short_description": fields.get("Short Description"),
-                    "long_description": fields.get("Long Description"),
-                    "host": fields.get("Host"),
-                    "presenter": fields.get("Presenter"),
-                    "keywords": fields.get("Keywords"),
-                    "tags": fields.get("Tags"),
-                }
-
-                # Remove None values
-                return {k: v for k, v in sst_context.items() if v is not None}
+                return _extract_sst_fields(record)
             return None
     except Exception:
         return None
+
+
+async def search_sst_by_media_id(media_id: str) -> Optional[dict]:
+    """
+    Search SST (Single Source of Truth) by Media ID.
+
+    This is READ-ONLY access to the Airtable SST table.
+    No write operations are permitted.
+
+    Args:
+        media_id: The Media ID / project name (e.g., "2WLIEuchreWorldChampSM")
+
+    Returns:
+        Dict with SST fields if found, None otherwise.
+    """
+    if not AIRTABLE_API_KEY:
+        return None
+
+    if not media_id:
+        return None
+
+    # Use Airtable's filterByFormula to search by Media ID
+    import urllib.parse
+    formula = f"{{Media ID}}='{media_id}'"
+    encoded_formula = urllib.parse.quote(formula)
+    url = f"{AIRTABLE_API_BASE}/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_ID}?filterByFormula={encoded_formula}"
+
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                records = data.get("records", [])
+                if records:
+                    return _extract_sst_fields(records[0])
+            return None
+    except Exception:
+        return None
+
+
+def _extract_sst_fields(record: dict) -> dict:
+    """Extract relevant SST fields from an Airtable record."""
+    fields = record.get("fields", {})
+    record_id = record.get("id", "")
+
+    # Map Airtable field names to our normalized names
+    # Using actual Airtable field names from the SST table
+    sst_context = {
+        "record_id": record_id,
+        "media_id": fields.get("Media ID"),
+        "title": fields.get("Release Title"),
+        "short_description": fields.get("Short Description"),
+        "long_description": fields.get("Long Description"),
+        "keywords": fields.get("General Keywords/Tags"),
+        "program": fields.get("Batch-Episode"),  # This seems to be episode/segment name
+        "host": fields.get("Host"),
+        "presenter": fields.get("Presenter"),
+        "sd_status": fields.get("SD Character Count"),
+        "ld_status": fields.get("LD Character Count"),
+        "special_thanks": fields.get("Episode Special Thanks"),
+    }
+
+    # Remove None values
+    return {k: v for k, v in sst_context.items() if v is not None}
 
 
 # =============================================================================
@@ -386,6 +489,20 @@ async def list_tools() -> list[Tool]:
                 }
             }
         ),
+        Tool(
+            name="get_sst_metadata",
+            description="Fetch current metadata from Airtable SST (Single Source of Truth) by Media ID. Returns title, descriptions, keywords, and character count status. Use this to get the LIVE Airtable data for a project.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "media_id": {
+                        "type": "string",
+                        "description": "The Media ID / project name (e.g., '2WLIEuchreWorldChampSM')"
+                    }
+                },
+                "required": ["media_id"]
+            }
+        ),
     ]
 
 
@@ -446,6 +563,17 @@ async def list_prompts() -> list[Prompt]:
                 )
             ]
         ),
+        Prompt(
+            name="save_my_work",
+            description="Save the current revision document to the project folder. Use this when you've finalized copy edits.",
+            arguments=[
+                PromptArgument(
+                    name="project_name",
+                    description="The project ID",
+                    required=True
+                )
+            ]
+        ),
     ]
 
 
@@ -469,7 +597,13 @@ Please:
 4. Ask which one I'd like to work on, or if I have something else in mind
 
 Remember: You're Cardigan, the friendly editorial neighbor from The Metadata Neighborhood.
-You help PBS Wisconsin polish their content with care and kindness."""
+You help PBS Wisconsin polish their content with care and kindness.
+
+IMPORTANT TOOL USAGE GUIDELINES:
+- When you need to save a revision, you MUST actually call the `save_revision` tool. Do not just describe or announce saving.
+- Always verify tool calls completed successfully by checking the response before telling the user it's done.
+- If you want to show the user a document, present it directly in the chat - don't rely on external artifacts.
+- Never claim to have saved, created, or modified a file unless the tool call returned a success confirmation."""
             )
         )]
 
@@ -549,6 +683,29 @@ Please:
             )
         )]
 
+    elif name == "save_my_work":
+        return [PromptMessage(
+            role="user",
+            content=TextContent(
+                type="text",
+                text=f"""Please save our work on project **{project_name}**.
+
+CRITICAL: You must ACTUALLY call the save_revision tool. Do not just describe saving.
+
+Steps:
+1. Compile all finalized copy (titles, descriptions, keywords) into a single revision document
+2. Format it as a clean markdown document with clear sections
+3. Call `save_revision` with:
+   - project_name: "{project_name}"
+   - content: [the full markdown document]
+4. Wait for the tool response confirming success
+5. Only AFTER receiving "✅ Saved revision as copy_revision_vX.md" should you tell me it's saved
+6. Show me the confirmation message from the tool
+
+If the tool call fails or returns an error, tell me immediately - do not claim success."""
+            )
+        )]
+
     else:
         return [PromptMessage(
             role="user",
@@ -583,6 +740,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return await handle_read_project_file(arguments)
     elif name == "search_projects":
         return await handle_search_projects(arguments)
+    elif name == "get_sst_metadata":
+        return await handle_get_sst_metadata(arguments)
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -677,6 +836,21 @@ async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
     if manifest.get("completed_at"):
         result_parts.append(f"**Completed**: {manifest['completed_at']}")
 
+    # Content type (segment vs digital short) - critical for applying correct editorial standards
+    content_type, confidence = infer_content_type(manifest, project_name)
+    content_type_display = "Full Segment" if content_type == "segment" else "Digital Short"
+    if confidence == "inferred":
+        result_parts.append(f"**Content Type**: {content_type_display} _(inferred)_")
+    elif confidence == "unknown":
+        result_parts.append(f"**Content Type**: {content_type_display} _(assumed - please verify)_")
+    else:
+        result_parts.append(f"**Content Type**: {content_type_display}")
+
+    # Duration if available
+    if manifest.get("duration_minutes"):
+        mins = manifest["duration_minutes"]
+        result_parts.append(f"**Duration**: {int(mins)}:{int((mins % 1) * 60):02d}")
+
     # Include Airtable SST link if available
     airtable_url = manifest.get("airtable_url")
     if airtable_url:
@@ -712,6 +886,23 @@ async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
             result_parts.append("---\n## SST Metadata\n")
             result_parts.append("*SST linked but AIRTABLE_API_KEY not configured. Set env var to enable SST context.*\n")
             result_parts.append("")
+        else:
+            result_parts.append("---\n## SST Metadata\n")
+            result_parts.append(f"*⚠️ SST record linked ({airtable_record_id}) but fetch returned no data. Record may not exist or have no relevant fields.*\n")
+            result_parts.append("")
+    else:
+        # No Airtable link in manifest - prompt agent to search directly
+        result_parts.append("---\n## SST Metadata\n")
+        result_parts.append(f"*⚠️ NO AIRTABLE LINK IN MANIFEST — Try searching Airtable by Media ID:*\n")
+        result_parts.append("```")
+        result_parts.append("mcp__airtable__search_records(")
+        result_parts.append(f'  baseId="appZ2HGwhiifQToB6",')
+        result_parts.append(f'  tableId="tblTKFOwTvK7xw1H5",')
+        result_parts.append(f'  searchTerm="{project_name}"')
+        result_parts.append(")")
+        result_parts.append("```")
+        result_parts.append("*If search finds a record, use that SST data. If no results, work from transcript only.*\n")
+        result_parts.append("")
 
     # Load brainstorming (analyst output)
     analyst_file = project_path / outputs.get("analysis", "analyst_output.md")
@@ -911,7 +1102,10 @@ async def handle_read_project_file(arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text=f"Error: File '{filename}' not found in {project_name}")]
 
     content = filepath.read_text()
-    return [TextContent(type="text", text=f"# {filename}\n\n{content}")]
+    label = get_artifact_label(filename)
+    # Show friendly label with filename in parentheses for context
+    header = f"# {label}" if label == filename else f"# {label} ({filename})"
+    return [TextContent(type="text", text=f"{header}\n\n{content}")]
 
 
 async def handle_search_projects(arguments: dict) -> list[TextContent]:
@@ -1016,6 +1210,72 @@ async def handle_search_projects(arguments: dict) -> list[TextContent]:
         lines.append(f"   Completed: {p['completed_at']}")
         lines.append(f"   Has: {', '.join(p['deliverables'])}")
         lines.append("")
+
+    return [TextContent(type="text", text="\n".join(lines))]
+
+
+async def handle_get_sst_metadata(arguments: dict) -> list[TextContent]:
+    """Fetch current SST metadata from Airtable by Media ID."""
+    media_id = arguments.get("media_id")
+    if not media_id:
+        return [TextContent(type="text", text="Error: media_id is required")]
+
+    if not AIRTABLE_API_KEY:
+        return [TextContent(type="text", text="Error: AIRTABLE_API_KEY not configured. Cannot fetch SST metadata.")]
+
+    sst_data = await search_sst_by_media_id(media_id)
+
+    if not sst_data:
+        return [TextContent(type="text", text=f"No SST record found for Media ID: {media_id}\n\nThis project may not have an Airtable entry yet.")]
+
+    # Format the response
+    lines = [f"# SST Metadata for {media_id}\n"]
+    lines.append(f"**Airtable Record ID:** {sst_data.get('record_id', 'N/A')}")
+    lines.append("")
+
+    if sst_data.get("title"):
+        title = sst_data["title"]
+        title_len = len(title)
+        title_status = "✅" if title_len <= 80 else "❌ OVER LIMIT"
+        lines.append(f"## Title ({title_len} chars) {title_status}")
+        lines.append(f"```\n{title}\n```")
+        lines.append("")
+
+    if sst_data.get("short_description"):
+        sd = sst_data["short_description"]
+        sd_len = len(sd)
+        sd_status = sst_data.get("sd_status", "✅" if sd_len <= 100 else "❌ OVER LIMIT")
+        lines.append(f"## Short Description ({sd_len} chars) {sd_status}")
+        lines.append(f"```\n{sd}\n```")
+        lines.append("")
+
+    if sst_data.get("long_description"):
+        ld = sst_data["long_description"]
+        ld_len = len(ld)
+        ld_status = sst_data.get("ld_status", "✅" if ld_len <= 350 else "❌ OVER LIMIT")
+        lines.append(f"## Long Description ({ld_len} chars) {ld_status}")
+        lines.append(f"```\n{ld}\n```")
+        lines.append("")
+
+    if sst_data.get("keywords"):
+        lines.append("## Keywords/Tags")
+        # Just show the first part if it's very long (often has analysis notes)
+        keywords = sst_data["keywords"]
+        if len(keywords) > 500:
+            # Find the first double newline which often separates keywords from analysis
+            split_point = keywords.find("\n\n")
+            if split_point > 0:
+                keywords = keywords[:split_point] + "\n\n[Additional analysis truncated]"
+        lines.append(f"```\n{keywords}\n```")
+        lines.append("")
+
+    if sst_data.get("special_thanks"):
+        lines.append("## Special Thanks")
+        lines.append(sst_data["special_thanks"])
+        lines.append("")
+
+    if sst_data.get("program"):
+        lines.append(f"**Episode/Segment:** {sst_data['program']}")
 
     return [TextContent(type="text", text="\n".join(lines))]
 

@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
+import { ARTIFACT_LABELS } from '../utils/artifactLabels'
 
 interface CompletedJob {
   id: number
@@ -22,7 +23,8 @@ interface CompletedJob {
 }
 
 interface ProjectArtifact {
-  name: string
+  name: string       // Technical filename (e.g., 'analyst_output.md')
+  label: string      // Friendly display name (e.g., 'Analysis')
   path: string
   type: 'directory' | 'file'
   size?: number
@@ -52,7 +54,8 @@ export default function Projects() {
   const [selectedProject, setSelectedProject] = useState<CompletedJob | null>(null)
   const [artifacts, setArtifacts] = useState<ProjectArtifact[]>([])
   const [viewingArtifact, setViewingArtifact] = useState<{
-    name: string
+    name: string      // Technical filename
+    label: string     // Friendly display name
     content: string
     isJson: boolean
   } | null>(null)
@@ -150,6 +153,7 @@ export default function Projects() {
       const content = await response.text()
       setViewingArtifact({
         name: artifact.name,
+        label: artifact.label,
         content,
         isJson: artifact.name.endsWith('.json'),
       })
@@ -180,14 +184,14 @@ export default function Projects() {
     return () => document.removeEventListener('keydown', handleEscape)
   }, [viewingArtifact])
 
-  // Map phase names to their actual output filenames
-  const PHASE_OUTPUT_FILES: Record<string, { filename: string; label: string }> = {
-    analyst: { filename: 'analyst_output.md', label: 'Analysis' },
-    formatter: { filename: 'formatter_output.md', label: 'Formatted Transcript' },
-    seo: { filename: 'seo_output.md', label: 'SEO Metadata' },
-    manager: { filename: 'manager_output.md', label: 'QA Review' },
-    copy_editor: { filename: 'copy_editor_output.md', label: 'Copy Edited' },
-    investigation: { filename: 'investigation_report.md', label: 'Failure Investigation' },
+  // Map phase names to artifact keys for lookup
+  const PHASE_TO_ARTIFACT_KEY: Record<string, string> = {
+    analyst: 'analysis',
+    formatter: 'formatted_transcript',
+    seo: 'seo_metadata',
+    manager: 'qa_review',
+    copy_editor: 'copy_edited',
+    investigation: 'investigation',
   }
 
   const getExpectedArtifacts = (job: CompletedJob): ProjectArtifact[] => {
@@ -196,11 +200,13 @@ export default function Projects() {
 
     job.phases?.forEach(phase => {
       if (phase.status === 'completed') {
-        const fileInfo = PHASE_OUTPUT_FILES[phase.name]
-        if (fileInfo) {
+        const artifactKey = PHASE_TO_ARTIFACT_KEY[phase.name]
+        const artifactInfo = artifactKey ? ARTIFACT_LABELS[artifactKey] : null
+        if (artifactInfo) {
           artifacts.push({
-            name: fileInfo.filename,
-            path: fileInfo.filename, // Just the filename, we'll use job ID for the API
+            name: artifactInfo.filename,
+            label: artifactInfo.label,
+            path: artifactInfo.filename,
             type: 'file'
           })
         }
@@ -209,9 +215,11 @@ export default function Projects() {
 
     // Always include manifest if job completed
     if (job.status === 'completed') {
+      const manifestInfo = ARTIFACT_LABELS.manifest
       artifacts.unshift({
-        name: 'manifest.json',
-        path: 'manifest.json',
+        name: manifestInfo.filename,
+        label: manifestInfo.label,
+        path: manifestInfo.filename,
         type: 'file'
       })
     }
@@ -463,15 +471,15 @@ export default function Projects() {
                             <span className="text-gray-400">
                               {artifact.type === 'directory' ? '📁' : '📄'}
                             </span>
-                            <span className="text-white font-mono text-sm">
-                              {artifact.name}
+                            <span className="text-white text-sm">
+                              {artifact.label}
                             </span>
                           </div>
                           <button
                             onClick={(e) => handleViewArtifact(artifact, e)}
                             disabled={loadingArtifact}
                             className="text-blue-400 hover:text-blue-300 text-sm disabled:opacity-50"
-                            aria-label={`View ${artifact.name}`}
+                            aria-label={`View ${artifact.label}`}
                           >
                             {loadingArtifact ? 'Loading...' : 'View →'}
                           </button>
@@ -541,8 +549,11 @@ export default function Projects() {
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-              <h3 id="artifact-modal-title" className="text-lg font-medium text-white font-mono">
-                {viewingArtifact.name}
+              <h3 id="artifact-modal-title" className="text-lg font-medium text-white">
+                {viewingArtifact.label}
+                <span className="ml-2 text-sm text-gray-400 font-mono font-normal">
+                  {viewingArtifact.name}
+                </span>
               </h3>
               <button
                 onClick={closeModal}
