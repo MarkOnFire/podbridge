@@ -1,1674 +1,578 @@
 [
   {
-    "id": "2.1.1",
-    "name": "FastAPI project setup",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "description": "Create FastAPI app skeleton with CORS, health endpoints",
-    "files": [
-      "api/main.py",
-      "requirements.txt"
-    ],
-    "exit_criteria": [
-      "FastAPI app runs",
-      "Health endpoint returns OK"
-    ]
+    "_metadata": true,
+    "description": "Active feature tasks for Editorial Assistant v3.5+",
+    "archive_reference": "planning/archive/feature_list_v3.0_completed.json",
+    "last_updated": "2026-01-15"
   },
   {
-    "id": "2.1.2",
-    "name": "Pydantic models for Job, Config, Events",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "description": "Define Pydantic models matching database schema",
-    "files": [
-      "api/models/job.py",
-      "api/models/config.py",
-      "api/models/events.py"
-    ],
-    "exit_criteria": [
-      "Models validate against existing SQLite schema"
-    ]
-  },
-  {
-    "id": "2.1.3",
-    "name": "Alembic setup for migrations",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "description": "Initialize Alembic for database migrations",
-    "files": [
-      "alembic.ini",
-      "alembic/"
-    ],
-    "exit_criteria": [
-      "Alembic initialized",
-      "Initial migration created"
-    ]
-  },
-  {
-    "id": "2.1.4",
-    "name": "Database service layer",
-    "sprint": "2.1",
-    "status": "completed",
+    "id": "backlog.1",
+    "name": "Assess project rename to cardigan-editorial-assistant",
+    "sprint": "backlog",
+    "status": "pending",
     "agent": "orchestrator",
-    "description": "Create database connection management and basic CRUD operations",
+    "priority": "low",
+    "description": "Audit what needs to change to rename project from 'ai-editorial-assistant-v3' to 'cardigan-editorial-assistant'. Less clunky, more distinctive branding. Assessment should identify: git repo rename, package.json changes, Python package names, hardcoded references in code/docs, MCP server registration name, deployment configs, any external integrations referencing the old name.",
     "files": [
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "Thread-safe connections",
-      "Basic job CRUD works"
-    ]
-  },
-  {
-    "id": "2.1.5",
-    "name": "Heartbeat mechanism for stale jobs",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Add last_heartbeat column, update during processing",
-    "files": [
-      "api/services/database.py",
-      "alembic/versions/"
-    ],
-    "exit_criteria": [
-      "Jobs table has last_heartbeat",
-      "Heartbeat updates during processing"
-    ]
-  },
-  {
-    "id": "2.1.6",
-    "name": "Auto-reset stuck jobs",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Detect and reset jobs stuck in processing >10 minutes",
-    "files": [
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "Stuck jobs auto-reset",
-      "Reset logged to session_stats"
-    ]
-  },
-  {
-    "id": "2.1.7",
-    "name": "CI/CD pipeline skeleton",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "description": "GitHub Actions workflow for test/lint/build",
-    "files": [
-      ".github/workflows/ci.yml"
-    ],
-    "exit_criteria": [
-      "Workflow runs on push",
-      "Basic Python tests pass"
-    ]
-  },
-  {
-    "id": "2.1.8",
-    "name": "Structured logging utility",
-    "sprint": "2.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "description": "JSON logging with configurable levels",
-    "files": [
-      "api/services/logging.py"
-    ],
-    "exit_criteria": [
-      "Logs in JSON format",
-      "Log level configurable"
-    ]
-  },
-  {
-    "id": "2.2.1",
-    "name": "Queue router",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "CRUD endpoints for queue management",
-    "files": [
-      "api/routers/queue.py"
-    ],
-    "exit_criteria": [
-      "GET/POST/DELETE queue endpoints work"
-    ]
-  },
-  {
-    "id": "2.2.2",
-    "name": "Jobs router",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Job detail and control endpoints",
-    "files": [
-      "api/routers/jobs.py"
-    ],
-    "exit_criteria": [
-      "GET job details",
-      "PATCH job status",
-      "POST pause/resume/retry"
-    ]
-  },
-  {
-    "id": "2.2.3",
-    "name": "Step-level status tracking",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Track completion of each agent phase independently",
-    "files": [
-      "api/models/job.py",
-      "api/services/database.py",
-      "alembic/versions/003_add_phases_column.py"
-    ],
-    "exit_criteria": [
-      "JobPhase model exists",
-      "Jobs can resume from last successful phase"
-    ]
-  },
-  {
-    "id": "2.2.4",
-    "name": "Enhanced health endpoint with LLM status",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Extend health endpoint to return queue size, active model/preset, and last cost totals",
-    "files": [
-      "api/main.py"
-    ],
-    "exit_criteria": [
-      "GET /health returns queue_size",
-      "Returns active_model and preset info",
-      "Returns last_run cost/token totals"
-    ],
-    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
-  },
-  {
-    "id": "2.2.5",
-    "name": "LLM cost tracking per run",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Log per-run cost and token usage; emit worker:completed event with total_cost/total_tokens",
-    "files": [
-      "api/services/llm.py",
-      "api/models/events.py"
-    ],
-    "exit_criteria": [
-      "Costs logged per LLM call",
-      "Aggregated totals available via events"
-    ],
-    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
-  },
-  {
-    "id": "2.2.6",
-    "name": "Cost cap and model allowlist safety guards",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Add per-run cost cap (env/config), model allowlist, and max $/token guard to prevent expensive auto-upgrades",
-    "files": [
-      "api/services/llm.py",
-      "config/llm-config.json"
-    ],
-    "exit_criteria": [
-      "Cost cap configurable via env",
-      "Requests blocked if cap exceeded",
-      "Model allowlist enforced"
-    ],
-    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
-  },
-  {
-    "id": "2.2.7",
-    "name": "Timezone-aware datetime helpers",
-    "sprint": "2.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Replace datetime.utcnow() with timezone-aware utc_now_iso() utility across codebase",
-    "files": [
-      "api/services/utils.py"
-    ],
-    "exit_criteria": [
-      "No deprecation warnings from datetime",
-      "All timestamps timezone-aware"
-    ],
-    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
-  },
-  {
-    "id": "3.1.0",
-    "name": "React + Vite + Tailwind scaffold",
-    "sprint": "3.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Create React web dashboard with Vite, TypeScript, Tailwind CSS, React Router. Basic page structure for /, /queue, /jobs/:id, /settings",
-    "files": [
+      "package.json",
       "web/package.json",
-      "web/src/App.tsx",
-      "web/src/components/Layout.tsx",
-      "web/src/pages/"
+      "mcp_server/server.py",
+      "docs/",
+      "CLAUDE.md"
     ],
     "exit_criteria": [
-      "npm install succeeds",
-      "TypeScript compiles without errors",
-      "Basic routing works"
-    ]
+      "Complete inventory of files/configs requiring changes",
+      "Risk assessment for breaking changes",
+      "Recommended migration steps documented",
+      "Decision on whether to do in-place rename or fresh repo"
+    ],
+    "source": "User request 2026-01-12"
   },
   {
-    "id": "3.1.1",
-    "name": "Dashboard: Active model/preset display",
-    "sprint": "3.1",
-    "status": "completed",
+    "id": "backlog.2",
+    "name": "Content Calendar bulk scheduling interface",
+    "sprint": "backlog",
+    "status": "pending",
     "agent": "orchestrator",
-    "description": "Surface active LLM model and OpenRouter preset in dashboard UI for auditing",
+    "priority": "medium",
+    "description": "Design and implement interface for bulk Content Calendar task creation. User workflow: paste list of videos with target days (e.g., 'Midshow 1211 - Cia Siab Inc. - Thursday') \u2192 system looks up Media IDs, determines required platforms, checks editing status \u2192 creates Content Calendar entries in 'All Tasks' table linked to SST records with publish date/time and due date (2 weeks prior). Reference existing automation: /Users/mriechers/Developer/the-lodge/workflow-automation/airtable-pbswi-automations/scripts/content-calendar-automation.js. SAFETY ARCHITECTURE: Controlled Airtable write access with strict guardrails - (1) scope-limited to Content Calendar/All Tasks table ONLY, (2) append-only operations (CREATE, never UPDATE/DELETE), (3) API-level or code-level enforcement of these constraints, (4) explicit user confirmation before any write.",
     "files": [
-      "web/src/components/StatusBar.tsx"
-    ],
-    "exit_criteria": [
-      "Current model visible in UI",
-      "Preset name displayed if set"
-    ],
-    "source": "DEV_OPENROUTER_WATCHER_NOTES.md"
-  },
-  {
-    "id": "4.1.1",
-    "name": "Claude Desktop agent instructions: Airtable SST integration",
-    "sprint": "4.1",
-    "status": "completed",
-    "agent": "cli-agent/claude",
-    "description": "Update Claude Desktop copy-editor agent instructions for Airtable MCP integration (READ-ONLY). Draft copy sources: (1) Screenshots - user can paste/share a screenshot of draft copy, (2) Airtable MCP - agent uses file names (media IDs like 2WLI1209HD_midshow) to find matching Single Source of Truth records and pull Short/Long Description. Key insight: Airtable is a LIVE source throughout the workflow \u2014 user edits in Airtable, agent can re-read updated copy at any point. Agent NEVER writes to Airtable; user manually applies approved changes.",
-    "files": [
-      ".claude/agents/copy-editor.md"
-    ],
-    "exit_criteria": [
-      "Agent instructions document screenshot workflow for draft copy",
-      "Agent instructions document Airtable MCP lookup by media ID",
-      "Instructions explain Airtable as live/canonical source throughout revision cycle",
-      "Instructions include re-reading workflow (user edits in Airtable \u2192 agent reads updates)",
-      "Instructions handle graceful degradation when Airtable MCP unavailable"
-    ],
-    "source": "User conversation 2025-12-23 - Airtable MCP integration demo"
-  },
-  {
-    "id": "4.1.2",
-    "name": "Copy-editor agent: needs_review flag handling",
-    "sprint": "4.1",
-    "status": "completed",
-    "agent": "cli-agent/claude",
-    "description": "Chat agent should check for needs_review flag on transcripts and proactively offer to resolve flagged items. When opening a transcript, agent checks manifest for needs_review:true or scans for <!-- NEEDS_REVIEW --> marker / '## Review Notes' section, then surfaces these items for user attention before proceeding with editing.",
-    "files": [
-      ".claude/agents/copy-editor.md"
-    ],
-    "exit_criteria": [
-      "Agent checks needs_review flag in manifest on transcript open",
-      "Agent scans for NEEDS_REVIEW marker as fallback",
-      "Agent proactively lists review items to user",
-      "Agent offers to resolve items (speaker names, spellings, roles)"
-    ],
-    "source": "V2_AGENT_FEEDBACK_FOR_V3.md"
-  },
-  {
-    "id": "4.1.3",
-    "name": "Revision reports: inline display in conversation",
-    "sprint": "4.1",
-    "status": "completed",
-    "agent": "cli-agent/claude",
-    "description": "Revision reports should display inline in the conversation rather than saving to files. Agent outputs formatted revision summary directly in chat after completing edits. Airtable MCP remains READ-ONLY \u2014 agent can pull SST data but user manually updates Airtable with approved changes. This keeps human in the loop for all writes while maintaining Airtable as canonical source.",
-    "files": [
-      ".claude/agents/copy-editor.md"
-    ],
-    "exit_criteria": [
-      "Agent instructions specify inline report output (no file save)",
-      "Report template defined for consistent formatting",
-      "Instructions clarify Airtable is read-only for agent",
-      "User workflow documented: review inline report \u2192 manually update Airtable"
-    ],
-    "source": "User conversation 2025-12-23 - inline report display feedback"
-  },
-  {
-    "id": "4.2.6",
-    "name": "Watch folder transcript auto-queue",
-    "sprint": "4.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Script to watch transcripts/ folder and auto-queue new files for processing",
-    "files": [
-      "watch_transcripts.py"
-    ],
-    "exit_criteria": [
-      "Script queues unprocessed files",
-      "Can run --once for batch or continuous watch"
-    ],
-    "source": "User conversation 2025-12-30"
-  },
-  {
-    "id": "4.2.7",
-    "name": "Free tier model prompt refinements",
-    "sprint": "4.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Update formatter and SEO prompts to work better with free tier models: no title-based speaker labels, no section headers, plain Markdown output",
-    "files": [
-      ".claude/agents/formatter.md",
-      ".claude/agents/seo.md"
-    ],
-    "exit_criteria": [
-      "Formatter uses actual names not titles",
-      "No section headers in transcripts",
-      "SEO outputs plain Markdown"
-    ],
-    "source": "User conversation 2025-12-30 - cheapskate tier output review"
-  },
-  {
-    "id": "5.1.1",
-    "name": "Web UI bulk transcript uploader",
-    "sprint": "5.1",
-    "status": "moved",
-    "agent": "orchestrator",
-    "description": "MOVED TO 7.2.1 - Deferred to Sprint 7.2 (watch_transcripts.py works for now)",
-    "files": [
-      "web/src/pages/Upload.tsx",
-      "api/routers/queue.py"
-    ],
-    "exit_criteria": [
-      "Drag-and-drop file upload",
-      "Batch queue creation",
-      "Progress indicator"
-    ],
-    "source": "User conversation 2025-12-30"
-  },
-  {
-    "id": "5.1.2",
-    "name": "Manager agent with QA review",
-    "sprint": "5.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Implement Manager agent that reviews all automated outputs before project completion, auditing cheaper model work",
-    "files": [
-      ".claude/agents/manager.md",
-      "api/services/worker.py"
-    ],
-    "exit_criteria": [
-      "Manager reviews all outputs before completion",
-      "Can flag issues and request re-runs",
-      "Runs on big-brain tier"
-    ],
-    "source": "User conversation 2025-12-30 - QA for cheapskate tier"
-  },
-  {
-    "id": "6.1.1",
-    "name": "Add Airtable fields to Job model",
-    "sprint": "6.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Add airtable_record_id and airtable_url fields to Job model with database migration",
-    "files": [
-      "api/models/job.py",
-      "alembic/versions/004_add_airtable_fields.py"
-    ],
-    "exit_criteria": [
-      "Job model has airtable_record_id (nullable string)",
-      "Job model has airtable_url (nullable string)",
-      "Migration runs without error"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.1"
-  },
-  {
-    "id": "6.1.2",
-    "name": "Create Airtable service (READ-ONLY)",
-    "sprint": "6.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Create Airtable API service for SST lookups. READ-ONLY - no write operations. Uses direct Airtable API (not MCP) for headless worker.",
-    "files": [
+      "web/src/pages/Schedule.tsx",
+      "api/routers/schedule.py",
       "api/services/airtable.py"
     ],
     "exit_criteria": [
-      "AirtableClient class with API key auth",
-      "search_sst_by_media_id() function",
-      "get_sst_record() function",
-      "Graceful error handling when record not found"
+      "Research: Document All Tasks table schema and required fields",
+      "Research: Map platform determination logic from SST fields",
+      "Research: Understand content-calendar-automation.js patterns",
+      "Design: UX mockup for bulk input \u2192 preview \u2192 confirm flow",
+      "Design: Decide on Airtable write policy (agent writes vs human confirms)",
+      "Implementation: Working bulk scheduling with editing status visibility"
     ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.1"
+    "source": "User request 2026-01-12",
+    "research_refs": [
+      "/Users/mriechers/Developer/the-lodge/workflow-automation/airtable-pbswi-automations/scripts/content-calendar-automation.js",
+      "docs/AIRTABLE_CHEATSHEET.md"
+    ]
   },
   {
-    "id": "6.1.3",
-    "name": "Media ID extraction utility",
-    "sprint": "6.1",
-    "status": "completed",
+    "id": "backlog.3",
+    "name": "Cloudflare Tunnel for remote access",
+    "sprint": "backlog",
+    "status": "pending",
     "agent": "orchestrator",
-    "description": "Extract Media ID from transcript filename (e.g., 2WLI1209HD_ForClaude.txt \u2192 2WLI1209HD)",
+    "priority": "medium",
+    "description": "Configure Cloudflare Tunnel to expose API (port 8000) and web dashboard (port 3000) for secure remote access. Use Cloudflare Access for email-based authentication without requiring application-level auth changes. Enables remote MCP access from Claude Desktop on different machines. Bridge item between V3.5 feature work and V4.0 deployment - allows remote testing without full production hardening.",
     "files": [
-      "api/services/utils.py"
+      "scripts/start.sh",
+      "docs/REMOTE_ACCESS.md"
     ],
     "exit_criteria": [
-      "extract_media_id() handles _ForClaude suffix",
-      "Handles _REV suffixes",
-      "Handles .srt and .txt extensions"
+      "cloudflared installed and tunnel created",
+      "API and web dashboard accessible via tunnel URL",
+      "Cloudflare Access configured with email allowlist",
+      "Documentation for setup and usage",
+      "Optional: MCP server exposed for remote Claude Desktop"
     ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.1"
+    "source": "User request 2026-01-14",
+    "notes": "Tactical infrastructure task, not a product feature. Can be done independently of sprint work. See planning/DESIGN_4.0.md Part 6 for detailed setup instructions."
   },
   {
-    "id": "6.1.4",
-    "name": "Auto-link SST on job creation",
-    "sprint": "6.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "When job is created, extract Media ID from filename, lookup SST record, store airtable_record_id and airtable_url",
+    "id": "11.1.1",
+    "name": "Database migration: available_files table",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "critical",
+    "description": "Create Alembic migration for the available_files table to track remote SRT files discovered on the ingest server. Includes columns for remote_url (unique), filename, directory_path, media_id, file_size_bytes, remote_modified_at, first_seen_at, last_seen_at, status (new/queued/ignored/missing), status_changed_at, and job_id foreign key. Add indexes on status, media_id, and first_seen_at.",
     "files": [
-      "api/routers/queue.py",
+      "alembic/versions/XXX_add_available_files.py"
+    ],
+    "exit_criteria": [
+      "Migration creates available_files table with all specified columns",
+      "Indexes created on status, media_id, first_seen_at",
+      "Foreign key to jobs table on job_id",
+      "Migration runs without error (up and down)"
+    ],
+    "dependencies": [],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+  },
+  {
+    "id": "11.1.2",
+    "name": "Pydantic models for ingest types",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "critical",
+    "description": "Create Pydantic models for ingest-related data types: RemoteFile (file discovered on server), AvailableFile (database record), ScanResult (scan operation result), IngestConfig (server configuration). These models support the API endpoints and scanner service.",
+    "files": [
+      "api/models/ingest.py"
+    ],
+    "exit_criteria": [
+      "RemoteFile model with url, filename, size, modified_at",
+      "AvailableFile model matching database schema",
+      "ScanResult with new_files_found, total_files, duration_ms",
+      "IngestConfig with base_url, poll_interval, file_extensions, auth settings"
+    ],
+    "dependencies": [],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+  },
+  {
+    "id": "11.1.3",
+    "name": "Ingest configuration schema and defaults",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "critical",
+    "description": "Add ingest_server configuration section to config/llm-config.json with sensible defaults. Include enabled flag, base_url, directories to watch, poll_interval_minutes, file_extensions, auth settings, and timeout. Load and validate configuration in the application.",
+    "files": [
+      "config/llm-config.json",
+      "api/services/config.py"
+    ],
+    "exit_criteria": [
+      "ingest_server section added to llm-config.json",
+      "Config loaded and validated on app startup",
+      "Environment variable overrides work (INGEST_SERVER_URL, etc.)",
+      "Graceful handling when config section missing"
+    ],
+    "dependencies": [],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+  },
+  {
+    "id": "11.1.4",
+    "name": "IngestScanner service: directory listing parser",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "critical",
+    "description": "Create IngestScanner service with HTTP client and HTML parser. Implements parse_directory_listing() to extract file info from Apache/nginx autoindex HTML. Handles various autoindex formats, extracts filenames, sizes, and dates. Uses BeautifulSoup for HTML parsing. Includes robust error handling for network failures and malformed HTML.",
+    "files": [
+      "api/services/ingest_scanner.py"
+    ],
+    "exit_criteria": [
+      "parse_directory_listing() extracts files from Apache autoindex HTML",
+      "Handles nginx autoindex format as well",
+      "Extracts filename, optional size, optional date",
+      "Filters by configured file extensions (.srt, .txt)",
+      "Graceful handling of malformed HTML"
+    ],
+    "dependencies": [
+      "11.1.2",
+      "11.1.3"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+  },
+  {
+    "id": "11.1.5",
+    "name": "IngestScanner service: scan and diff logic",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "critical",
+    "description": "Add scan_remote_server() method to IngestScanner that fetches directory listings, compares against database records, and updates available_files table. New files get status='new', missing files get status='missing', existing files update last_seen_at. Uses extract_media_id() utility for Media ID extraction from filenames.",
+    "files": [
+      "api/services/ingest_scanner.py",
       "api/services/database.py"
     ],
     "exit_criteria": [
-      "Queue POST extracts Media ID",
-      "Looks up SST record via Airtable service",
-      "Stores record ID and URL on job",
-      "Graceful handling when SST not found"
+      "scan_remote_server() fetches and parses remote directories",
+      "New files inserted with status='new'",
+      "Existing files update last_seen_at",
+      "Missing files marked status='missing'",
+      "Media ID extracted and stored"
     ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.1"
+    "dependencies": [
+      "11.1.1",
+      "11.1.4"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "6.1.5",
-    "name": "Display SST link in Job Detail page",
-    "sprint": "6.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Show clickable Airtable link in JobDetail.tsx when job has airtable_url",
+    "id": "11.1.6",
+    "name": "IngestScanner service: file download",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "high",
+    "description": "Add download_file() method to IngestScanner that downloads a remote file to the transcripts/ folder. Includes URL validation (only allow configured base URL), file size limits (100MB max), proper error handling, and returns the local file path on success.",
     "files": [
-      "web/src/pages/JobDetail.tsx"
+      "api/services/ingest_scanner.py"
     ],
     "exit_criteria": [
-      "SST link displayed if available",
-      "Opens Airtable in new tab",
-      "Graceful display when no SST link"
+      "download_file() fetches remote file to transcripts/",
+      "URL validation prevents downloads from non-allowed domains",
+      "File size limit enforced (configurable, default 100MB)",
+      "Returns Path to downloaded file",
+      "Proper cleanup on failure"
     ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.1"
+    "dependencies": [
+      "11.1.4"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "6.2.1",
-    "name": "Fetch SST fields on job start",
-    "sprint": "6.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Worker fetches SST metadata (title, descriptions, keywords, tags, host, presenter) when starting job processing",
+    "id": "11.1.7",
+    "name": "Ingest API router: read endpoints",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "critical",
+    "description": "Create ingest router with read-only endpoints: GET /api/ingest/available (list new files with filtering), GET /api/ingest/status (scanner status and file counts). Follows existing router patterns from jobs.py and queue.py.",
     "files": [
-      "api/services/worker.py"
-    ],
-    "exit_criteria": [
-      "Worker fetches SST on job start",
-      "SST data stored in job context",
-      "Processing continues if SST unavailable"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.2"
-  },
-  {
-    "id": "6.2.2",
-    "name": "Update analyst prompt with SST context",
-    "sprint": "6.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Update analyst agent to receive and use SST metadata for enhanced analysis",
-    "files": [
-      ".claude/agents/analyst.md"
-    ],
-    "exit_criteria": [
-      "Prompt includes SST context section",
-      "Agent uses existing metadata for alignment",
-      "Graceful handling when SST unavailable"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.2"
-  },
-  {
-    "id": "6.2.3",
-    "name": "Update formatter prompt with SST context",
-    "sprint": "6.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Update formatter agent with SST speaker/topic hints from Host and Presenter fields",
-    "files": [
-      ".claude/agents/formatter.md"
-    ],
-    "exit_criteria": [
-      "Prompt includes host/presenter names from SST",
-      "Uses project context for speaker identification"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.2"
-  },
-  {
-    "id": "6.2.4",
-    "name": "Update SEO prompt with SST context",
-    "sprint": "6.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Update SEO agent to align recommendations with existing SST descriptions and keywords",
-    "files": [
-      ".claude/agents/seo.md"
-    ],
-    "exit_criteria": [
-      "Prompt includes existing SST metadata",
-      "Agent aligns with existing descriptions",
-      "Agent builds on existing keywords"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.2"
-  },
-  {
-    "id": "6.2.5",
-    "name": "Update manager prompt for SST cross-reference",
-    "sprint": "6.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "description": "Update manager agent to cross-reference outputs against SST metadata for consistency",
-    "files": [
-      ".claude/agents/manager.md"
-    ],
-    "exit_criteria": [
-      "Manager receives SST context",
-      "Checks consistency with canonical metadata",
-      "Flags significant deviations"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.2"
-  },
-  {
-    "id": "6.3.1",
-    "name": "API endpoint: GET /api/jobs/by-media-id/{media_id}",
-    "sprint": "6.3",
-    "status": "superseded",
-    "agent": "orchestrator",
-    "description": "API endpoint to find job by Media ID, returning job + all outputs + SST context [SUPERSEDED by Sprint 10.1 MCP Server - slash commands replaced by MCP tools]",
-    "files": [
-      "api/routers/jobs.py",
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "Endpoint returns job by Media ID",
-      "Includes all agent outputs",
-      "Includes SST metadata",
-      "Returns 404 if not found"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.3"
-  },
-  {
-    "id": "6.3.2",
-    "name": "Slash command: /lookup <media_id>",
-    "sprint": "6.3",
-    "status": "superseded",
-    "agent": "orchestrator",
-    "description": "Claude Desktop slash command to find job and SST record by Media ID [SUPERSEDED by Sprint 10.1 MCP Server - slash commands replaced by MCP tools]",
-    "files": [
-      ".claude/commands/lookup.md"
-    ],
-    "exit_criteria": [
-      "Command finds job by Media ID",
-      "Displays SST record info",
-      "Shows job status and outputs"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.3"
-  },
-  {
-    "id": "6.3.3",
-    "name": "Slash command: /edit <media_id>",
-    "sprint": "6.3",
-    "status": "superseded",
-    "agent": "orchestrator",
-    "description": "Claude Desktop slash command that loads all context needed to start editing immediately [SUPERSEDED by Sprint 10.1 MCP Server - slash commands replaced by MCP tools]",
-    "files": [
-      ".claude/commands/edit.md"
-    ],
-    "exit_criteria": [
-      "Command loads full edit context bundle",
-      "Includes all agent outputs",
-      "Includes SST metadata",
-      "Includes transcript"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.3"
-  },
-  {
-    "id": "6.3.4",
-    "name": "Slash command: /available",
-    "sprint": "6.3",
-    "status": "superseded",
-    "agent": "orchestrator",
-    "description": "Claude Desktop slash command to list jobs ready for editing (completed, not yet edited) [SUPERSEDED by Sprint 10.1 MCP Server - slash commands replaced by MCP tools]",
-    "files": [
-      ".claude/commands/available.md"
-    ],
-    "exit_criteria": [
-      "Command lists completed jobs",
-      "Shows Media ID, title, completion time",
-      "Sorted by most recent"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 6.3"
-  },
-  {
-    "id": "7.1.1",
-    "name": "WebSocket endpoint for live updates",
-    "sprint": "7.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "low",
-    "description": "Add WebSocket endpoint /ws/jobs for real-time job status updates",
-    "files": [
-      "api/routers/websocket.py",
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "WebSocket endpoint accepts connections",
-      "Emits job status changes",
-      "Emits phase completions"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 7.1"
-  },
-  {
-    "id": "7.1.2",
-    "name": "Dashboard WebSocket client",
-    "sprint": "7.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "low",
-    "description": "React hook and components for WebSocket live updates",
-    "files": [
-      "web/src/hooks/useWebSocket.ts",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/Home.tsx"
-    ],
-    "exit_criteria": [
-      "useWebSocket hook manages connection",
-      "Queue page updates in real-time",
-      "Home page updates in real-time"
-    ],
-    "source": "ROADMAP_v3.1.md - Sprint 7.1"
-  },
-  {
-    "id": "7.2.1",
-    "name": "Web UI bulk transcript uploader",
-    "sprint": "7.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "low",
-    "description": "Drag-and-drop batch transcript upload with SST auto-linking (moved from 5.1.1)",
-    "files": [
-      "web/src/components/TranscriptUploader.tsx",
-      "api/routers/upload.py",
-      "web/src/pages/Queue.tsx",
+      "api/routers/ingest.py",
       "api/main.py"
     ],
     "exit_criteria": [
-      "Drag-and-drop file upload",
-      "Batch job creation",
-      "Progress indicator",
-      "SST auto-linking",
-      "Duplicate detection UI"
+      "GET /available returns files filtered by status",
+      "GET /available supports limit and include_ignored params",
+      "GET /status returns scanner config, last_scan_at, file counts",
+      "Router registered in main.py",
+      "Proper error handling and validation"
     ],
-    "source": "ROADMAP_v3.1.md - Sprint 7.2"
+    "dependencies": [
+      "11.1.1",
+      "11.1.2"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "7.3.1",
-    "name": "Timestamp agent (optional)",
-    "sprint": "7.3",
-    "status": "completed",
+    "id": "11.1.8",
+    "name": "Ingest API router: action endpoints",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "orchestrator",
-    "priority": "low",
-    "description": "Dedicated agent for timestamp refinement, SRT parsing and regeneration. Auto-triggers for 30+ minute content.",
+    "priority": "critical",
+    "description": "Add action endpoints to ingest router: POST /api/ingest/queue/{file_id} (download and queue single file), POST /api/ingest/queue/bulk (queue multiple files), POST /api/ingest/ignore/{file_id}, POST /api/ingest/unignore/{file_id}, POST /api/ingest/scan (trigger manual scan). Queue endpoints integrate with existing job creation logic including SST auto-linking.",
     "files": [
-      ".claude/agents/timestamp.md",
-      "api/services/worker.py",
-      "api/services/utils.py"
+      "api/routers/ingest.py"
     ],
     "exit_criteria": [
-      "Timestamp agent instructions defined",
-      "Optional phase in worker (auto for 30+ min)",
-      "SRT parsing utility with clean/generate/VTT"
+      "POST /queue/{file_id} downloads file and creates job",
+      "POST /queue/bulk handles multiple files atomically",
+      "POST /ignore and /unignore update file status",
+      "POST /scan triggers immediate scan and returns results",
+      "SST auto-linking works for queued files",
+      "Proper error responses for not found, already queued, etc."
     ],
-    "source": "ROADMAP_v3.1.md - Sprint 7.3"
+    "dependencies": [
+      "11.1.5",
+      "11.1.6",
+      "11.1.7"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "8.1.1",
-    "name": "Add skip navigation link",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "critical",
-    "description": "Add skip link to bypass navigation for keyboard users. First focusable element, visible on focus, targets #main-content.",
+    "id": "11.1.9",
+    "name": "Background polling task for ingest scanner",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "high",
+    "description": "Add background polling loop that runs the ingest scanner at configured intervals. Integrates with FastAPI startup/shutdown events. Logs scan results, handles errors gracefully without crashing the polling loop. Respects enabled/disabled config flag.",
     "files": [
+      "api/main.py",
+      "api/services/ingest_scanner.py"
+    ],
+    "exit_criteria": [
+      "Polling task starts on app startup (if enabled)",
+      "Runs at configured poll_interval_minutes",
+      "Errors logged but don't crash loop",
+      "Clean shutdown on app termination",
+      "Can be disabled via config"
+    ],
+    "dependencies": [
+      "11.1.5"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+  },
+  {
+    "id": "11.1.10",
+    "name": "IngestPanel React component",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "high",
+    "description": "Create IngestPanel React component for the dashboard. Shows list of new files from ingest server with filename, media_id, first_seen time. Includes 'Add to Queue' and 'Ignore' buttons per file, 'Queue All' bulk action, 'Scan Now' button, and last scan timestamp. Uses existing UI patterns (cards, buttons, skeleton loaders).",
+    "files": [
+      "web/src/components/IngestPanel.tsx"
+    ],
+    "exit_criteria": [
+      "Displays list of available files with metadata",
+      "Add to Queue button queues individual file",
+      "Ignore button hides file from list",
+      "Queue All button with confirmation",
+      "Scan Now button triggers manual scan",
+      "Shows last scan time",
+      "Loading and empty states handled"
+    ],
+    "dependencies": [
+      "11.1.7",
+      "11.1.8"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+  },
+  {
+    "id": "11.1.11",
+    "name": "Integrate IngestPanel into dashboard",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "high",
+    "description": "Add IngestPanel to the Home page or create dedicated Ingest page. Add navigation link if separate page. Consider WebSocket integration for real-time updates when new files discovered. Add badge/notification indicator for new file count in navigation.",
+    "files": [
+      "web/src/pages/Home.tsx",
       "web/src/components/Layout.tsx"
     ],
     "exit_criteria": [
-      "Skip link visually hidden by default",
-      "Visible on focus",
-      "Main content has id and tabindex"
+      "IngestPanel visible on Home page (or dedicated page)",
+      "Navigation updated if separate page",
+      "Badge shows count of new files in nav",
+      "Panel refreshes on WebSocket events (if implemented)"
     ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.1"
+    "dependencies": [
+      "11.1.10"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "8.1.2",
-    "name": "Add focus-visible states globally",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "critical",
-    "description": "Add global focus-visible styles in CSS. Blue-500 focus ring with offset for dark backgrounds. Mouse clicks should not trigger focus ring.",
-    "files": [
-      "web/src/index.css"
-    ],
-    "exit_criteria": [
-      "All interactive elements show visible focus ring on keyboard nav",
-      "Focus ring uses blue-500",
-      "Mouse clicks don't trigger focus ring"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.2"
-  },
-  {
-    "id": "8.1.3",
-    "name": "Fix color contrast violations",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "critical",
-    "description": "Replace low-contrast text colors with accessible alternatives. gray-600\u2192gray-400, gray-500\u2192gray-300. Target 4.5:1 minimum ratio.",
-    "files": [
-      "web/src/components/Layout.tsx",
-      "web/src/components/StatusBar.tsx",
-      "web/src/pages/Home.tsx",
-      "web/src/pages/Projects.tsx",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/Settings.tsx"
-    ],
-    "exit_criteria": [
-      "No text below 4.5:1 contrast ratio",
-      "Visual hierarchy maintained",
-      "Verified with contrast checker"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.3"
-  },
-  {
-    "id": "8.1.4",
-    "name": "Add labels to form inputs",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "critical",
-    "description": "Add accessible labels to all form inputs. Can be visually hidden with sr-only class. Include aria-describedby for context.",
-    "files": [
-      "web/src/pages/Projects.tsx",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/Settings.tsx"
-    ],
-    "exit_criteria": [
-      "Every input has associated label with htmlFor/id",
-      "Screen reader announces input purpose",
-      "Optional aria-describedby for context"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.4"
-  },
-  {
-    "id": "8.1.5",
-    "name": "Add ARIA to navigation",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "critical",
-    "description": "Add proper ARIA attributes to navigation landmarks. aria-label on nav, aria-current on active link.",
-    "files": [
-      "web/src/components/Layout.tsx"
-    ],
-    "exit_criteria": [
-      "Navigation has aria-label",
-      "Active link has aria-current=page",
-      "Screen reader announces navigation structure"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.5"
-  },
-  {
-    "id": "8.1.6",
-    "name": "Fix modal accessibility",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "critical",
-    "description": "Make modals fully accessible: focus trap, escape key close, role=dialog, aria-modal, aria-labelledby. Create useFocusTrap hook.",
-    "files": [
-      "web/src/hooks/useFocusTrap.ts",
-      "web/src/pages/Projects.tsx",
-      "web/src/pages/JobDetail.tsx"
-    ],
-    "exit_criteria": [
-      "Modal has role=dialog and aria-modal",
-      "Focus trapped inside modal",
-      "Escape closes modal",
-      "Focus returns to trigger on close"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.6"
-  },
-  {
-    "id": "8.1.7",
-    "name": "Add reduced motion support",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "critical",
-    "description": "Respect prefers-reduced-motion media query. Disable animations when user preference is reduce.",
-    "files": [
-      "web/src/index.css"
-    ],
-    "exit_criteria": [
-      "Animations disabled when prefers-reduced-motion:reduce",
-      "No jerky animations (use 0.01ms)",
-      "Transitions instant"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.7"
-  },
-  {
-    "id": "8.1.8",
-    "name": "Add error announcements",
-    "sprint": "8.1",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "critical",
-    "description": "Add role=alert to error messages for immediate screen reader announcement. Use role=status for success messages.",
-    "files": [
-      "web/src/pages/Settings.tsx",
-      "web/src/pages/JobDetail.tsx",
-      "web/src/pages/System.tsx"
-    ],
-    "exit_criteria": [
-      "Errors have role=alert aria-live=assertive",
-      "Success messages use role=status",
-      "Screen reader announces immediately"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 1.8"
-  },
-  {
-    "id": "8.2.1",
-    "name": "Create Toast notification component",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Create toast notification system with ToastProvider and useToast hook. Bottom-right, stacking, auto-dismiss, accessible.",
-    "files": [
-      "web/src/components/ui/Toast.tsx",
-      "web/src/App.tsx",
-      "web/tailwind.config.js"
-    ],
-    "exit_criteria": [
-      "useToast hook available app-wide",
-      "Toasts appear with animation",
-      "Auto-dismiss configurable",
-      "Screen reader announces"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.1"
-  },
-  {
-    "id": "8.2.2",
-    "name": "Create ConfirmDialog component",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Create styled, accessible confirm dialog to replace native confirm(). Focus Cancel by default, Escape to close.",
-    "files": [
-      "web/src/components/ui/ConfirmDialog.tsx"
-    ],
-    "exit_criteria": [
-      "Dialog centered with backdrop",
-      "Focus on Cancel by default",
-      "Escape closes dialog",
-      "role=alertdialog announced"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.2"
-  },
-  {
-    "id": "8.2.3",
-    "name": "Replace native dialogs in Queue.tsx",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Replace confirm() and alert() calls with ConfirmDialog and Toast components throughout Queue page.",
-    "files": [
-      "web/src/pages/Queue.tsx"
-    ],
-    "exit_criteria": [
-      "No native confirm/alert calls",
-      "All destructive actions use ConfirmDialog",
-      "Success/error feedback uses Toast"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.3"
-  },
-  {
-    "id": "8.2.4",
-    "name": "Create LoadingSpinner component",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "high",
-    "description": "Create reusable loading spinner with sm/md/lg sizes and LoadingPage variant for full-page states.",
-    "files": [
-      "web/src/components/ui/LoadingSpinner.tsx"
-    ],
-    "exit_criteria": [
-      "Three sizes available",
-      "Proper role=status and aria-label",
-      "LoadingPage variant exists"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.4"
-  },
-  {
-    "id": "8.2.5",
-    "name": "Create Skeleton loader components",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Create skeleton loaders for StatCard, JobCard, TableRow, ProjectCard to prevent layout shift during loading.",
-    "files": [
-      "web/src/components/ui/Skeleton.tsx"
-    ],
-    "exit_criteria": [
-      "Skeletons match actual content dimensions",
-      "Pulse animation respects reduced-motion",
-      "aria-hidden on skeletons"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.5"
-  },
-  {
-    "id": "8.2.6",
-    "name": "Replace loading text with skeletons",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Replace all 'Loading...' text with appropriate skeleton components across pages.",
-    "files": [
-      "web/src/pages/Home.tsx",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/Projects.tsx",
-      "web/src/pages/JobDetail.tsx"
-    ],
-    "exit_criteria": [
-      "All Loading text replaced",
-      "Skeleton structure matches content",
-      "Smooth transition to content"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.6"
-  },
-  {
-    "id": "8.2.7",
-    "name": "Add action feedback to JobDetail",
-    "sprint": "8.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Add toast notifications for all job actions (pause, resume, retry, cancel) in JobDetail page.",
-    "files": [
-      "web/src/pages/JobDetail.tsx"
-    ],
-    "exit_criteria": [
-      "Success toast after each action",
-      "Error toast on failure",
-      "Action-specific messages"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 2.7"
-  },
-  {
-    "id": "8.3.1",
-    "name": "Fix back navigation in JobDetail",
-    "sprint": "8.3",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Replace hardcoded /queue back link with browser history navigation using navigate(-1).",
-    "files": [
-      "web/src/pages/JobDetail.tsx"
-    ],
-    "exit_criteria": [
-      "Back returns to previous page",
-      "Works from any entry point",
-      "Screen reader announces button"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 3.1"
-  },
-  {
-    "id": "8.3.2",
-    "name": "Add Breadcrumb component",
-    "sprint": "8.3",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Create breadcrumb component for multi-level navigation context. Last item is current page (not a link).",
-    "files": [
-      "web/src/components/ui/Breadcrumb.tsx",
-      "web/src/pages/JobDetail.tsx"
-    ],
-    "exit_criteria": [
-      "Shows full path to current page",
-      "Last item has aria-current=page",
-      "aria-label on nav element"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 3.2"
-  },
-  {
-    "id": "8.3.3",
-    "name": "Add System page to main navigation",
-    "sprint": "8.3",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Add System page to main navigation instead of only in StatusBar.",
-    "files": [
-      "web/src/components/Layout.tsx"
-    ],
-    "exit_criteria": [
-      "System accessible from main nav",
-      "Active state matches other nav items"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 3.3"
-  },
-  {
-    "id": "8.3.4",
-    "name": "Add filter counts to Queue tabs",
-    "sprint": "8.3",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Show job counts on filter tabs to provide context without clicking each status.",
-    "files": [
-      "web/src/pages/Queue.tsx"
-    ],
-    "exit_criteria": [
-      "Each tab shows count badge",
-      "Counts update when jobs change",
-      "Badge styled consistently"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 3.4"
-  },
-  {
-    "id": "8.3.5",
-    "name": "Implement instant search with debounce",
-    "sprint": "8.3",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Replace form-submit search with instant search (300ms debounce). Create useDebounce hook.",
-    "files": [
-      "web/src/hooks/useDebounce.ts",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/Projects.tsx"
-    ],
-    "exit_criteria": [
-      "Typing filters after 300ms",
-      "No submit button needed",
-      "URL updates for bookmarking"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 3.5"
-  },
-  {
-    "id": "8.3.6",
-    "name": "Add keyboard shortcuts",
-    "sprint": "8.3",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Add global keyboard shortcuts for navigation (g+h, g+q, etc.) and actions. Create useKeyboardShortcuts hook.",
-    "files": [
-      "web/src/hooks/useKeyboardShortcuts.ts",
-      "web/src/components/Layout.tsx"
-    ],
-    "exit_criteria": [
-      "Shortcuts work from any page",
-      "Disabled when typing in inputs",
-      "Help modal shows shortcuts"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 3.6"
-  },
-  {
-    "id": "8.4.1",
-    "name": "Refactor Settings page with tabs",
-    "sprint": "8.4",
-    "status": "completed",
+    "id": "11.1.12",
+    "name": "Ingest scanner unit and integration tests",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "orchestrator",
     "priority": "medium",
-    "description": "Break 630-line Settings page into tabbed sections: Agents, Routing, Worker, Accessibility. Complex multi-file refactor.",
+    "description": "Create comprehensive tests for ingest functionality. Unit tests: HTML parsing for various Apache/nginx formats, media ID extraction, file status transitions. Integration tests: API endpoints, queue workflow, scan operation. Mock HTTP responses for remote server.",
     "files": [
-      "web/src/pages/Settings.tsx"
+      "tests/api/test_ingest_scanner.py",
+      "tests/api/test_ingest_router.py"
     ],
     "exit_criteria": [
-      "Settings split into 4 tabs",
-      "Tab state persists",
-      "Keyboard navigation between tabs",
-      "URL updates with tab param"
+      "test_ingest_scanner.py covers HTML parsing variants",
+      "test_ingest_scanner.py covers media ID extraction edge cases",
+      "test_ingest_router.py covers all API endpoints",
+      "Mocking used for HTTP and database",
+      "Tests pass in CI"
     ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 4.1"
+    "dependencies": [
+      "11.1.8"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "8.4.2",
-    "name": "Simplify StatusBar information",
-    "sprint": "8.4",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Reduce StatusBar density by moving details to dropdown. Show only connection status and queue count by default.",
-    "files": [
-      "web/src/components/StatusBar.tsx"
-    ],
-    "exit_criteria": [
-      "Default view shows essential info only",
-      "Full details in dropdown",
-      "Mobile-friendly (no hover-only)"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 4.2"
-  },
-  {
-    "id": "8.4.3",
-    "name": "Add relative time display utilities",
-    "sprint": "8.4",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Create formatRelativeTime, formatDuration, formatTimestamp utilities for human-friendly time display.",
-    "files": [
-      "web/src/utils/formatTime.ts"
-    ],
-    "exit_criteria": [
-      "just now for <60s",
-      "Xm/Xh/Xd ago format",
-      "Full date for >7 days"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 4.3"
-  },
-  {
-    "id": "8.4.4",
-    "name": "Apply relative times throughout app",
-    "sprint": "8.4",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Replace absolute timestamps with relative times. Show full timestamp on hover with title attribute.",
-    "files": [
-      "web/src/pages/Home.tsx",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/JobDetail.tsx",
-      "web/src/components/StatusBar.tsx"
-    ],
-    "exit_criteria": [
-      "All timestamps show relative time",
-      "Hover shows full timestamp",
-      "Screen readers announce full timestamp"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 4.4"
-  },
-  {
-    "id": "8.4.5",
-    "name": "Add duration to completed jobs",
-    "sprint": "8.4",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Show processing duration for completed jobs in JobDetail timeline and Queue table.",
-    "files": [
-      "web/src/pages/Home.tsx",
-      "web/src/pages/Queue.tsx",
-      "web/src/pages/JobDetail.tsx"
-    ],
-    "exit_criteria": [
-      "Duration shown for completed jobs",
-      "Format: Xs, Xm Ys, or Xh Ym",
-      "Dash for non-completed jobs"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 4.5"
-  },
-  {
-    "id": "8.5.1",
-    "name": "Create Preferences context",
-    "sprint": "8.5",
-    "status": "completed",
+    "id": "11.1.13",
+    "name": "Database migration: screengrab_attachments audit table",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "the-drone",
-    "priority": "low",
-    "description": "Create PreferencesContext for user preferences (reduceMotion, textSize, highContrast, etc.) with localStorage persistence.",
+    "priority": "high",
+    "description": "Create Alembic migration for screengrab_attachments audit log table. Tracks all Airtable attachment operations for accountability. Columns: available_file_id (FK), sst_record_id, media_id, filename, remote_url, attached_at, attachments_before, attachments_after, success, error_message. Critical for audit trail of the controlled Airtable write exception.",
     "files": [
-      "web/src/context/PreferencesContext.tsx",
-      "web/src/App.tsx"
+      "alembic/versions/XXX_add_screengrab_attachments.py"
     ],
     "exit_criteria": [
-      "Preferences persist across reloads",
-      "Changes apply immediately",
-      "Reset function restores defaults"
+      "Migration creates screengrab_attachments table with all columns",
+      "Foreign key to available_files table",
+      "Migration runs without error (up and down)",
+      "Indexes on sst_record_id and attached_at for query performance"
     ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 5.1"
+    "dependencies": [
+      "11.1.1"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Screengrab Workflow"
   },
   {
-    "id": "8.5.2",
-    "name": "Add Accessibility settings section",
-    "sprint": "8.5",
-    "status": "completed",
+    "id": "11.1.14",
+    "name": "Extend available_files for screengrab support",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "the-drone",
-    "priority": "low",
-    "description": "Add Accessibility tab to Settings with preference controls: reduce motion, text size, high contrast, persistent notifications.",
+    "priority": "high",
+    "description": "Update 11.1.1 migration to include file_type column ('transcript' or 'screengrab'), airtable_record_id, and attached_at columns. Add index on file_type. Update Pydantic models to include new fields and status values ('attached', 'no_match').",
     "files": [
-      "web/src/pages/Settings.tsx"
+      "alembic/versions/XXX_add_available_files.py",
+      "api/models/ingest.py"
     ],
     "exit_criteria": [
-      "All preferences have clear labels",
-      "Toggle switches accessible",
-      "Changes take effect immediately"
+      "file_type column distinguishes transcripts from screengrabs",
+      "airtable_record_id stores SST record after attachment",
+      "attached_at timestamp for screengrab attachments",
+      "Status enum includes 'attached' and 'no_match' values",
+      "Index on file_type for efficient filtering"
     ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 5.2"
+    "dependencies": [],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Database Schema"
   },
   {
-    "id": "8.5.3",
-    "name": "Apply preferences throughout app",
-    "sprint": "8.5",
-    "status": "completed",
+    "id": "11.1.15",
+    "name": "Update IngestScanner for JPG file detection",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "the-drone",
-    "priority": "low",
-    "description": "Wire up preferences to actual UI behavior: text size CSS, reduce motion class, high contrast mode, StatusBar simplification.",
-    "files": [
-      "web/src/index.css",
-      "web/src/components/Layout.tsx",
-      "web/src/components/ui/Toast.tsx"
-    ],
-    "exit_criteria": [
-      "Text size changes font size",
-      "Reduce motion stops animations",
-      "High contrast improves visibility",
-      "Simplified StatusBar option works"
-    ],
-    "source": "UX_IMPROVEMENT_SPRINT_PLAN.md - Task 5.3"
-  },
-  {
-    "id": "9.1.1",
-    "name": "Fix race condition in claim_next_job",
-    "sprint": "9.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
     "priority": "high",
-    "description": "BUG-001: The claim_next_job function uses SELECT followed by UPDATE which is not atomic. Refactor to use single atomic UPDATE...RETURNING statement to prevent race conditions when multiple workers claim jobs simultaneously.",
+    "description": "Extend IngestScanner to detect and track .jpg/.jpeg/.png files in addition to .srt/.txt. Route files by type: transcripts go to existing workflow, screengrabs go to ScreengrabAttacher. Update config to include screengrab_extensions list.",
     "files": [
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "claim_next_job uses atomic UPDATE...RETURNING",
-      "Existing functionality preserved",
-      "No race conditions possible"
-    ],
-    "source": "SPRINT_PLAN.md - BUG-001 (Gemini Code Review)"
-  },
-  {
-    "id": "9.1.2",
-    "name": "Robust project_path sanitization",
-    "sprint": "9.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "high",
-    "description": "BUG-002: The create_job function derives project_path from project_name without proper sanitization. Add robust handling for invalid path characters (/, :, *, ?, etc.) to prevent file system errors.",
-    "files": [
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "project_name sanitized against all problematic characters",
-      "Invalid characters replaced or removed safely",
-      "Existing paths still work"
-    ],
-    "source": "SPRINT_PLAN.md - BUG-002 (Gemini Code Review)"
-  },
-  {
-    "id": "9.1.3",
-    "name": "Load worker defaults from config file",
-    "sprint": "9.1",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "high",
-    "description": "IMPROVE-001: run_worker.py has hardcoded defaults for poll_interval, heartbeat_interval, and max_concurrent_jobs. Load these from config/llm-config.json instead, with CLI args still overriding config.",
-    "files": [
-      "run_worker.py",
+      "api/services/ingest_scanner.py",
       "config/llm-config.json"
     ],
     "exit_criteria": [
-      "Worker loads settings from llm-config.json",
-      "CLI arguments override config",
-      "Documentation updated"
+      "Scanner detects .jpg, .jpeg, .png files",
+      "Files tagged with file_type='screengrab' in database",
+      "Configuration includes screengrab_extensions array",
+      "Media ID extraction works for screengrab filenames",
+      "Scan results separate transcript and screengrab counts"
     ],
-    "source": "SPRINT_PLAN.md - IMPROVE-001 (Gemini Code Review)"
+    "dependencies": [
+      "11.1.4",
+      "11.1.14"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Architecture Components"
   },
   {
-    "id": "9.2.1",
-    "name": "Add tests for JobWorker",
-    "sprint": "9.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "high",
-    "description": "TEST-001: Create comprehensive tests for JobWorker in api/services/worker.py. Cover state machine, phase transitions, error handling, recovery logic. Use mocking for database and LLM client.",
-    "files": [
-      "tests/api/test_worker.py"
-    ],
-    "exit_criteria": [
-      "New test file created",
-      "All public methods tested",
-      "Happy path and error scenarios covered",
-      "External dependencies mocked"
-    ],
-    "source": "SPRINT_PLAN.md - TEST-001 (Gemini Code Review)"
-  },
-  {
-    "id": "9.2.2",
-    "name": "Add tests for API endpoints",
-    "sprint": "9.2",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "high",
-    "description": "TEST-002: Create tests for FastAPI routers (jobs.py, queue.py). Cover all endpoints with valid/invalid inputs, test HTTP status codes, error cases (404, 400). NOTE: Tests already existed from previous work.",
-    "files": [
-      "tests/api/test_jobs_router.py",
-      "tests/api/test_queue_router.py"
-    ],
-    "exit_criteria": [
-      "Test files created for both routers",
-      "All endpoints tested",
-      "Error cases covered",
-      "Input validation verified"
-    ],
-    "source": "SPRINT_PLAN.md - TEST-002 (Gemini Code Review)"
-  },
-  {
-    "id": "9.2.3",
-    "name": "Add tests for LLMClient",
-    "sprint": "9.2",
-    "status": "completed",
-    "agent": "the-drone",
-    "priority": "medium",
-    "description": "TEST-003: Create tests for LLMClient in api/services/llm.py. Mock LLM backends, test API error handling, cost tracking, model selection, and safety guards.",
-    "files": [
-      "tests/api/test_llm.py"
-    ],
-    "exit_criteria": [
-      "New test file created",
-      "All public methods tested",
-      "Mocking simulates API responses/errors",
-      "Cost tracking and safety guards verified"
-    ],
-    "source": "SPRINT_PLAN.md - TEST-003 (Gemini Code Review)"
-  },
-  {
-    "id": "9.2.4",
-    "name": "Add tests for watch_transcripts.py",
-    "sprint": "9.2",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "medium",
-    "description": "TEST-004: Create tests for the file watcher script. Test new file detection, queueing (mock API calls), handling of already queued files, edge cases like empty directories and invalid file types. NOTE: Comprehensive tests already existed.",
-    "files": [
-      "tests/test_watch_transcripts.py"
-    ],
-    "exit_criteria": [
-      "New test file created",
-      "File detection tested",
-      "API queueing mocked",
-      "Edge cases covered"
-    ],
-    "source": "SPRINT_PLAN.md - TEST-004 (Gemini Code Review)"
-  },
-  {
-    "id": "9.3.1",
-    "name": "Second round code review",
-    "sprint": "9.3",
-    "status": "completed",
-    "agent": "cli-agent/gemini",
-    "priority": "high",
-    "description": "After Sprint 9.1 bug fixes complete, perform a second comprehensive code review to catch any issues missed in the truncated first review. Focus on API services, database operations, and worker logic.",
-    "files": [
-      "api/services/database.py",
-      "api/services/worker.py",
-      "api/services/llm.py",
-      "api/routers/jobs.py",
-      "api/routers/queue.py"
-    ],
-    "exit_criteria": [
-      "Complete code review of all API services",
-      "No critical bugs found or all fixed",
-      "Review report saved to docs/"
-    ],
-    "source": "User request - second review after SPRINT_PLAN.md truncation"
-  },
-  {
-    "id": "10.1.1",
-    "name": "MCP server scaffold",
-    "sprint": "10.1",
-    "status": "completed",
+    "id": "11.1.16",
+    "name": "ScreengrabAttacher service: core logic",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "orchestrator",
     "priority": "critical",
-    "description": "Create MCP server using Python mcp library. Scaffold with server setup, tool/resource registration, and stdio transport for Claude Desktop integration. Server connects to existing FastAPI backend.",
+    "description": "Create ScreengrabAttacher service for Airtable SST attachment. SAFETY CRITICAL: Implements additive-only writes - NEVER removes or replaces existing attachments. Core methods: attach_screengrab(file_id) looks up SST by Media ID, fetches existing Screen Grab attachments, appends new one, updates record. Includes duplicate detection by filename. All operations logged to audit table.",
     "files": [
-      "mcp_server/server.py",
-      "mcp_server/__init__.py",
-      "mcp_server/requirements.txt"
+      "api/services/screengrab_attacher.py"
     ],
     "exit_criteria": [
-      "MCP server starts successfully",
-      "Registers with Claude Desktop",
-      "Connects to FastAPI backend on localhost:8000"
+      "attach_screengrab() appends to existing attachments (NEVER replaces)",
+      "Fetches current attachments before update to preserve them",
+      "Detects duplicate filenames and skips",
+      "Logs all operations to screengrab_attachments table",
+      "Sets status='no_match' when Media ID not found in SST",
+      "Uses SST_TABLE_ID and SCREEN_GRAB_FIELD_ID constants"
     ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - MCP tools section"
+    "dependencies": [
+      "11.1.13",
+      "11.1.14"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Service: ScreengrabAttacher"
   },
   {
-    "id": "10.1.2",
-    "name": "MCP tool: list_processed_projects()",
-    "sprint": "10.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Discover what transcripts have been processed and are ready for editing. Returns project ID, program, topic, duration, status (ready_for_editing, revision_in_progress, processing), and available deliverables.",
-    "files": [
-      "mcp_server/tools/projects.py"
-    ],
-    "exit_criteria": [
-      "Tool returns all processed projects",
-      "Includes status and available deliverables",
-      "Filters by status when requested"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Available Tools section"
-  },
-  {
-    "id": "10.1.3",
-    "name": "MCP tool: load_project_for_editing(name)",
-    "sprint": "10.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Load full context for editing session: transcript content, AI-generated brainstorming (titles, descriptions, keywords), existing revisions, program type, metadata (speakers, topics). The primary tool for starting an edit session.",
-    "files": [
-      "mcp_server/tools/projects.py"
-    ],
-    "exit_criteria": [
-      "Returns complete project bundle",
-      "Includes transcript and brainstorming",
-      "Includes latest revision if exists",
-      "Handles missing files gracefully"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Available Tools section"
-  },
-  {
-    "id": "10.1.4",
-    "name": "MCP tool: get_formatted_transcript(name)",
-    "sprint": "10.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Load AP Style formatted transcript for fact-checking during editing. Used to verify quotes, speaker names, facts, and proper nouns. Falls back gracefully if formatted version not available.",
-    "files": [
-      "mcp_server/tools/projects.py"
-    ],
-    "exit_criteria": [
-      "Returns formatted transcript content",
-      "Indicates if formatted version unavailable",
-      "Agent can fall back to raw transcript"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Fact-Checking Hierarchy section"
-  },
-  {
-    "id": "10.1.5",
-    "name": "MCP tool: save_revision(name, content, version)",
-    "sprint": "10.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Save copy revision documents with auto-versioning. Increments version numbers (v1, v2, v3), updates project manifest, returns confirmation with file path. Essential for persistent editing workflow.",
-    "files": [
-      "mcp_server/tools/revisions.py"
-    ],
-    "exit_criteria": [
-      "Auto-increments version numbers",
-      "Saves to OUTPUT/{project}/ folder",
-      "Updates manifest.json",
-      "Returns file path confirmation"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Saving Work section"
-  },
-  {
-    "id": "10.1.6",
-    "name": "MCP tool: save_keyword_report(name, content, version)",
-    "sprint": "10.1",
-    "status": "completed",
+    "id": "11.1.17",
+    "name": "ScreengrabAttacher service: batch operations",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "orchestrator",
     "priority": "high",
-    "description": "Save keyword/SEO analysis reports with auto-versioning. Used for Keyword Reports and Implementation Reports. Separate from copy revisions for clear deliverable organization.",
+    "description": "Add batch methods to ScreengrabAttacher: attach_all_pending() processes all 'new' screengrabs with matching SST records. Returns BatchAttachResult with attached count, skipped count (no_match), and any errors. Implements rate limiting to avoid Airtable API throttling.",
     "files": [
-      "mcp_server/tools/revisions.py"
+      "api/services/screengrab_attacher.py"
     ],
     "exit_criteria": [
-      "Saves SEO reports with versioning",
-      "Separate from copy_revision files",
-      "Updates manifest with report paths"
+      "attach_all_pending() processes all new screengrabs",
+      "Returns detailed results (attached, skipped, errors)",
+      "Rate limiting prevents API throttling (5 req/sec default)",
+      "Individual failures don't stop batch processing",
+      "Progress can be tracked via return value"
     ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Phase 3: SEO Analysis section"
+    "dependencies": [
+      "11.1.16"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Service: ScreengrabAttacher"
   },
   {
-    "id": "10.1.7",
-    "name": "MCP tool: get_project_summary(name)",
-    "sprint": "10.1",
-    "status": "completed",
+    "id": "11.1.18",
+    "name": "Screengrab API endpoints",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "orchestrator",
-    "priority": "high",
-    "description": "Quick status check for specific project without loading full context. Returns status, available deliverables, latest revision version, last modified date.",
+    "priority": "critical",
+    "description": "Add screengrab-specific endpoints to ingest router: GET /api/ingest/screengrabs (list with SST match preview), POST /api/ingest/screengrabs/{file_id}/attach (attach single), POST /api/ingest/screengrabs/attach-all (batch attach), POST /api/ingest/screengrabs/{file_id}/retry-match (retry SST lookup). Response includes attachment counts before/after.",
     "files": [
-      "mcp_server/tools/projects.py"
+      "api/routers/ingest.py"
     ],
     "exit_criteria": [
-      "Returns lightweight project status",
-      "Shows available deliverables",
-      "Shows revision history summary"
+      "GET /screengrabs returns files with SST match info",
+      "POST /attach performs single attachment with audit logging",
+      "POST /attach-all processes all pending with summary response",
+      "POST /retry-match allows re-lookup after SST record creation",
+      "Response includes attachment_count_before and attachment_count_after",
+      "Proper error handling for no_match, already_attached, API failures"
     ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Available Tools section"
+    "dependencies": [
+      "11.1.16",
+      "11.1.17",
+      "11.1.8"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Screengrab-Specific Endpoints"
   },
   {
-    "id": "10.1.8",
-    "name": "MCP tool: read_project_file(path)",
-    "sprint": "10.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "high",
-    "description": "Read a specific project file by path from manifest. Used when agent needs to access raw transcript or specific deliverable not included in load_project_for_editing bundle.",
-    "files": [
-      "mcp_server/tools/projects.py"
-    ],
-    "exit_criteria": [
-      "Reads file from OUTPUT folder",
-      "Validates path is within project",
-      "Returns file content or error"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - Fact-Checking Hierarchy section"
-  },
-  {
-    "id": "10.1.9",
-    "name": "Claude Desktop configuration docs",
-    "sprint": "10.1",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "high",
-    "description": "Documentation and example config for adding Editorial Assistant MCP server to Claude Desktop. Include troubleshooting for common issues.",
-    "files": [
-      "docs/CLAUDE_DESKTOP_SETUP.md"
-    ],
-    "exit_criteria": [
-      "Setup docs with config example",
-      "Troubleshooting section included",
-      "Verified working on macOS"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - integration requirements"
-  },
-  {
-    "id": "10.1.10",
-    "name": "Web UI: Copy Editor handoff messaging",
-    "sprint": "10.1",
-    "status": "completed",
+    "id": "11.1.19",
+    "name": "ScreengrabPanel React component",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "the-drone",
     "priority": "high",
-    "description": "Update JobDetail page to direct users to Claude Desktop/CLI for copy editing when job is complete. Show friendly CTA: 'Open Claude Desktop and say: I'd like to edit [PROJECT_NAME]'. Include copy button for project name. Link to setup docs for first-time users.",
+    "description": "Create ScreengrabPanel component for dashboard showing screengrab attachment status. Displays: pending screengrabs with SST match preview (title, existing grab count), 'Attach' button per file, 'Attach All' bulk action, 'no_match' items with explanation. Shows attachment audit trail (recent attachments with before/after counts).",
     "files": [
-      "web/src/pages/JobDetail.tsx"
+      "web/src/components/ScreengrabPanel.tsx"
     ],
     "exit_criteria": [
-      "Completed jobs show 'Continue in Claude Desktop' panel",
-      "Shows natural language prompt example",
-      "Copy button for project name",
-      "Links to setup docs"
+      "Lists pending screengrabs with Media ID and SST match info",
+      "Shows existing screengrab count on SST record",
+      "Attach button with confirmation (shows what will happen)",
+      "Attach All with preview of how many will be processed",
+      "No-match items displayed separately with explanation",
+      "Recent attachments audit log section"
     ],
-    "source": "User feedback - web UI should direct to interactive editing experience"
+    "dependencies": [
+      "11.1.18"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Web Dashboard Component"
   },
   {
-    "id": "10.2.1",
-    "name": "MCP resource: SST context integration",
-    "sprint": "10.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Integrate Airtable SST lookup into load_project_for_editing. When project has linked SST record, include title, descriptions, keywords, tags, host, presenter in the context bundle. READ-ONLY.",
+    "id": "11.1.20",
+    "name": "Integrate ScreengrabPanel into dashboard",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "the-drone",
+    "priority": "high",
+    "description": "Add ScreengrabPanel to dashboard, either as tab in IngestPanel or separate section. Update /api/ingest/status to include screengrab counts (new, attached, no_match). Consider auto_attach_screengrabs config option for hands-free operation.",
     "files": [
-      "mcp_server/server.py"
+      "web/src/pages/Home.tsx",
+      "web/src/components/IngestPanel.tsx"
     ],
     "exit_criteria": [
-      "SST data included when available",
-      "Graceful handling when no SST link",
-      "READ-ONLY access enforced"
+      "ScreengrabPanel visible on dashboard",
+      "Status endpoint includes screengrab metrics",
+      "Badge shows count of pending screengrabs",
+      "Optional: auto-attach toggle in settings (if enabled in config)"
     ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md + CLAUDE.md Airtable constraint"
+    "dependencies": [
+      "11.1.19",
+      "11.1.11"
+    ],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
   },
   {
-    "id": "10.2.2",
-    "name": "MCP tool: search_projects",
-    "sprint": "10.2",
-    "status": "completed",
+    "id": "11.1.21",
+    "name": "Screengrab unit and integration tests",
+    "sprint": "11.1",
+    "status": "pending",
     "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Search projects by program name, topic, date range, status. Supports filtering and pagination for large project lists.",
+    "priority": "high",
+    "description": "Comprehensive tests for screengrab workflow. CRITICAL: Test that existing attachments are NEVER removed - this is the key safety constraint. Unit tests: attachment append logic, duplicate detection, no-match handling, audit log creation. Integration tests: API endpoints, batch operations. Mock Airtable API responses.",
     "files": [
-      "mcp_server/server.py"
+      "tests/api/test_screengrab_attacher.py",
+      "tests/api/test_screengrab_api.py"
     ],
     "exit_criteria": [
-      "Text search works",
-      "Status filtering works",
-      "Date range filtering works"
+      "Test verifies existing attachments preserved (CRITICAL)",
+      "Test verifies duplicate filename detection",
+      "Test verifies no_match status when SST not found",
+      "Test verifies audit log entries created",
+      "API endpoint tests cover all responses",
+      "Batch operation tests verify partial failure handling",
+      "Airtable API mocked for all tests"
     ],
-    "source": "User convenience enhancement"
-  },
-  {
-    "id": "10.2.3",
-    "name": "MCP prompts for common workflows",
-    "sprint": "10.2",
-    "status": "completed",
-    "agent": "orchestrator",
-    "priority": "medium",
-    "description": "MCP prompts for copy editing workflows: start_edit_session, review_brainstorming, analyze_seo, fact_check. Pre-built prompts with variable substitution that align with EDITOR_AGENT_INSTRUCTIONS.md phases.",
-    "files": [
-      "mcp_server/server.py"
+    "dependencies": [
+      "11.1.18"
     ],
-    "exit_criteria": [
-      "Prompts registered in MCP server",
-      "Variables substituted correctly",
-      "Align with agent instruction phases"
-    ],
-    "source": "EDITOR_AGENT_INSTRUCTIONS.md - workflow phases"
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Testing Requirements"
   }
 ]

@@ -1,286 +1,166 @@
-# Editorial Assistant v4.0 - Design & Vision Document
+# Editorial Assistant v4.0 - Remote Deployment & Production Hardening
 
-**Goal:** Build on v3.0's reliable local infrastructure to enable remote deployment, embedded chat experiences, multi-user collaboration, and production-grade hardening.
+**Goal:** Transform the Editorial Assistant from a local development tool into a production-ready, remotely-accessible service that can run on VMs (home network, then station infrastructure).
 
-**Status:** Planning document - features tabled from v3.0 for future implementation.
-
+**Status:** Planning document
 **Last Updated:** January 2026
 
 ---
 
 ## Executive Summary
 
-Editorial Assistant v4.0 represents the transition from a **single-user local tool** to a **production-ready, remotely-accessible service**. While v3.0 achieved the core goals of database-backed processing, web dashboard monitoring, and MCP-based copy editing via Claude Desktop, several features were explicitly deferred to maintain scope discipline.
+V4.0 focuses exclusively on **deployment, security, and operational stability**. All feature work has been moved to V3.5 (see `planning/DESIGN_3.5.md`). This document addresses the "where and how" of running the Editorial Assistant, not the "what it does."
 
-This document captures those deferred features as the foundation for v4.0 planning.
-
----
-
-## Features Deferred from v3.0
-
-### 1. Embedded Web Chat (High Priority)
-
-**Original Scope:** Build a chat interface directly into the web dashboard for copy-editor workflow, eliminating the need for Claude Desktop.
-
-**Why Deferred:** Significant complexity - WebSocket real-time messaging, session persistence, artifact rendering. v3.0 uses Claude Desktop with MCP tools as the copy-editor interface instead.
-
-**v4.0 Requirements:**
-
-| Component | Description |
-|-----------|-------------|
-| **WebSocket messaging** | Real-time bidirectional communication with LLM backend |
-| **Session persistence** | Chat history stored per project, resumable conversations |
-| **File attachments** | Upload screenshots, draft copy, reference documents |
-| **Artifact rendering** | Inline display of revision documents, brainstorming output |
-| **Context auto-loading** | Automatically inject project context (transcript, SST metadata, brainstorming) |
-| **Multi-turn conversations** | Maintain coherent conversation state across edits |
-
-**Technical Considerations:**
-- WebSocket endpoint for chat messages (separate from job status WebSocket)
-- LLM backend abstraction for chat (OpenRouter, direct APIs)
-- Conversation context window management
-- Rate limiting and cost controls for interactive chat
-- Mobile-responsive chat UI
-
-**Estimated Effort:** 3-4 sprints
+**Core V4.0 Themes:**
+1. **Remote Deployment** - Run on VMs beyond localhost
+2. **Security Hardening** - Authentication, authorization, audit logging
+3. **Containerization** - Docker for portable deployment
+4. **Operational Stability** - Monitoring, alerting, backup/recovery
+5. **Cost Analysis** - Cloud vs self-hosted decision framework
 
 ---
 
-### 2. Collaborative Document Editing (Future Vision)
+## Part 1: Deployment Targets
 
-**Original Scope:** Integration with Google Docs or similar, where agent writes to a live document, user edits directly, agent reviews changes - true back-and-forth collaboration like working with a human editor.
+### 1.1 Deployment Progression
 
-**Why Deferred:** This is a significant re-architecture, not an incremental upgrade. Would require real-time sync, potentially CRDTs/OTs, robust auth, and fundamental changes to the data layer.
+| Phase | Target | Timeline | Purpose |
+|-------|--------|----------|---------|
+| **Phase A** | Home VM (Proxmox) | V4.0 initial | Validation in controlled environment |
+| **Phase B** | Station infrastructure | V4.0+ | Production deployment for team use |
+| **Phase C** | Cloud option | Future | Scalability or disaster recovery |
 
-**v4.0 Exploration:**
+### 1.2 Home VM Deployment (Phase A)
 
-| Approach | Complexity | Trade-offs |
-|----------|------------|------------|
-| **Google Docs API** | Medium | Requires Google auth, API quotas, formatting translation |
-| **Notion API** | Medium | Requires Notion workspace, block-based editing model |
-| **Custom CRDT editor** | Very High | Full control but massive development effort |
-| **Etherpad integration** | Medium-High | Self-hosted option, real-time collaboration built-in |
-| **Monaco/CodeMirror + Y.js** | High | In-browser collaborative editing with conflict resolution |
+**Environment:**
+- Proxmox hypervisor on home network
+- Ubuntu Server 22.04 LTS VM
+- Cloudflare Tunnel for secure remote access
+- SQLite database (single-user sufficient)
 
-**Recommended v4.0 Approach:**
-1. Start with export-to-Google-Docs functionality (one-way push)
-2. Later add import-from-Google-Docs for round-trip editing
-3. Full real-time collaboration is v5.0 territory
+**Requirements:**
+- Docker Compose for service orchestration
+- Automatic startup on VM boot
+- Log persistence and rotation
+- Basic monitoring (healthchecks, disk space)
 
-**Estimated Effort:** 2-3 sprints for one-way export; 5+ sprints for full collaboration
-
----
-
-### 3. Remote Deployment & Production Hardening
-
-**Original Scope:** Enable running Editorial Assistant on a remote server (Proxmox, cloud VPS, or PBSWI Engineering infrastructure).
-
-**Why Deferred:** v3.0 focused on local reliability and cost optimization. Remote deployment requires auth, security hardening, and observability infrastructure.
-
-**v4.0 Requirements:**
-
-#### 3.1 Server Infrastructure
-
-| Component | Description |
-|-----------|-------------|
-| **ASGI server** | Gunicorn + Uvicorn for production-grade request handling |
-| **Process management** | systemd or supervisor for service lifecycle |
-| **Reverse proxy** | nginx or Caddy for SSL termination, static files |
-| **Database** | SQLite for single-server; PostgreSQL option for scale |
-
-#### 3.2 Security
-
-| Component | Description |
-|-----------|-------------|
-| **Authentication** | Token-based API auth (API keys or JWT) |
-| **Authorization** | Role-based access (admin, editor, viewer) |
-| **Rate limiting** | Per-user/IP request limits |
-| **Audit logging** | Track all authenticated actions |
-| **Secret management** | Environment variables, Vault integration option |
-
-#### 3.3 Deployment Options
-
-| Option | Cost | Requirements |
-|--------|------|--------------|
-| **A. Proxmox (Self-Hosted)** | ~$0/month (electricity) | Docker packaging, remote MCP transport, basic auth |
-| **B. Cloud VPS** | $5-25/month + LLM costs | Same as A, plus domain/SSL, hardened security |
-| **C. PBSWI Engineering** | $0 (absorbed by station) | Rock-solid reliability, predictable cost, easy integration, minimal maintenance, clear documentation, proven track record |
+### 1.3 Station Infrastructure (Phase B)
 
 **PBSWI Engineering Integration Requirements:**
-- Months of stable local production use
-- Predictable LLM spend with cost caps and budget alerts
-- API for integration with existing workflows
-- Self-healing with comprehensive logging
-- Complete handoff documentation
 
-**Estimated Effort:** 2-3 sprints
+| Requirement | Description |
+|-------------|-------------|
+| **Months of stable use** | Proven track record on home VM first |
+| **Predictable LLM spend** | Cost caps, budget alerts, monthly projections |
+| **API documentation** | OpenAPI spec for integration with existing workflows |
+| **Self-healing** | Automatic recovery from transient failures |
+| **Comprehensive logging** | Audit trail for all operations |
+| **Handoff documentation** | Complete setup, operation, and troubleshooting guides |
 
 ---
 
-### 4. Authentication & Multi-User Support
+## Part 2: Security Architecture
 
-**Original Scope:** Separate queues/projects per user, shared project review, approval workflows.
+### 2.1 Authentication Options
 
-**Why Deferred:** v3.0 is explicitly local-only, single-user. Auth adds complexity and v3.0 didn't need it.
+| Method | Complexity | Use Case |
+|--------|------------|----------|
+| **Cloudflare Access** | Low | Email-based gate, no app changes |
+| **API Keys** | Low | Programmatic access, simple tokens |
+| **JWT with refresh** | Medium | Standard web auth, session management |
+| **OAuth/SSO** | Medium-High | Google/Microsoft integration |
+| **LDAP/AD** | High | Enterprise directory integration |
 
-**v4.0 Requirements:**
+**Recommended Progression:**
+1. **Phase A (Home VM):** Cloudflare Access only (email allowlist)
+2. **Phase B (Station):** Add API keys for integration + optional SSO
 
-| Feature | Description |
-|---------|-------------|
-| **User accounts** | Registration, login, password management |
-| **Project ownership** | Projects belong to specific users |
-| **Sharing** | Share project read/write access with other users |
-| **Workspaces/Teams** | Group users into organizations |
-| **Approval workflows** | Request review, approve/reject changes |
-| **Activity feeds** | See what teammates have done |
+### 2.2 Authorization Model
 
-**Authentication Options:**
-1. Simple API keys (minimal, for remote access)
-2. JWT with refresh tokens (standard web auth)
-3. OAuth integration (Google, Microsoft SSO)
-4. LDAP/Active Directory (enterprise)
-
-**Database Schema Additions:**
 ```sql
+-- User accounts (Phase B+)
 CREATE TABLE users (
     id INTEGER PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_hash TEXT,  -- Null if OAuth-only
     role TEXT DEFAULT 'editor',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME
 );
 
+-- Project access control
 CREATE TABLE project_access (
     project_id INTEGER REFERENCES jobs(id),
     user_id INTEGER REFERENCES users(id),
     permission TEXT CHECK (permission IN ('owner', 'editor', 'viewer')),
+    granted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (project_id, user_id)
 );
 
-CREATE TABLE teams (
+-- Audit log
+CREATE TABLE audit_log (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    created_by INTEGER REFERENCES users(id)
-);
-
-CREATE TABLE team_members (
-    team_id INTEGER REFERENCES teams(id),
     user_id INTEGER REFERENCES users(id),
-    role TEXT DEFAULT 'member',
-    PRIMARY KEY (team_id, user_id)
+    action TEXT NOT NULL,
+    resource_type TEXT,
+    resource_id TEXT,
+    details TEXT,  -- JSON
+    ip_address TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-**Estimated Effort:** 2-3 sprints
+### 2.3 Security Checklist
+
+| Category | Item | Priority |
+|----------|------|----------|
+| **Network** | HTTPS only (SSL termination) | P0 |
+| **Network** | Rate limiting (per-IP, per-user) | P1 |
+| **Network** | Cloudflare WAF rules | P2 |
+| **Auth** | Password hashing (bcrypt/argon2) | P0 |
+| **Auth** | Session timeout (configurable) | P1 |
+| **Auth** | Failed login lockout | P1 |
+| **Data** | Encrypted secrets (env vars, not files) | P0 |
+| **Data** | Database backup encryption | P1 |
+| **Audit** | All auth events logged | P0 |
+| **Audit** | All data modifications logged | P1 |
 
 ---
 
-### 5. Mobile Application
+## Part 3: Docker Containerization
 
-**Original Scope:** Push notifications and quick status checks from mobile devices.
-
-**Why Deferred:** Web dashboard is responsive and works on mobile. Native app adds significant development/maintenance burden.
-
-**v4.0 Options:**
-
-| Approach | Pros | Cons |
-|----------|------|------|
-| **PWA (Progressive Web App)** | No app store, shares web codebase | Limited push notification support on iOS |
-| **React Native** | Cross-platform, shared business logic | New codebase, app store management |
-| **Capacitor (Ionic)** | Wrap existing React app | Performance trade-offs, native bridge complexity |
-
-**Recommended v4.0 Approach:**
-1. Enhance web dashboard for mobile-first responsive design
-2. Add PWA manifest and service worker for offline capability
-3. Implement web push notifications (Chrome/Android)
-4. Defer native app to v5.0 based on user demand
-
-**Core Mobile Features:**
-- Queue status at a glance
-- Push notifications for job completion/failure
-- Quick approve/reject for review workflows
-- View project outputs
-
-**Estimated Effort:** 1-2 sprints for PWA enhancements
-
----
-
-### 6. Plugin System
-
-**Original Scope:** Custom agents and external integrations as plugins.
-
-**Why Deferred:** Core agent system still evolving. Plugin architecture should stabilize after v3.0 patterns mature.
-
-**v4.0 Design:**
-
-#### 6.1 Plugin Types
-
-| Type | Description | Example |
-|------|-------------|---------|
-| **Agent plugins** | Custom processing phases | "social-media-agent" for TikTok/Instagram copy |
-| **Output formatters** | Transform outputs to different formats | Export to CMS-specific XML |
-| **Integrations** | Connect to external services | Slack notifications, Trello cards |
-| **Model providers** | Add new LLM backends | Local Ollama, Azure OpenAI |
-
-#### 6.2 Plugin API
-
-```python
-# Plugin manifest (plugin.yaml)
-name: social-media-agent
-version: 1.0.0
-author: Your Name
-type: agent
-hooks:
-  - phase: after_seo
-    handler: generate_social_copy
-
-# Plugin implementation
-from editorial_assistant.plugins import AgentPlugin
-
-class SocialMediaAgent(AgentPlugin):
-    def process(self, context: ProjectContext) -> PluginResult:
-        # Generate TikTok/Instagram/Twitter copy from transcript
-        ...
-```
-
-#### 6.3 Plugin Registry
-
-- Local plugins in `plugins/` directory
-- Remote plugin registry for sharing (future)
-- Plugin enable/disable in settings
-- Plugin-specific configuration
-
-**Estimated Effort:** 2-3 sprints
-
----
-
-### 7. Self-Hosted Docker Deployment
-
-**Original Scope:** Docker Compose for easy deployment anywhere.
-
-**Why Deferred:** Local development prioritized. Docker adds deployment complexity that wasn't needed for v3.0.
-
-**v4.0 Docker Stack:**
+### 3.1 Service Architecture
 
 ```yaml
 # docker-compose.yml
 version: '3.8'
+
 services:
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=sqlite:///data/dashboard.db
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - AIRTABLE_API_KEY=${AIRTABLE_API_KEY}
     volumes:
       - ./data:/app/data
       - ./OUTPUT:/app/OUTPUT
       - ./transcripts:/app/transcripts
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
 
   worker:
-    build: .
-    command: python run_worker.py
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     environment:
       - DATABASE_URL=sqlite:///data/dashboard.db
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
@@ -289,230 +169,435 @@ services:
       - ./OUTPUT:/app/OUTPUT
       - ./transcripts:/app/transcripts
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      dockerfile: Dockerfile
     ports:
       - "3000:80"
     depends_on:
       - api
+    restart: unless-stopped
 
-  # Optional: MCP server for Claude Desktop remote access
+  # Optional: MCP server for remote Claude Desktop
   mcp:
-    build: ./mcp_server
+    build:
+      context: ./mcp_server
+      dockerfile: Dockerfile
     ports:
       - "3001:3001"
+    environment:
+      - API_URL=http://api:8000
     depends_on:
       - api
+    restart: unless-stopped
 ```
 
-**Additional Docker Considerations:**
-- Multi-stage builds for smaller images
-- Health checks for all services
-- Volume management for persistent data
-- Log aggregation (optional: Loki/Grafana stack)
-- Backup strategy for SQLite database
+### 3.2 Dockerfile Examples
 
-**Estimated Effort:** 1-2 sprints
+**API Service:**
+```dockerfile
+# Dockerfile.api
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY api/ ./api/
+COPY config/ ./config/
+COPY agent-instructions/ ./agent-instructions/
+
+# Create data directories
+RUN mkdir -p /app/data /app/OUTPUT /app/transcripts
+
+# Run with uvicorn
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**Web Dashboard:**
+```dockerfile
+# web/Dockerfile
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+```
+
+### 3.3 Production Considerations
+
+| Consideration | Approach |
+|---------------|----------|
+| **Multi-stage builds** | Smaller images, faster deploys |
+| **Non-root user** | Security best practice |
+| **Health checks** | Automatic restart on failure |
+| **Log aggregation** | stdout/stderr to Docker logging |
+| **Secret management** | Docker secrets or env files |
+| **Volume persistence** | Named volumes for data durability |
 
 ---
 
-### 8. Observability: Langfuse Integration
+## Part 4: Cost Analysis - Cloud vs Self-Hosted
 
-**Original Scope:** Production-grade LLM observability for remote deployment.
+### 4.1 Cost Categories
 
-**Why Deferred:** CLI-Agent usage (free tier) doesn't need precise tracking. v3.0's manifest-based cost tracking is sufficient for local use.
+| Category | Description |
+|----------|-------------|
+| **Compute** | CPU/memory for API, worker, web |
+| **Storage** | Database, transcripts, outputs |
+| **LLM API** | OpenRouter costs (same regardless of hosting) |
+| **Bandwidth** | Egress for web dashboard, API calls |
+| **Maintenance** | Time spent on updates, troubleshooting |
 
-**v4.0 Rationale:**
-- Remote deployment uses OpenRouter exclusively (no CLI-Agent)
-- All costs are 1:1 metered, precise tracking essential
-- Langfuse provides traces, cost analysis, prompt versioning
+### 4.2 Self-Hosted Options
 
-**Implementation:**
+#### Option A: Home VM (Proxmox)
+
+| Item | Monthly Cost | Notes |
+|------|--------------|-------|
+| Electricity | ~$5-10 | VM share of server power |
+| Hardware depreciation | ~$10-20 | Amortized over 5 years |
+| Internet bandwidth | $0 | Already paying for home internet |
+| Cloudflare Tunnel | $0 | Free tier sufficient |
+| Maintenance time | ~2 hrs/month | Updates, monitoring |
+| **Total** | **~$15-30/month** | Plus your time |
+
+**Pros:**
+- Full control over hardware and data
+- No per-request costs
+- Learning opportunity
+
+**Cons:**
+- Dependent on home power/internet
+- You're the on-call engineer
+- Limited redundancy
+
+#### Option B: Station Infrastructure
+
+| Item | Monthly Cost | Notes |
+|------|--------------|-------|
+| VM allocation | $0 | Absorbed by station IT budget |
+| IT support | $0 | Existing staff |
+| Bandwidth | $0 | Station internet |
+| Maintenance time | ~1 hr/month | IT handles infrastructure |
+| **Total** | **~$0/month** | Requires handoff readiness |
+
+**Pros:**
+- Professional infrastructure
+- IT support available
+- Reliable power/network
+- Closer to production users
+
+**Cons:**
+- Requires months of stable operation first
+- Must meet engineering standards
+- Less experimentation freedom
+
+### 4.3 Cloud Hosting Options
+
+#### Option C: AWS EC2/ECS
+
+| Item | Monthly Cost | Notes |
+|------|--------------|-------|
+| t3.small instance | ~$15-20 | 2 vCPU, 2GB RAM |
+| EBS storage (50GB) | ~$5 | General purpose SSD |
+| Data transfer | ~$5-10 | Varies with usage |
+| Route 53 (DNS) | ~$1 | Hosted zone |
+| **Total** | **~$25-35/month** | Plus LLM API costs |
+
+**Scaling Options:**
+- Fargate: ~$40-60/month (serverless containers)
+- Lambda + API Gateway: ~$10-30/month (request-based)
+
+#### Option D: Cloudflare Workers + D1
+
+| Item | Monthly Cost | Notes |
+|------|--------------|-------|
+| Workers (paid) | $5 | 10M requests included |
+| D1 Database | $5 | 5GB storage included |
+| R2 Storage | ~$5 | For transcripts/outputs |
+| Pages | $0 | Free for web dashboard |
+| **Total** | **~$15/month** | Requires architecture adaptation |
+
+**Note:** Would require rewriting Python backend to JavaScript/TypeScript for Workers runtime.
+
+#### Option E: DigitalOcean/Linode/Vultr VPS
+
+| Item | Monthly Cost | Notes |
+|------|--------------|-------|
+| Basic VPS | $6-12 | 1-2 vCPU, 1-2GB RAM |
+| Backups | $1-2 | Weekly snapshots |
+| **Total** | **~$8-15/month** | Closest to home VM experience |
+
+### 4.4 Cost Comparison Matrix
+
+| Option | Monthly Cost | Reliability | Maintenance | Best For |
+|--------|--------------|-------------|-------------|----------|
+| Home VM | $15-30 | Medium | High (you) | Development, learning |
+| Station | $0 | High | Low (IT) | Production use |
+| AWS EC2 | $25-35 | High | Medium | Scalability needs |
+| Cloudflare | $15 | High | Low | Edge performance |
+| VPS | $8-15 | Medium-High | Medium | Simple remote hosting |
+
+### 4.5 Recommendation
+
+**V4.0 Deployment Path:**
+
+1. **Start with Home VM** - Validate remote operation, work out issues
+2. **Add Cloudflare Tunnel** - Enable secure remote access without port forwarding
+3. **Run stability tests** - 1-2 months of reliable operation
+4. **Prepare station handoff** - Documentation, runbooks, cost projections
+5. **Deploy to station** - Primary production environment
+6. **Keep home VM as backup** - Disaster recovery, testing
+
+**Cloud hosting is deferred** unless:
+- Station deployment is blocked for policy reasons
+- Scalability requirements exceed single-VM capacity
+- Geographic distribution becomes important
+
+---
+
+## Part 5: Stability Testing
+
+### 5.1 Test Categories
+
+| Category | Tests | Purpose |
+|----------|-------|---------|
+| **Load** | Concurrent job processing | Verify worker handles queue |
+| **Endurance** | 24-hour continuous operation | Find memory leaks, resource exhaustion |
+| **Recovery** | Service restart, database recovery | Validate self-healing |
+| **Failover** | Network interruption, API timeout | Graceful degradation |
+| **Security** | Auth bypass attempts, injection | Vulnerability scanning |
+
+### 5.2 Load Testing Plan
 
 ```python
-from langfuse import Langfuse
+# tests/load/test_concurrent_jobs.py
+import asyncio
+import httpx
 
-langfuse = Langfuse(
-    public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-    secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-    host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
-)
+async def submit_job(client, transcript_path):
+    response = await client.post("/api/queue", json={
+        "transcript_path": transcript_path,
+        "priority": "normal"
+    })
+    return response.json()["job_id"]
 
-# In LLM client
-trace = langfuse.trace(
-    name="editorial-assistant-job",
-    metadata={"job_id": job.id, "phase": phase}
-)
+async def test_concurrent_processing():
+    """Submit 10 jobs simultaneously, verify all complete."""
+    async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
+        # Submit jobs concurrently
+        jobs = await asyncio.gather(*[
+            submit_job(client, f"test_transcript_{i}.srt")
+            for i in range(10)
+        ])
 
-span = trace.span(
-    name=f"llm-{phase}",
-    input={"prompt": prompt},
-    output={"response": response},
-    model=model_name,
-    usage={"input": input_tokens, "output": output_tokens}
-)
+        # Wait for completion (with timeout)
+        for job_id in jobs:
+            await wait_for_completion(client, job_id, timeout=300)
 ```
 
-**Self-Hosted Option:**
-- Run Langfuse locally for PBSWI Engineering deployment
-- Docker Compose addition for langfuse service
-- No external data dependency
+### 5.3 Monitoring Requirements
 
-**Estimated Effort:** 1 sprint
+| Metric | Alert Threshold | Response |
+|--------|-----------------|----------|
+| API response time | >5s p95 | Investigate load, scale if needed |
+| Worker queue depth | >20 jobs | Check worker health, add capacity |
+| Error rate | >5% | Review logs, identify root cause |
+| Disk usage | >80% | Archive old outputs, expand storage |
+| Memory usage | >90% | Restart services, check for leaks |
+| LLM API errors | >10% | Check OpenRouter status, switch provider |
 
 ---
 
-### 9. Large Transcript Parallel Processing
+## Part 6: Network Architecture
 
-**Original Scope:** Chunk large transcripts and process in parallel for faster throughput.
+### 6.1 Cloudflare Tunnel Setup
 
-**Status in v3.0:** Partially addressed with tier escalation for long-form content. Full chunking/parallelization deferred.
+```bash
+# Install cloudflared
+brew install cloudflared  # macOS
+# or
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
 
-**v4.0 Full Implementation:**
+# Authenticate
+cloudflared tunnel login
 
-| Feature | Description |
-|---------|-------------|
-| **Size estimation** | Calculate transcript token count before processing |
-| **Chunking strategy** | Split at natural boundaries (paragraph, speaker change) |
-| **Overlap handling** | Overlap chunks to maintain context, dedupe on merge |
-| **Parallel execution** | Process chunks concurrently (configurable max workers) |
-| **Result merging** | Intelligent merge with overlap deduplication |
-| **Progress tracking** | Per-chunk progress in job phases |
+# Create tunnel
+cloudflared tunnel create editorial-assistant
 
-**Chunking Configuration:**
-```python
-CHUNK_CONFIG = {
-    "threshold_chars": 100_000,      # When to start chunking
-    "chunk_size": 50_000,            # Target size per chunk
-    "overlap_chars": 2_000,          # Overlap for context continuity
-    "max_parallel": 3,               # Max concurrent LLM calls
-    "merge_strategy": "dedupe_overlap",
-    "split_boundaries": ["speaker_change", "paragraph", "sentence"]
-}
+# Configure tunnel
+cat > ~/.cloudflared/config.yml << EOF
+tunnel: <tunnel-id>
+credentials-file: /root/.cloudflared/<tunnel-id>.json
+
+ingress:
+  - hostname: editorial.yourdomain.com
+    service: http://localhost:8000
+  - hostname: editorial-app.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404
+EOF
+
+# Run tunnel
+cloudflared tunnel run editorial-assistant
 ```
 
-**Estimated Effort:** 2 sprints
+### 6.2 Cloudflare Access Policies
+
+Configure in Cloudflare Zero Trust dashboard:
+- **Email allowlist** - Only specified emails can access
+- **IP restrictions** - Optional additional layer
+- **Session duration** - 24 hours recommended
+- **Device posture** - Optional (require specific OS, browser)
+
+### 6.3 Network Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Internet                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Cloudflare Edge                               │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │  WAF / DDoS     │  │  Access Policy  │  │  Tunnel Proxy   │  │
+│  │  Protection     │  │  (Email Auth)   │  │                 │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ Encrypted tunnel
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Home VM / Station Server                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │ cloudflared │  │             │  │             │              │
+│  │   daemon    │──│  API :8000  │  │  Web :3000  │              │
+│  └─────────────┘  │             │  │             │              │
+│                   └─────────────┘  └─────────────┘              │
+│                          │                                       │
+│                   ┌──────┴──────┐                                │
+│                   │   Worker    │                                │
+│                   │  (SQLite)   │                                │
+│                   └─────────────┘                                │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### 10. Auto-Ingest from Caption Sources
+## Part 7: Backup & Recovery
 
-**Original Scope:** Automatically ingest transcripts from PBS Wisconsin's caption server (mmingest.pbswi.wisc.edu).
+### 7.1 Backup Strategy
 
-**Why Deferred:** Requires remote deployment, filtering logic, and integration approval.
+| Data | Frequency | Retention | Method |
+|------|-----------|-----------|--------|
+| SQLite database | Daily | 30 days | SQLite backup API + compress |
+| Transcripts | On ingest | Indefinite | Original files preserved |
+| Outputs | On generation | 90 days | Archive older to cold storage |
+| Config files | On change | Git history | Version controlled |
+| Secrets | Manual | Secure note | 1Password/Bitwarden |
 
-**v4.0 Requirements:**
+### 7.2 Recovery Procedures
 
-| Component | Description |
-|-----------|-------------|
-| **Polling or webhook** | Detect new caption files |
-| **Filtering** | Show whitelist, keyword filters, date filters |
-| **Approval queue** | Optional human review before processing |
-| **Deduplication** | Don't re-process already-handled videos |
-| **Volume management** | Rate limiting to control LLM costs |
+**Database Corruption:**
+```bash
+# Restore from backup
+cp /backups/dashboard-YYYYMMDD.db data/dashboard.db
 
-**Filtering Strategies:**
-1. **Show whitelist** - Auto-process specific programs only
-2. **Manual approval** - All new captions enter review queue
-3. **Keyword/date filters** - Process based on metadata rules
-4. **Hybrid** - Whitelist + manual for new shows
+# Verify integrity
+sqlite3 data/dashboard.db "PRAGMA integrity_check;"
+```
 
-**Estimated Volume:**
-- 40-200 videos/month
-- $0.03-0.15 per video
-- $4-20/month LLM cost if processing everything
-- Filtering significantly reduces costs
+**Service Failure:**
+```bash
+# Check service status
+docker-compose ps
 
-**Estimated Effort:** 2 sprints
+# View logs
+docker-compose logs --tail=100 api
 
----
+# Restart specific service
+docker-compose restart api
 
-## Priority Matrix
-
-| Feature | User Value | Technical Risk | Effort | Recommended Priority |
-|---------|------------|----------------|--------|---------------------|
-| Embedded Web Chat | High | Medium | High | P1 - Core v4.0 |
-| Remote Deployment | High | Medium | Medium | P1 - Core v4.0 |
-| Authentication | Medium | Low | Medium | P1 - Required for remote |
-| Docker Deployment | Medium | Low | Low | P2 - Enables adoption |
-| Langfuse Observability | Medium | Low | Low | P2 - Operational need |
-| Mobile PWA | Medium | Low | Low | P3 - Nice to have |
-| Plugin System | Medium | Medium | Medium | P3 - Ecosystem growth |
-| Collaborative Editing | High | Very High | Very High | P4 - v5.0 candidate |
-| Large Transcript Chunking | Low | Medium | Medium | P4 - Edge case |
-| Auto-Ingest | Low | Medium | Medium | P4 - PBSWI-specific |
+# Full restart
+docker-compose down && docker-compose up -d
+```
 
 ---
 
-## Recommended v4.0 Roadmap
+## Part 8: V4.0 Roadmap
 
-### Phase 1: Remote Foundation (2-3 sprints)
-1. Docker containerization
-2. ASGI server setup (Gunicorn + Uvicorn)
-3. Basic API authentication (token-based)
-4. Langfuse integration
+### Phase 1: Home VM Deployment (2 sprints)
 
-### Phase 2: Embedded Chat (3-4 sprints)
-1. WebSocket chat endpoint
-2. Chat session persistence
-3. LLM backend integration for chat
-4. React chat UI component
-5. Project context injection
+1. Docker Compose setup
+2. Cloudflare Tunnel configuration
+3. Cloudflare Access email auth
+4. Basic monitoring (healthchecks)
+5. Backup scripts
+6. Stability testing (1 week minimum)
 
-### Phase 3: Multi-User (2-3 sprints)
-1. User accounts and auth
-2. Project ownership/sharing
-3. Activity feeds
-4. Basic approval workflows
+### Phase 2: Security Hardening (1-2 sprints)
 
-### Phase 4: Polish & Ecosystem (2 sprints)
-1. PWA enhancements
-2. Plugin system foundation
-3. Documentation and onboarding
-4. Performance optimization
+1. Rate limiting implementation
+2. Audit logging
+3. Secret rotation procedures
+4. Security scanning (OWASP ZAP, etc.)
+5. Penetration testing checklist
 
----
+### Phase 3: Station Preparation (1-2 sprints)
 
-## Dependencies and Prerequisites
+1. Documentation for IT handoff
+2. Runbooks for common operations
+3. Cost projection reports
+4. Integration API documentation
+5. Training materials
 
-Before starting v4.0 development:
+### Phase 4: Station Deployment
 
-1. **v3.0 must be stable** - Months of local production use without major issues
-2. **Cost tracking validated** - Predictable LLM spend patterns established
-3. **User workflows documented** - Clear understanding of how the tool is actually used
-4. **API contract frozen** - v3.0 API shouldn't have breaking changes during v4.0
-5. **Agent Instruction Files convention** - Migrate to the workspace-wide Agent Instruction Files Convention (`the-lodge/conventions/AGENT_INSTRUCTION_FILES.md`). This means:
-   - Create AGENTS.md as the primary, model-agnostic instruction file
-   - Reduce CLAUDE.md to a redirect + Claude-specific notes only
-   - Remove duplicate content between files
-   - See audit report: `the-lodge/reports/agent-instruction-audit-2026-01-06.md`
+1. VM provisioning (IT)
+2. Application deployment
+3. Monitoring integration
+4. User onboarding
+5. Support transition
 
 ---
 
-## Open Questions for v4.0
+## Prerequisites
 
-| Question | Options | Recommendation |
-|----------|---------|----------------|
-| **Chat backend** | OpenRouter only vs. direct API support | OpenRouter for simplicity, direct APIs for cost optimization |
-| **Database** | SQLite vs. PostgreSQL | PostgreSQL for multi-user, SQLite for single-user deployments |
-| **Auth provider** | Custom vs. Auth0 vs. Clerk | Clerk for fastest time-to-market |
-| **Chat persistence** | Local DB vs. external service | Local DB with export option |
-| **Mobile strategy** | PWA vs. native | PWA first, evaluate native demand |
+Before starting V4.0:
+
+1. **V3.5 feature work complete** - Don't mix feature and deployment work
+2. **Months of stable local use** - Proves the application is reliable
+3. **Cost patterns understood** - Predictable LLM spend
+4. **User workflows documented** - Know how it's actually used
 
 ---
 
-## Success Metrics for v4.0
+## Success Metrics
 
 | Metric | Target |
 |--------|--------|
 | Remote deployment uptime | 99.5% |
-| Chat response latency | <3s average |
-| Authentication setup time | <10 minutes |
-| Cost tracking accuracy | Within 2% of actual |
-| Mobile experience score | Lighthouse >80 |
-| New user onboarding | <30 minutes to first edit |
+| Mean time to recovery | <15 minutes |
+| Security audit findings | 0 critical, <3 medium |
+| Documentation coverage | 100% of operations |
+| Handoff readiness score | Pass IT review |
 
 ---
 
@@ -521,3 +606,4 @@ Before starting v4.0 development:
 | Date | Author | Changes |
 |------|--------|---------|
 | 2026-01-06 | Claude Code | Initial creation from v3.0 deferred features |
+| 2026-01-14 | Claude Code | Refocused on deployment/security; moved features to V3.5; added cost analysis |
