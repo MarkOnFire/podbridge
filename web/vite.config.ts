@@ -11,6 +11,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: true,  // Listen on all interfaces (required for metadata.neighborhood alias)
     allowedHosts: ['metadata.neighborhood', 'localhost'],
     proxy: {
       '/api': {

@@ -198,7 +198,9 @@ class JobWorker:
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
 
-    async def retry_single_phase(self, job_id: int, phase_name: str) -> Dict[str, Any]:
+    async def retry_single_phase(
+        self, job_id: int, phase_name: str, force_tier: Optional[int] = None
+    ) -> Dict[str, Any]:
         """Retry a single phase for a completed job.
 
         This allows regenerating one output (e.g., timestamp) without
@@ -207,6 +209,7 @@ class JobWorker:
         Args:
             job_id: The job ID to retry a phase for
             phase_name: The phase to retry (e.g., 'timestamp', 'seo', 'analyst')
+            force_tier: Optional tier override (0=cheapskate, 1=default, 2=big-brain)
 
         Returns:
             Dict with status, phase result, and any errors
@@ -231,11 +234,12 @@ class JobWorker:
             return {"success": False, "error": f"Project path not found: {project_path}"}
 
         # Build context from existing outputs
+        # Note: Use `or 0` pattern because .get() returns None for NULL db values
         context = {
-            "project_name": job_dict.get("project_name", "Unknown"),
+            "project_name": job_dict.get("project_name") or "Unknown",
             "transcript_metrics": {
-                "word_count": job_dict.get("word_count", 0),
-                "estimated_duration_minutes": job_dict.get("duration_minutes", 0),
+                "word_count": job_dict.get("word_count") or 0,
+                "estimated_duration_minutes": job_dict.get("duration_minutes") or 0,
             },
         }
 
@@ -265,6 +269,20 @@ class JobWorker:
         sst_context = await self._fetch_sst_context(job_dict)
         if sst_context:
             context["sst_context"] = sst_context
+
+        # Set forced tier in context if specified
+        if force_tier is not None:
+            context["_force_tier"] = force_tier
+            tier_labels = {0: "cheapskate", 1: "default", 2: "big-brain"}
+            logger.info(
+                "Forcing tier override",
+                extra={
+                    "job_id": job_id,
+                    "phase": phase_name,
+                    "tier": force_tier,
+                    "tier_label": tier_labels.get(force_tier, "unknown"),
+                }
+            )
 
         # Run the phase
         try:
@@ -1042,12 +1060,15 @@ class JobWorker:
             ))
 
             try:
-                # Call LLM with timeout
+                # Call LLM with timeout (include phase/tier for Langfuse tracing)
                 response: LLMResponse = await asyncio.wait_for(
                     self.llm.chat(
                         messages=messages,
                         backend=backend,
                         job_id=job_id,
+                        phase=phase_name,
+                        tier=current_tier,
+                        tier_label=tier_label,
                     ),
                     timeout=timeout_seconds
                 )
@@ -1056,9 +1077,22 @@ class JobWorker:
                 total_cost += response.cost
                 total_tokens += response.total_tokens
 
-                # Save output
+                # Save output (preserving previous version if exists)
                 output_file = project_path / f"{phase_name}_output.md"
-                output_file.write_text(response.content)
+                if output_file.exists():
+                    # Preserve previous output with timestamp
+                    prev_content = output_file.read_text()
+                    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                    prev_file = project_path / f"{phase_name}_output.{timestamp}.prev.md"
+                    prev_file.write_text(prev_content)
+                    logger.info(
+                        "Preserved previous output",
+                        extra={"job_id": job_id, "phase": phase_name, "preserved_as": prev_file.name}
+                    )
+
+                # Add provenance header to output
+                provenance_header = f"<!-- model: {response.model} | tier: {tier_label} | cost: ${response.cost:.4f} | tokens: {response.total_tokens} -->\n"
+                output_file.write_text(provenance_header + response.content)
 
                 # Log phase completed
                 await log_event(EventCreate(
@@ -1860,6 +1894,11 @@ Follow the exact format specified in your system instructions."""
                 "qa_review": "manager_output.md",
                 "copy_edited": "copy_editor_output.md",
             },
+            # Airtable SST linking - enables MCP server to fetch live metadata
+            "media_id": job.get("media_id"),
+            "airtable_record_id": job.get("airtable_record_id"),
+            "airtable_url": job.get("airtable_url"),
+            "duration_minutes": job.get("duration_minutes"),
         }
 
         manifest_file = project_path / "manifest.json"

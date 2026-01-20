@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
@@ -425,7 +425,17 @@ OUTPUT_TO_PHASE = {
 
 
 @router.post("/{job_id}/phases/{phase_name}/retry", response_model=PhaseRetryResponse)
-async def retry_phase(job_id: int, phase_name: str, background_tasks: BackgroundTasks):
+async def retry_phase(
+    job_id: int,
+    phase_name: str,
+    background_tasks: BackgroundTasks,
+    tier: Optional[int] = Query(
+        default=None,
+        ge=0,
+        le=2,
+        description="Force specific tier: 0=cheapskate, 1=default, 2=big-brain"
+    )
+):
     """Retry a single phase for a job.
 
     This allows regenerating one output (e.g., timestamp) without
@@ -435,6 +445,7 @@ async def retry_phase(job_id: int, phase_name: str, background_tasks: Background
         job_id: Job ID to retry a phase for
         phase_name: Phase name (analyst, formatter, seo, manager, timestamp)
                    OR output key (analysis, seo_metadata, timestamp_report, etc.)
+        tier: Optional tier override (0=cheapskate, 1=default, 2=big-brain)
 
     Returns:
         PhaseRetryResponse with status
@@ -463,17 +474,19 @@ async def retry_phase(job_id: int, phase_name: str, background_tasks: Background
     async def run_retry():
         from api.services.worker import JobWorker
         worker = JobWorker()
-        result = await worker.retry_single_phase(job_id, phase_name)
+        result = await worker.retry_single_phase(job_id, phase_name, force_tier=tier)
         if not result.get("success"):
             logger.error(
                 "Phase retry failed",
-                extra={"job_id": job_id, "phase": phase_name, "error": result.get("error")}
+                extra={"job_id": job_id, "phase": phase_name, "tier": tier, "error": result.get("error")}
             )
 
     background_tasks.add_task(run_retry)
 
+    tier_labels = {0: "cheapskate", 1: "default", 2: "big-brain"}
+    tier_msg = f" with tier={tier} ({tier_labels.get(tier, '?')})" if tier is not None else ""
     return PhaseRetryResponse(
         success=True,
         phase=phase_name,
-        message=f"Phase '{phase_name}' retry started for job {job_id}. Refresh to see results.",
+        message=f"Phase '{phase_name}' retry started for job {job_id}{tier_msg}. Refresh to see results.",
     )

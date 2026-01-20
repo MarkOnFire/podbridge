@@ -54,6 +54,28 @@ def _find_process(pattern: str) -> Optional[int]:
         return None
 
 
+def _check_port_in_use(port: int) -> Optional[int]:
+    """Check if a port is in use and return the PID using it.
+
+    More reliable than pgrep for detecting running servers,
+    especially when the server process is the one calling this function.
+    """
+    try:
+        result = subprocess.run(
+            ["lsof", "-t", "-i", f":{port}"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            # Return first PID using the port
+            pids = result.stdout.strip().split("\n")
+            return int(pids[0])
+        return None
+    except Exception:
+        return None
+
+
 def _kill_process(pattern: str) -> bool:
     """Kill process matching pattern."""
     try:
@@ -94,7 +116,8 @@ def _start_component(command: str, log_file: str) -> bool:
 async def get_system_status():
     """Get status of all system components."""
 
-    api_pid = _find_process("uvicorn api.main:app")
+    # Use port check for API since pgrep can't reliably detect itself
+    api_pid = _check_port_in_use(8000)
     worker_pid = _find_process("run_worker.py")
     watcher_pid = _find_process("watch_transcripts.py")
 

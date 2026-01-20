@@ -7,8 +7,20 @@ echo "🏘️  The Metadata Neighborhood - Status"
 echo "======================================"
 echo ""
 
+# Check metadata.neighborhood alias
+echo "Host Alias:"
+echo -n "  metadata.neighborhood:    "
+if grep -q "metadata.neighborhood" /etc/hosts 2>/dev/null; then
+    echo "✅ Configured in /etc/hosts"
+else
+    echo "❌ Not configured (run ./scripts/setup-local-domain.sh)"
+fi
+
+echo ""
+echo "Backend Services:"
+
 # Check API
-echo -n "API Server (port 8000): "
+echo -n "  API Server (port 8000):   "
 if lsof -i :8000 > /dev/null 2>&1; then
     echo "✅ Running"
 else
@@ -16,26 +28,85 @@ else
 fi
 
 # Check worker
-echo -n "Worker:                 "
+echo -n "  Worker:                   "
 if pgrep -f 'run_worker.py' > /dev/null 2>&1; then
     echo "✅ Running (PID $(pgrep -f 'run_worker.py'))"
 else
     echo "❌ Not running"
 fi
 
-# Check health endpoint
+# Check watcher
+echo -n "  Watcher:                  "
+if pgrep -f 'watch_transcripts.py' > /dev/null 2>&1; then
+    echo "✅ Running (PID $(pgrep -f 'watch_transcripts.py'))"
+else
+    echo "❌ Not running"
+fi
+
 echo ""
-echo "Health Check:"
-if curl -s http://localhost:8000/api/system/health > /dev/null 2>&1; then
+echo "Frontend:"
+
+# Check frontend
+echo -n "  Vite Dev Server (3000):   "
+if lsof -i :3000 > /dev/null 2>&1; then
+    echo "✅ Running"
+else
+    echo "❌ Not running"
+fi
+
+# Check health endpoint and connectivity
+echo ""
+echo "Connectivity:"
+
+# Test localhost API
+echo -n "  localhost:8000:           "
+if curl -s --connect-timeout 2 http://localhost:8000/api/system/health > /dev/null 2>&1; then
+    echo "✅ Responding"
+else
+    echo "❌ Not responding"
+fi
+
+# Test metadata.neighborhood API
+echo -n "  metadata.neighborhood:8000: "
+if curl -s --connect-timeout 2 http://metadata.neighborhood:8000/api/system/health > /dev/null 2>&1; then
+    echo "✅ Responding"
+else
+    echo "❌ Not responding"
+fi
+
+# Test localhost frontend
+echo -n "  localhost:3000:           "
+if curl -s --connect-timeout 2 http://localhost:3000 > /dev/null 2>&1; then
+    echo "✅ Responding"
+else
+    echo "❌ Not responding"
+fi
+
+# Test metadata.neighborhood frontend
+echo -n "  metadata.neighborhood:3000: "
+if curl -s --connect-timeout 2 http://metadata.neighborhood:3000 > /dev/null 2>&1; then
+    echo "✅ Responding"
+else
+    echo "❌ Not responding"
+fi
+
+# Queue stats
+echo ""
+echo "Queue Status:"
+if curl -s http://localhost:8000/api/queue/stats > /dev/null 2>&1; then
     QUEUE=$(curl -s http://localhost:8000/api/queue/stats 2>/dev/null)
     PENDING=$(echo "$QUEUE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('pending',0))" 2>/dev/null || echo "?")
     IN_PROGRESS=$(echo "$QUEUE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('in_progress',0))" 2>/dev/null || echo "?")
-    echo "  Queue: $PENDING pending, $IN_PROGRESS in progress"
+    COMPLETED=$(echo "$QUEUE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('completed',0))" 2>/dev/null || echo "?")
+    echo "  Pending:     $PENDING"
+    echo "  In Progress: $IN_PROGRESS"
+    echo "  Completed:   $COMPLETED"
 else
     echo "  ❌ API not responding"
 fi
 
 echo ""
 echo "URLs:"
-echo "  http://metadata.neighborhood:8000"
-echo "  http://localhost:8000"
+echo "  Dashboard: http://metadata.neighborhood:3000"
+echo "  API:       http://metadata.neighborhood:8000"
+echo "  API Docs:  http://metadata.neighborhood:8000/docs"

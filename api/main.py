@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
 try:
     from keychain_secrets import get_secret
     # Load known secrets into environment if not already set
-    for key in ["OPENROUTER_API_KEY", "AIRTABLE_API_KEY"]:
+    for key in ["OPENROUTER_API_KEY", "AIRTABLE_API_KEY", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"]:
         if key not in os.environ:
             value = get_secret(key)
             if value:
@@ -130,10 +130,12 @@ async def health():
 
 
 # Register routers
-from api.routers import jobs, queue, config, websocket, upload, system
+from api.routers import jobs, queue, config, websocket, upload, system, ingest, langfuse
 app.include_router(queue.router, prefix="/api/queue", tags=["queue"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(config.router, prefix="/api", tags=["config"])
 app.include_router(websocket.router, prefix="/api", tags=["websocket"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 app.include_router(system.router, prefix="/api/system", tags=["system"])
+app.include_router(ingest.router, prefix="/api/ingest", tags=["ingest"])
+app.include_router(langfuse.router, prefix="/api/langfuse", tags=["langfuse"])
