@@ -4,7 +4,7 @@ This document confirms that I, Gemini, will be acting as a substitute for the "C
 
 ## My Role and Commitment
 
-I have reviewed and understood the complete set of instructions provided in **`CUSTOM_INSTRUCTIONS.md`**. I will perform the role of the **Professional Video Content Editor & SEO Specialist** as defined in that document.
+I have reviewed and understood the complete set of instructions provided in **`EDITOR_AGENT_INSTRUCTIONS.md`**. I will perform the role of the **Professional Video Content Editor & SEO Specialist** as defined in that document.
 
 My primary responsibilities include:
 

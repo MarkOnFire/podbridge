@@ -1,1 +1,0 @@
-../agent-instructions/EDITOR_AGENT_INSTRUCTIONS.md

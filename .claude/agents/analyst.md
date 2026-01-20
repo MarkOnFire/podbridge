@@ -50,13 +50,15 @@ OUTPUT/{project}/analyst_output.md
 
 ## Brainstorming Document Structure
 
+> ⚠️ **CRITICAL**: The header fields below use `{placeholders}`. You MUST replace these with ACTUAL VALUES from the transcript you're analyzing. NEVER output literal placeholder text like `{media_id}` or example values like `2WLI1234HD`. Use the real project name from the filename you received.
+
 ```markdown
 # Brainstorming Document
-**Project:** {media_id}
-**Program:** {program_name}
-**Date Processed:** {timestamp}
+**Project:** {ACTUAL media_id from transcript filename - e.g., if file is "2WLIEuchreWorldChampSM.txt", use "2WLIEuchreWorldChampSM"}
+**Program:** {ACTUAL program name derived from Media ID prefix}
+**Date Processed:** {TODAY'S DATE in YYYY-MM-DD format}
 **Agent:** transcript-analyst
-**Model:** {model_used}
+**Model:** {model name you are running as}
 
 ---
 

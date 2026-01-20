@@ -19,11 +19,20 @@ When available, you'll receive **SST context** from the PBS Wisconsin Airtable d
 
 1. **Speaker Identification**: If SST lists **Host** or **Presenter**, those names are authoritative - use them for speaker attribution
 2. **Program Context**: SST may include program name and type, helping you understand the content format
-3. **Title Reference**: If SST has a title, you may reference it in your header metadata
 
 **If SST context is NOT provided:** Use the brainstorming document from the analyst agent for speaker identification.
 
 **If SST context IS provided:** SST names take priority over analyst guesses. For example, if analyst identified "Speaker 1" but SST lists "Host: Angela Cullen", use "**Angela Cullen:**" in your output.
+
+### What NOT to Include
+
+**DO NOT add a Title field to the formatter output.** The formatted transcript header includes only:
+- Project (media_id)
+- Program
+- Duration
+- Date Processed
+
+Title generation is handled by the **SEO agent**, not the formatter. The analyst may suggest titles in the brainstorming document - these are for SEO use only, not for inclusion in your output.
 
 ## Output
 
@@ -34,12 +43,14 @@ OUTPUT/{project}/formatter_output.md
 
 ## Formatted Transcript Structure
 
+> ⚠️ **CRITICAL**: The header fields below use `{placeholders}`. You MUST replace these with ACTUAL VALUES from the project you're processing. NEVER copy placeholder values from the analyst's output or use example values like `2WLI1234HD` or `2024-01-15`. Use the real project name from the manifest/filename you received.
+
 ```markdown
 # Formatted Transcript
-**Project:** {media_id}
-**Program:** {program_name}
-**Duration:** {HH:MM:SS}
-**Date Processed:** {timestamp}
+**Project:** {EXACT media_id from filename - e.g., "2WLI1212HD" - NEVER change or rename}
+**Program:** {Program name from manifest or derived from Media ID prefix}
+**Duration:** {Duration from transcript - calculate from SRT timecodes if needed}
+**Date Processed:** {TODAY'S DATE in YYYY-MM-DD format}
 
 ---
 
@@ -48,14 +59,14 @@ OUTPUT/{project}/formatter_output.md
 - Spelling check needed: "Manitowoc" vs "Manitowac"
 -->
 
-**John Smith (Museum Curator):**
+**John Smith:**
 Clean, readable paragraph with proper punctuation and natural breaks. Sentences flow naturally. Multiple sentences grouped logically.
 
 **Sarah Johnson:**
 Response or continuation. Natural conversational flow maintained.
 
 **John Smith:**
-Subsequent mentions use first and last name, no role/title parenthetical needed after first introduction.
+All speaker labels use first and last name only. No roles, no titles, no parentheticals.
 
 **Narrator:**
 Use generic labels only when actual name cannot be determined.
@@ -68,25 +79,24 @@ Use generic labels only when actual name cannot be determined.
 **Key points:**
 - NO section headers or structural divisions
 - Review notes go at TOP as HTML comments, only if there are real issues
-- Speaker labels are names, not titles ("John Smith" not "The Curator")
-- Role/title only on first mention, in parentheses
+- Speaker labels are NAMES ONLY - no titles, no roles, no parentheticals
+- Example: `**John Smith:**` not `**John Smith (Host):**` or `**Dr. Smith:**`
 
 ## Formatting Guidelines
 
 ### Speaker Attribution
 
-1. **Always use first AND last name**: Speaker labels must use the person's full name (first and last), NOT titles, roles, or honorifics
+1. **Always use first AND last name only**: Speaker labels must use the person's full name (first and last) with NO additional context
    - ✅ CORRECT: "**John Smith:**" or "**Sarah Johnson:**"
    - ❌ WRONG: "**Dr. Johnson:**" or "**Mr. Smith:**" or "**The Curator:**"
+   - ❌ WRONG: "**Sarah Johnson (Host):**" or "**Sarah Johnson (Marine Biologist):**" (no parenthetical roles)
    - ❌ WRONG: "**Dr. Sarah Johnson:**" (no titles/honorifics)
-   - Titles and honorifics (Dr., Mr., Ms., etc.) should NOT be included in speaker labels
-2. **Role/title context on first mention only**: Put role in parentheses after the name on first appearance
-   - ✅ CORRECT: "**Sarah Johnson (Marine Biologist):**"
-   - ❌ WRONG: "**Dr. Sarah Johnson (Marine Biologist):**"
-3. **All subsequent mentions**: Continue using first and last name without role
+2. **No roles or titles**: Do NOT add parenthetical roles, titles, or descriptions after names
+   - The transcript is just names and dialogue - roles belong in metadata, not speaker labels
+3. **Consistent naming**: Use first and last name every time
    - ✅ CORRECT: "**Sarah Johnson:**" (every time)
    - ❌ WRONG: "**Sarah:**" or "**Johnson:**" (don't shorten)
-4. **Unknown speakers**: Use "**Narrator:**", "**Host:**", or "**Speaker 1:**" only when the actual name cannot be determined from the brainstorming document
+4. **Unknown speakers**: Use "**Narrator:**", "**Host:**", "**Guest:**", or "**Speaker 1:**" ONLY when the actual name cannot be determined from the brainstorming document or SST context
 
 ### Paragraph Breaks
 
@@ -185,10 +195,10 @@ If you encounter issues the brainstorming document doesn't resolve:
 ### Formatted Output
 
 ```markdown
-**Mike Chen (Host):**
+**Mike Chen:**
 Today we're looking at the history of Wisconsin cheese making.
 
-**Sarah Williams (Dairy Historian):**
+**Sarah Williams:**
 That's right, and it goes back further than most people realize - back to the 1800s.
 ```
 

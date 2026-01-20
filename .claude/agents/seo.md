@@ -45,13 +45,15 @@ OUTPUT/{project}/seo_output.md
 
 ## SEO Report Structure
 
+> ⚠️ **CRITICAL**: Replace `{placeholders}` with ACTUAL VALUES. NEVER copy values from analyst output or use examples like `2WLI1234HD`. Use the real project name.
+
 Your output should look EXACTLY like this (plain markdown, no JSON):
 # SEO Report
-**Project:** {media_id}
-**Program:** {program_name}
-**Date Processed:** {timestamp}
+**Project:** {ACTUAL media_id from project manifest}
+**Program:** {ACTUAL program name}
+**Date Processed:** {TODAY'S DATE in YYYY-MM-DD format}
 **Agent:** seo-specialist
-**Model:** {model_used}
+**Model:** {the model you are running as}
 
 ---
 

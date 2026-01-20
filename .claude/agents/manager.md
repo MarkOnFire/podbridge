@@ -43,10 +43,12 @@ OUTPUT/{project}/manager_output.md
 
 ## QA Report Structure
 
+> ⚠️ **CRITICAL**: Replace `{placeholders}` with ACTUAL VALUES. NEVER copy values from other agent outputs or use examples like `2WLI1234HD`. Use the real project name from the manifest.
+
 ```markdown
 # QA Review Report
-**Project:** {media_id}
-**Reviewed:** {timestamp}
+**Project:** {ACTUAL media_id from project manifest}
+**Reviewed:** {TODAY'S DATE in YYYY-MM-DD format}
 **Overall Status:** APPROVED | NEEDS_REVISION
 
 ---
@@ -278,12 +280,14 @@ You MUST decide on ONE of these actions:
 
 ### Recovery Report Structure
 
+> ⚠️ Replace placeholders with ACTUAL values from the job context.
+
 ```markdown
 # Recovery Analysis Report
-**Project:** {media_id}
-**Failed Phase:** {phase_name}
-**Error:** {error_summary}
-**Analyzed:** {timestamp}
+**Project:** {ACTUAL media_id from job}
+**Failed Phase:** {ACTUAL phase that failed}
+**Error:** {ACTUAL error message}
+**Analyzed:** {TODAY'S DATE}
 
 ---
 
