@@ -9,11 +9,16 @@ Items are worked incrementally. Any agent can pick up work.
 
 ## Normal Priority / Stray bugs and feature tweaks
 
-- [ ] **Bug: Phase retry attempts counter not incrementing** (2026-01-21)
-	- When retrying phases via the UI, the `attempts` field stays at 1 even after successful retries
-	- Observed on job 169: analyst and formatter retries ran successfully but `attempts: 1` unchanged
-	- The retry itself works correctly (outputs generated, previous preserved)
-	- Just the counter tracking that's broken
+- [ ] **Bug/Feature: Phase retry tracking is incomplete** (2026-01-21)
+	- Multiple issues observed when retrying phases via the UI (job 169):
+	- [ ] `attempts` counter stays at 1 even after successful retries
+	- [ ] `model` field doesn't update to show which model was used on retry
+	- [ ] No "user requested retry" event logged anywhere
+	- [ ] No progress tracking during retry execution (job appears idle)
+	- **Enhancement opportunity**: Add quick feedback prompts when user triggers retry
+		- Capture signal about what was wrong with original output
+		- Options like: "Inaccurate", "Missing info", "Wrong format", "Hallucination", etc.
+		- Store this feedback for quality analysis and model tuning decisions
 
 - [ ] **Bug: Langfuse client API compatibility** (2026-01-21)
 	- Warning: `'Langfuse' object has no attribute 'trace'`
