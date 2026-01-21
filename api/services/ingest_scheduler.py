@@ -105,10 +105,18 @@ async def configure_scheduler():
         replace_existing=True,
     )
 
-    logger.info(
-        f"Ingest scan scheduled: daily at {config.scan_time} "
-        f"(next run: {scheduler.get_job('ingest_scan').next_run_time})"
-    )
+    # Log the scheduled time
+    job = scheduler.get_job("ingest_scan")
+    if job:
+        # Get next run time - may be None if scheduler not started yet
+        try:
+            next_run = getattr(job, 'next_run_time', None)
+            if next_run:
+                logger.info(f"Ingest scan scheduled: daily at {config.scan_time} (next run: {next_run})")
+            else:
+                logger.info(f"Ingest scan scheduled: daily at {config.scan_time}")
+        except Exception:
+            logger.info(f"Ingest scan scheduled: daily at {config.scan_time}")
 
 
 async def start_scheduler():
