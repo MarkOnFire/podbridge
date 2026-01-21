@@ -32,6 +32,7 @@ from api.services.ingest_config import (
     record_scan_result,
     get_next_scan_time,
 )
+from api.services.ingest_scheduler import configure_scheduler
 from api.models.ingest import IngestConfig, IngestConfigUpdate, IngestConfigResponse
 from api.services.database import get_session
 from sqlalchemy import text
@@ -42,9 +43,37 @@ router = APIRouter()
 
 
 # Response models
+
+class SSTRecordInfo(BaseModel):
+    """Minimal SST record info for enriching available files."""
+    id: str
+    title: Optional[str] = None
+    project: Optional[str] = None
+
+
+class AvailableFile(BaseModel):
+    """A file available for queueing."""
+    id: int
+    filename: str
+    media_id: Optional[str]
+    file_type: str
+    remote_url: str
+    first_seen_at: datetime
+    status: str
+    sst_record: Optional[SSTRecordInfo] = None
+
+
+class AvailableFilesResponse(BaseModel):
+    """Response listing available files."""
+    files: List[AvailableFile]
+    total_new: int
+    last_scan_at: Optional[datetime] = None
+
+
 class ScanResponse(BaseModel):
     """Response from scan endpoint."""
     success: bool
+    qc_passed_checked: int
     new_files_found: int
     total_files_on_server: int
     scan_duration_ms: int
@@ -104,6 +133,108 @@ class IngestStatusResponse(BaseModel):
 
 # Endpoints
 
+@router.get("/available", response_model=AvailableFilesResponse)
+async def list_available_files(
+    status: Optional[str] = Query(
+        default="new",
+        description="Filter by status (new, queued, ignored)"
+    ),
+    file_type: Optional[str] = Query(
+        default="transcript",
+        description="Filter by file type (transcript or screengrab)"
+    ),
+    limit: int = Query(default=50, le=200),
+) -> AvailableFilesResponse:
+    """
+    List files available for queueing.
+
+    Returns transcript files discovered on the ingest server that match
+    QC-passed content in Airtable SST, enriched with SST metadata.
+
+    Args:
+        status: Filter by status (default: new)
+        file_type: Filter by type (default: transcript)
+        limit: Maximum results to return
+
+    Returns:
+        List of available files with SST metadata
+    """
+    from api.services.airtable import AirtableClient
+
+    async with get_session() as session:
+        # Query available_files table
+        query = """
+            SELECT id, remote_url, filename, media_id, file_type,
+                   first_seen_at, status
+            FROM available_files
+            WHERE 1=1
+        """
+        params = {"limit": limit}
+
+        if status:
+            query += " AND status = :status"
+            params["status"] = status
+
+        if file_type:
+            query += " AND file_type = :file_type"
+            params["file_type"] = file_type
+
+        query += " ORDER BY first_seen_at DESC LIMIT :limit"
+
+        result = await session.execute(text(query), params)
+        rows = result.fetchall()
+
+        # Enrich with SST metadata
+        airtable = AirtableClient()
+        files = []
+
+        for row in rows:
+            sst_record_info = None
+
+            # Fetch SST record if we have a Media ID
+            if row.media_id:
+                try:
+                    sst_record = await airtable.search_sst_by_media_id(row.media_id)
+                    if sst_record:
+                        fields = sst_record.get("fields", {})
+                        sst_record_info = SSTRecordInfo(
+                            id=sst_record["id"],
+                            title=fields.get("Title"),
+                            project=fields.get("Project"),
+                        )
+                except Exception as e:
+                    logger.warning(f"Failed to fetch SST record for {row.media_id}: {e}")
+
+            files.append(AvailableFile(
+                id=row.id,
+                filename=row.filename,
+                media_id=row.media_id,
+                file_type=row.file_type,
+                remote_url=row.remote_url,
+                first_seen_at=row.first_seen_at,
+                status=row.status,
+                sst_record=sst_record_info,
+            ))
+
+        # Get total count of new files
+        count_query = text("""
+            SELECT COUNT(*) as count
+            FROM available_files
+            WHERE status = 'new' AND file_type = :file_type
+        """)
+        result = await session.execute(count_query, {"file_type": file_type or "transcript"})
+        total_new = result.fetchone().count
+
+    # Get last scan timestamp from config
+    config = await get_ingest_config()
+
+    return AvailableFilesResponse(
+        files=files,
+        total_new=total_new,
+        last_scan_at=config.last_scan_at,
+    )
+
+
 @router.post("/scan", response_model=ScanResponse)
 async def trigger_scan(
     base_url: Optional[str] = Query(
@@ -144,6 +275,7 @@ async def trigger_scan(
 
         return ScanResponse(
             success=result.success,
+            qc_passed_checked=result.qc_passed_checked,
             new_files_found=result.new_files_found,
             total_files_on_server=result.total_files_on_server,
             scan_duration_ms=result.scan_duration_ms,
@@ -448,6 +580,10 @@ async def update_config_endpoint(updates: IngestConfigUpdate) -> IngestConfigRes
             )
 
     config = await update_ingest_config(updates)
+
+    # Reconfigure scheduler with new settings
+    await configure_scheduler()
+
     next_scan = await get_next_scan_time()
 
     logger.info(f"Ingest config updated: enabled={config.enabled}, "

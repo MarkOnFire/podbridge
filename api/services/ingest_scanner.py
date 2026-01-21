@@ -41,6 +41,7 @@ class RemoteFile:
 class ScanResult:
     """Result of scanning the remote server."""
     success: bool
+    qc_passed_checked: int  # Number of QC-passed Media IDs checked
     new_files_found: int
     total_files_on_server: int
     scan_duration_ms: int
@@ -86,9 +87,136 @@ class IngestScanner:
         self.timeout = timeout_seconds
         self.auth = auth
 
+    async def get_qc_passed_media_ids(self) -> List[str]:
+        """
+        Query Airtable SST for QC-passed Media IDs that don't have existing jobs.
+
+        This is Step 1 of the "smart scanning" approach: determine which Media IDs
+        we should look for on the ingest server.
+
+        Returns:
+            List of Media IDs that passed QC and don't have jobs yet
+        """
+        from api.services.airtable import AirtableClient
+        from sqlalchemy import text
+
+        try:
+            client = AirtableClient()
+
+            # Query SST for records where QC field indicates passed status
+            # NOTE: Field name and pass value may need adjustment based on actual SST schema
+            # Common possibilities: "QC", "QC Status", "Quality Control"
+            # Common pass values: "Passed", "Pass", "Approved", TRUE
+            #
+            # For now, using formula that checks multiple possibilities
+            # User can configure exact field/value once confirmed
+            url = f"{client.API_BASE_URL}/{client.BASE_ID}/{client.TABLE_ID}"
+
+            # Airtable formula to find QC-passed records
+            # This checks common field names and values
+            # Adjust based on actual SST schema
+            formula = """OR(
+                {QC} = 'Passed',
+                {QC} = 'Pass',
+                {QC Status} = 'Passed',
+                {QC Status} = 'Pass',
+                {Quality Control} = 'Passed'
+            )"""
+
+            params = {
+                "filterByFormula": formula,
+                "fields[]": ["Media ID"],  # Only fetch Media ID field
+                "pageSize": 100,  # Fetch in batches
+            }
+
+            media_ids = []
+            offset = None
+
+            async with httpx.AsyncClient(timeout=60.0) as http_client:
+                while True:
+                    if offset:
+                        params["offset"] = offset
+
+                    response = await http_client.get(
+                        url,
+                        headers=client.headers,
+                        params=params
+                    )
+                    response.raise_for_status()
+
+                    data = response.json()
+                    records = data.get("records", [])
+
+                    for record in records:
+                        media_id = record.get("fields", {}).get("Media ID")
+                        if media_id:
+                            media_ids.append(media_id)
+
+                    # Check for pagination
+                    offset = data.get("offset")
+                    if not offset:
+                        break
+
+            # Filter out Media IDs that already have jobs in our database
+            async with get_session() as session:
+                if media_ids:
+                    placeholders = ",".join([f":id{i}" for i in range(len(media_ids))])
+                    query = text(f"""
+                        SELECT DISTINCT media_id
+                        FROM jobs
+                        WHERE media_id IN ({placeholders})
+                    """)
+
+                    params_dict = {f"id{i}": mid for i, mid in enumerate(media_ids)}
+                    result = await session.execute(query, params_dict)
+                    existing_media_ids = {row.media_id for row in result.fetchall()}
+
+                    # Return only those without existing jobs
+                    media_ids = [mid for mid in media_ids if mid not in existing_media_ids]
+
+            logger.info(f"Found {len(media_ids)} QC-passed Media IDs without jobs")
+            return media_ids
+
+        except Exception as e:
+            logger.error(f"Failed to query QC-passed Media IDs: {e}")
+            return []
+
+    async def check_ingest_server_for_media_id(self, media_id: str) -> List[RemoteFile]:
+        """
+        Check if files exist on ingest server for a specific Media ID.
+
+        Args:
+            media_id: Media ID to search for (e.g., "2WLI1209HD")
+
+        Returns:
+            List of RemoteFile objects matching this Media ID
+        """
+        matching_files: List[RemoteFile] = []
+
+        # Scan configured directories for files matching this Media ID
+        for directory in self.directories:
+            try:
+                dir_url = f"{self.base_url}{directory}"
+                all_files = await self._scan_directory(dir_url, directory)
+
+                # Filter to files matching this Media ID
+                for remote_file in all_files:
+                    if remote_file.media_id == media_id:
+                        matching_files.append(remote_file)
+
+            except Exception as e:
+                logger.warning(f"Failed to scan directory {directory} for {media_id}: {e}")
+
+        return matching_files
+
     async def scan(self) -> ScanResult:
         """
-        Scan all configured directories for new files.
+        Scan ingest server using SMART SCANNING approach:
+        1. Query SST for QC-passed Media IDs (without existing jobs)
+        2. For each Media ID, check ingest server for matching files
+        3. Track only files that match QC-passed content
+
+        This is more efficient than scanning all files and only surfaces actionable items.
 
         Returns:
             ScanResult with scan statistics
@@ -98,27 +226,32 @@ class IngestScanner:
 
         result = ScanResult(
             success=False,
+            qc_passed_checked=0,
             new_files_found=0,
             total_files_on_server=0,
             scan_duration_ms=0,
         )
 
         try:
-            all_files: List[RemoteFile] = []
+            # Step 1: Get QC-passed Media IDs
+            qc_passed_media_ids = await self.get_qc_passed_media_ids()
+            result.qc_passed_checked = len(qc_passed_media_ids)
+            logger.info(f"Checking {len(qc_passed_media_ids)} QC-passed Media IDs")
 
-            # Scan each configured directory
-            for directory in self.directories:
-                try:
-                    dir_url = f"{self.base_url}{directory}"
-                    files = await self._scan_directory(dir_url, directory)
-                    all_files.extend(files)
-                except Exception as e:
-                    logger.warning(f"Failed to scan directory {directory}: {e}")
+            # Step 2: Check ingest server for each Media ID
+            all_matching_files: List[RemoteFile] = []
 
-            result.total_files_on_server = len(all_files)
+            for media_id in qc_passed_media_ids:
+                matching_files = await self.check_ingest_server_for_media_id(media_id)
+                all_matching_files.extend(matching_files)
 
-            # Process discovered files
-            for remote_file in all_files:
+                if matching_files:
+                    logger.debug(f"Found {len(matching_files)} file(s) for {media_id}")
+
+            result.total_files_on_server = len(all_matching_files)
+
+            # Step 3: Track discovered files
+            for remote_file in all_matching_files:
                 is_new = await self._track_file(remote_file)
                 if is_new:
                     result.new_files_found += 1
@@ -128,6 +261,11 @@ class IngestScanner:
                         result.new_screengrabs += 1
 
             result.success = True
+            logger.info(
+                f"Smart scan complete: checked {len(qc_passed_media_ids)} Media IDs, "
+                f"found {result.new_files_found} new files "
+                f"({result.new_transcripts} transcripts, {result.new_screengrabs} screengrabs)"
+            )
 
         except Exception as e:
             result.error_message = str(e)

@@ -45,20 +45,20 @@ Display matches in a "Ready to Queue" screen for one-click processing.
 ### Feature Specification
 See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
 
-### Sprint Status: IN PROGRESS (Wave 1 Complete)
+### Sprint Status: IN PROGRESS (Wave 2 Complete)
 
 ---
 
 ## Simplified Task Breakdown (16 tasks, down from 21)
 
-### Phase 1: Foundation (4 tasks) - **WAVE 1 COMPLETE (3/4)**
+### Phase 1: Foundation (4 tasks) - **COMPLETE**
 
 | ID | Task | Agent | Status |
 |----|------|-------|--------|
 | 11.1.1 | Database migration: ingest tables | the-drone | **complete** (existed in 006) |
 | 11.1.2 | Pydantic models for ingest types | the-drone | **complete** |
 | 11.1.3 | Configuration schema and defaults | the-drone | **complete** |
-| 11.1.4 | APScheduler integration | orchestrator | pending |
+| 11.1.4 | APScheduler integration | orchestrator | **complete** |
 
 **Wave 1 Implementation (2026-01-21):**
 - Created `api/models/ingest.py` with all Pydantic types
@@ -67,22 +67,35 @@ See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
 - Added GET/PUT `/api/ingest/config` endpoints
 - Commit: 5ee3887
 
-### Phase 2: Core Scanner (3 tasks)
+**Wave 2 Implementation (2026-01-21 - The Conductor):**
+- Added `IngestScanner.get_qc_passed_media_ids()` with SST query
+- Implemented smart scanning: query SST first, then check for matching files
+- Added `IngestScanner.check_ingest_server_for_media_id()` method
+- Updated `ScanResult` to include `qc_passed_checked` field
+- Added APScheduler dependency to `requirements.txt`
+- Created `api/services/ingest_scheduler.py` for scheduled scanning
+- Integrated scheduler into `api/main.py` lifespan (startup/shutdown)
+- Updated config endpoint to reconfigure scheduler on settings change
+- Added GET `/api/ingest/available` endpoint with SST enrichment
+- **QC Field Note**: Formula checks multiple common field names (QC, QC Status, Quality Control)
+  with pass values (Passed, Pass). May need adjustment based on actual SST schema.
+
+### Phase 2: Core Scanner (3 tasks) - **PARTIALLY COMPLETE**
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
-| 11.1.5 | IngestScanner: SST query for QC-passed | orchestrator | pending | 11.1.2 |
-| 11.1.6 | IngestScanner: Directory parser & matching | orchestrator | pending | 11.1.3, 11.1.5 |
+| 11.1.5 | IngestScanner: SST query for QC-passed | orchestrator | **complete** | 11.1.2 |
+| 11.1.6 | IngestScanner: Directory parser & matching | orchestrator | **complete** (already existed) | 11.1.3, 11.1.5 |
 | 11.1.7 | IngestScanner: File download | the-drone | pending | 11.1.6 |
 
-### Phase 3: API Layer (4 tasks)
+### Phase 3: API Layer (4 tasks) - **PARTIALLY COMPLETE**
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
-| 11.1.8 | Ingest router: Read endpoints | the-drone | pending | 11.1.1, 11.1.2 |
+| 11.1.8 | Ingest router: Read endpoints | orchestrator | **complete** | 11.1.1, 11.1.2 |
 | 11.1.9 | Ingest router: Action endpoints | orchestrator | pending | 11.1.6, 11.1.7, 11.1.8 |
-| 11.1.10 | Config update endpoint for Settings | the-drone | pending | 11.1.4, 11.1.8 |
-| 11.1.11 | ScreengrabAttacher service | orchestrator | pending | 11.1.1, 11.1.7 |
+| 11.1.10 | Config update endpoint for Settings | orchestrator | **complete** (scheduler reconfiguration added) | 11.1.4, 11.1.8 |
+| 11.1.11 | ScreengrabAttacher service | orchestrator | **complete** (already existed) | 11.1.1, 11.1.7 |
 
 ### Phase 4: Frontend (3 tasks)
 

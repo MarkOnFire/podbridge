@@ -34,6 +34,7 @@ from api.services import database
 from api.services.llm import get_llm_client, close_llm_client
 from api.services.logging import setup_logging, get_logger
 from api.services.ingest_config import ensure_defaults as ensure_ingest_defaults
+from api.services.ingest_scheduler import start_scheduler, stop_scheduler
 
 
 # Initialize logging for API
@@ -57,9 +58,13 @@ async def lifespan(app: FastAPI):
     # Initialize ingest config defaults (Sprint 11.1)
     await ensure_ingest_defaults()
     logger.info("Ingest configuration initialized")
+    # Start ingest scheduler (Sprint 11.1)
+    await start_scheduler()
+    logger.info("Ingest scheduler started")
     yield
     # Shutdown: Close connections
     logger.info("Shutting down API server")
+    await stop_scheduler()
     await close_llm_client()
     await database.close_db()
     logger.info("Shutdown complete")
