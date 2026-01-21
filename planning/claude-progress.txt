@@ -45,20 +45,27 @@ Display matches in a "Ready to Queue" screen for one-click processing.
 ### Feature Specification
 See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
 
-### Sprint Status: NOT STARTED
+### Sprint Status: IN PROGRESS (Wave 1 Complete)
 
 ---
 
 ## Simplified Task Breakdown (16 tasks, down from 21)
 
-### Phase 1: Foundation (4 tasks) - No dependencies
+### Phase 1: Foundation (4 tasks) - **WAVE 1 COMPLETE (3/4)**
 
 | ID | Task | Agent | Status |
 |----|------|-------|--------|
-| 11.1.1 | Database migration: ingest tables | the-drone | pending |
-| 11.1.2 | Pydantic models for ingest types | the-drone | pending |
-| 11.1.3 | Configuration schema and defaults | the-drone | pending |
+| 11.1.1 | Database migration: ingest tables | the-drone | **complete** (existed in 006) |
+| 11.1.2 | Pydantic models for ingest types | the-drone | **complete** |
+| 11.1.3 | Configuration schema and defaults | the-drone | **complete** |
 | 11.1.4 | APScheduler integration | orchestrator | pending |
+
+**Wave 1 Implementation (2026-01-21):**
+- Created `api/models/ingest.py` with all Pydantic types
+- Created `api/services/ingest_config.py` for config management
+- Added config initialization on API startup
+- Added GET/PUT `/api/ingest/config` endpoints
+- Commit: 5ee3887
 
 ### Phase 2: Core Scanner (3 tasks)
 
@@ -178,6 +185,16 @@ This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
 ---
 
 ## Session Notes
+
+### 2026-01-21 (Wave 1 Implementation)
+- Completed Sprint 11.1 Wave 1 (Tasks 11.1.1-11.1.3)
+- Found database migration 006 already existed with ingest tables
+- Created `api/models/ingest.py` with all Pydantic types
+- Created `api/services/ingest_config.py` for runtime config management
+- Added config initialization on API startup in `api/main.py`
+- Added GET/PUT `/api/ingest/config` endpoints
+- Updated `/api/ingest/status` and `/api/ingest/scan` to use config service
+- Commits: a9e8df5 (planning docs), 5ee3887 (Wave 1 implementation)
 
 ### 2026-01-21 (Design Revision)
 - REVISED Sprint 11.1 based on user feedback
