@@ -35,8 +35,25 @@ Items are worked incrementally. Any agent can pick up work.
 
 ## Low Priority / Nice to Have
 
-- [ ] **Feature addition: Feedback via GUI* (2026-01-12)
-  - Mechanism to give feedback on artifacts produced on automation. Might need to explore the best method but ideally this would happen from the projects screen. 
+- [ ] **Feature addition: Feedback via GUI** (2026-01-12)
+  - Mechanism to give feedback on artifacts produced on automation. Might need to explore the best method but ideally this would happen from the projects screen.
+
+## Future Vision
+
+- [ ] **Model tier optimization based on collected data** (2026-01-21)
+	- Goal: Use production data to determine optimal model placement across tiers
+	- Balance cost vs quality (low failure score)
+	- **Inputs needed:**
+		- [ ] Model used per phase (fix: currently stale on retry)
+		- [ ] Retry frequency as quality signal (fix: not tracked yet)
+		- [ ] User feedback on why retry triggered
+		- [ ] Manual quality ratings (optional)
+	- **Metrics to derive:**
+		- Cost-per-successful-output by model
+		- Failure rate by model × phase combination
+		- Retry rate as proxy for "bad output"
+	- **Output:** Clear recommendations for which models belong in which tier
+	- Depends on: fixing retry tracking bugs, adding feedback mechanism 
 
 ## Completed (Recent)
 
