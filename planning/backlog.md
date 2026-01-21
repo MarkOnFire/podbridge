@@ -12,7 +12,8 @@ Items are worked incrementally. Any agent can pick up work.
 - [ ] **Bug/Feature: Phase retry tracking is incomplete** (2026-01-21)
 	- Multiple issues observed when retrying phases via the UI (job 169):
 	- [ ] `attempts` counter stays at 1 even after successful retries
-	- [ ] `model` field doesn't update to show which model was used on retry
+	- [ ] `model` field shows stale value from original run, not the retry model
+		- This makes the job detail view misleading (shows different models per phase when retries all used same model)
 	- [ ] No "user requested retry" event logged anywhere
 	- [ ] No progress tracking during retry execution (job appears idle)
 	- **Enhancement opportunity**: Add quick feedback prompts when user triggers retry
