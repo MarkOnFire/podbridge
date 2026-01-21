@@ -3,7 +3,9 @@
 Provides endpoints for remote ingest server monitoring and screengrab attachment.
 
 Endpoints:
-- GET /scan - Trigger scan of remote server
+- GET /config - Get scanner configuration
+- PUT /config - Update scanner configuration
+- POST /scan - Trigger scan of remote server
 - GET /status - Get scanner status and file counts
 - GET /screengrabs - List pending screengrabs
 - POST /screengrabs/{file_id}/attach - Attach single screengrab to SST
@@ -24,6 +26,13 @@ from api.services.screengrab_attacher import (
     BatchAttachResult,
     get_screengrab_attacher,
 )
+from api.services.ingest_config import (
+    get_ingest_config,
+    update_ingest_config,
+    record_scan_result,
+    get_next_scan_time,
+)
+from api.models.ingest import IngestConfig, IngestConfigUpdate, IngestConfigResponse
 from api.services.database import get_session
 from sqlalchemy import text
 
@@ -97,13 +106,13 @@ class IngestStatusResponse(BaseModel):
 
 @router.post("/scan", response_model=ScanResponse)
 async def trigger_scan(
-    base_url: str = Query(
-        default="https://mmingest.pbswi.wisc.edu/",
-        description="Base URL of ingest server"
+    base_url: Optional[str] = Query(
+        default=None,
+        description="Base URL of ingest server (uses config default if not provided)"
     ),
     directories: Optional[str] = Query(
         default=None,
-        description="Comma-separated list of directories to scan"
+        description="Comma-separated list of directories to scan (uses config default if not provided)"
     ),
 ) -> ScanResponse:
     """
@@ -113,16 +122,25 @@ async def trigger_scan(
     in the database for further action.
 
     Args:
-        base_url: Base URL of the ingest server
-        directories: Comma-separated directory paths (default: root)
+        base_url: Base URL of the ingest server (optional, uses config if not provided)
+        directories: Comma-separated directory paths (optional, uses config if not provided)
 
     Returns:
         Scan results including counts of new files discovered
     """
     try:
-        dirs = directories.split(",") if directories else ["/"]
-        scanner = IngestScanner(base_url=base_url, directories=dirs)
+        # Get config for defaults
+        config = await get_ingest_config()
+
+        # Use provided values or fall back to config
+        scan_base_url = base_url or config.server_url
+        scan_dirs = directories.split(",") if directories else config.directories
+
+        scanner = IngestScanner(base_url=scan_base_url, directories=scan_dirs)
         result = await scanner.scan()
+
+        # Record scan result in config
+        await record_scan_result(success=result.success)
 
         return ScanResponse(
             success=result.success,
@@ -135,6 +153,8 @@ async def trigger_scan(
         )
     except Exception as e:
         logger.error(f"Scan failed: {e}")
+        # Record failed scan
+        await record_scan_result(success=False)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -145,6 +165,9 @@ async def get_ingest_status() -> IngestStatusResponse:
 
     Returns counts of files by status and type.
     """
+    # Get config for enabled status and server URL
+    config = await get_ingest_config()
+
     async with get_session() as session:
         # Count by status
         status_query = text("""
@@ -165,8 +188,8 @@ async def get_ingest_status() -> IngestStatusResponse:
         type_counts = {row.file_type: row.count for row in result.fetchall()}
 
     return IngestStatusResponse(
-        enabled=True,
-        server_url="https://mmingest.pbswi.wisc.edu/",
+        enabled=config.enabled,
+        server_url=config.server_url,
         files_by_status=status_counts,
         files_by_type=type_counts,
     )
@@ -359,3 +382,85 @@ async def unignore_screengrab(file_id: int) -> dict:
             )
 
     return {"success": True, "message": f"Screengrab {file_id} restored to new"}
+
+
+# =============================================================================
+# Configuration Endpoints (Sprint 11.1)
+# =============================================================================
+
+
+@router.get("/config", response_model=IngestConfigResponse)
+async def get_config_endpoint() -> IngestConfigResponse:
+    """
+    Get current ingest scanner configuration.
+
+    Returns settings for scheduled scanning including:
+    - enabled: Whether scanning is active
+    - scan_interval_hours: Hours between scans
+    - scan_time: Time of day to run scan (HH:MM)
+    - last_scan_at: When last scan completed
+    - next_scan_at: When next scan is scheduled
+    """
+    config = await get_ingest_config()
+    next_scan = await get_next_scan_time()
+
+    return IngestConfigResponse(
+        enabled=config.enabled,
+        scan_interval_hours=config.scan_interval_hours,
+        scan_time=config.scan_time,
+        last_scan_at=config.last_scan_at,
+        last_scan_success=config.last_scan_success,
+        server_url=config.server_url,
+        directories=config.directories,
+        ignore_directories=config.ignore_directories,
+        next_scan_at=next_scan,
+    )
+
+
+@router.put("/config", response_model=IngestConfigResponse)
+async def update_config_endpoint(updates: IngestConfigUpdate) -> IngestConfigResponse:
+    """
+    Update ingest scanner configuration.
+
+    Allows updating:
+    - enabled: Turn scheduled scanning on/off
+    - scan_interval_hours: Hours between scans (1-168)
+    - scan_time: Time of day to run scan (HH:MM format)
+
+    Note: Changes take effect on next scheduled scan.
+    """
+    # Validate scan_time format if provided
+    if updates.scan_time:
+        parts = updates.scan_time.split(":")
+        if len(parts) != 2:
+            raise HTTPException(
+                status_code=400,
+                detail="scan_time must be in HH:MM format"
+            )
+        try:
+            hour, minute = int(parts[0]), int(parts[1])
+            if not (0 <= hour <= 23) or not (0 <= minute <= 59):
+                raise ValueError()
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="scan_time must be a valid time (00:00 to 23:59)"
+            )
+
+    config = await update_ingest_config(updates)
+    next_scan = await get_next_scan_time()
+
+    logger.info(f"Ingest config updated: enabled={config.enabled}, "
+                f"interval={config.scan_interval_hours}h, time={config.scan_time}")
+
+    return IngestConfigResponse(
+        enabled=config.enabled,
+        scan_interval_hours=config.scan_interval_hours,
+        scan_time=config.scan_time,
+        last_scan_at=config.last_scan_at,
+        last_scan_success=config.last_scan_success,
+        server_url=config.server_url,
+        directories=config.directories,
+        ignore_directories=config.ignore_directories,
+        next_scan_at=next_scan,
+    )

@@ -33,6 +33,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.services import database
 from api.services.llm import get_llm_client, close_llm_client
 from api.services.logging import setup_logging, get_logger
+from api.services.ingest_config import ensure_defaults as ensure_ingest_defaults
 
 
 # Initialize logging for API
@@ -53,6 +54,9 @@ async def lifespan(app: FastAPI):
     logger.info("Database initialized")
     get_llm_client()  # Initialize LLM client
     logger.info("LLM client initialized")
+    # Initialize ingest config defaults (Sprint 11.1)
+    await ensure_ingest_defaults()
+    logger.info("Ingest configuration initialized")
     yield
     # Shutdown: Close connections
     logger.info("Shutting down API server")
