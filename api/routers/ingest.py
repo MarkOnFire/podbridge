@@ -1,15 +1,27 @@
 """Ingest router for Editorial Assistant v3.0 API.
 
-Provides endpoints for remote ingest server monitoring and screengrab attachment.
+Provides endpoints for remote ingest server monitoring, transcript queueing,
+and screengrab attachment.
 
 Endpoints:
 - GET /config - Get scanner configuration
 - PUT /config - Update scanner configuration
 - POST /scan - Trigger scan of remote server
 - GET /status - Get scanner status and file counts
+- GET /available - List files available for queueing (with SST enrichment)
+
+Transcript endpoints:
+- POST /transcripts/{file_id}/queue - Download and queue single transcript
+- POST /transcripts/queue - Bulk queue multiple transcripts
+- POST /transcripts/{file_id}/ignore - Mark transcript as ignored
+- POST /transcripts/{file_id}/unignore - Restore ignored transcript
+
+Screengrab endpoints:
 - GET /screengrabs - List pending screengrabs
 - POST /screengrabs/{file_id}/attach - Attach single screengrab to SST
 - POST /screengrabs/attach-all - Attach all pending screengrabs
+- POST /screengrabs/{file_id}/ignore - Mark screengrab as ignored
+- POST /screengrabs/{file_id}/unignore - Restore ignored screengrab
 """
 
 import logging
@@ -514,6 +526,218 @@ async def unignore_screengrab(file_id: int) -> dict:
             )
 
     return {"success": True, "message": f"Screengrab {file_id} restored to new"}
+
+
+# =============================================================================
+# Transcript Action Endpoints (Sprint 11.1 Wave 3)
+# =============================================================================
+
+
+class QueueTranscriptResponse(BaseModel):
+    """Response from queuing a transcript."""
+    success: bool
+    file_id: int
+    media_id: Optional[str]
+    local_path: Optional[str] = None
+    job_id: Optional[int] = None
+    error: Optional[str] = None
+
+
+class BulkQueueRequest(BaseModel):
+    """Request to queue multiple transcripts."""
+    file_ids: List[int]
+
+
+class BulkQueueResponse(BaseModel):
+    """Response from bulk queue operation."""
+    total_requested: int
+    queued: int
+    failed: int
+    results: List[QueueTranscriptResponse]
+
+
+@router.post("/transcripts/{file_id}/queue", response_model=QueueTranscriptResponse)
+async def queue_transcript(file_id: int) -> QueueTranscriptResponse:
+    """
+    Queue a transcript for processing.
+
+    Downloads the SRT file from the ingest server to the local transcripts/
+    folder, then creates a job for processing.
+
+    Args:
+        file_id: ID from available_files table
+
+    Returns:
+        Queue result including local path and job ID
+    """
+    from api.services.database import create_job
+    from api.models.job import JobCreate
+
+    # Get scanner with config
+    config = await get_ingest_config()
+    scanner = IngestScanner(
+        base_url=config.server_url,
+        directories=config.directories,
+    )
+
+    # Download the file
+    download_result = await scanner.download_file(file_id)
+
+    if not download_result["success"]:
+        return QueueTranscriptResponse(
+            success=False,
+            file_id=file_id,
+            media_id=None,
+            error=download_result.get("error", "Download failed"),
+        )
+
+    # Create a job for this transcript
+    try:
+        # Extract project name from Media ID or filename
+        media_id = download_result.get("media_id")
+        filename = download_result["filename"]
+        project_name = media_id if media_id else filename.rsplit(".", 1)[0]
+
+        # transcript_file should be relative to transcripts/ folder
+        local_path = download_result["local_path"]
+        if local_path.startswith("transcripts/"):
+            transcript_file = local_path[len("transcripts/"):]
+        else:
+            transcript_file = filename
+
+        job_create = JobCreate(
+            project_name=project_name,
+            transcript_file=transcript_file,
+        )
+        job = await create_job(job_create)
+
+        # Update available_files with job_id
+        async with get_session() as session:
+            update_query = text("""
+                UPDATE available_files
+                SET job_id = :job_id
+                WHERE id = :file_id
+            """)
+            await session.execute(update_query, {
+                "job_id": job.id,
+                "file_id": file_id,
+            })
+
+        logger.info(f"Queued transcript {file_id}: job {job.id}")
+
+        return QueueTranscriptResponse(
+            success=True,
+            file_id=file_id,
+            media_id=download_result["media_id"],
+            local_path=download_result["local_path"],
+            job_id=job.id,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to create job for transcript {file_id}: {e}")
+        return QueueTranscriptResponse(
+            success=False,
+            file_id=file_id,
+            media_id=download_result.get("media_id"),
+            local_path=download_result.get("local_path"),
+            error=f"Failed to create job: {e}",
+        )
+
+
+@router.post("/transcripts/queue", response_model=BulkQueueResponse)
+async def queue_transcripts_bulk(request: BulkQueueRequest) -> BulkQueueResponse:
+    """
+    Queue multiple transcripts for processing.
+
+    Downloads each SRT file and creates jobs for them.
+
+    Args:
+        request: BulkQueueRequest with list of file IDs
+
+    Returns:
+        Bulk queue results
+    """
+    results = []
+    queued = 0
+    failed = 0
+
+    for file_id in request.file_ids:
+        result = await queue_transcript(file_id)
+        results.append(result)
+        if result.success:
+            queued += 1
+        else:
+            failed += 1
+
+    return BulkQueueResponse(
+        total_requested=len(request.file_ids),
+        queued=queued,
+        failed=failed,
+        results=results,
+    )
+
+
+@router.post("/transcripts/{file_id}/ignore")
+async def ignore_transcript(file_id: int) -> dict:
+    """
+    Mark a transcript as ignored (won't appear in pending list).
+
+    Args:
+        file_id: ID from available_files table
+
+    Returns:
+        Success message
+    """
+    async with get_session() as session:
+        query = text("""
+            UPDATE available_files
+            SET status = 'ignored',
+                status_changed_at = :now
+            WHERE id = :file_id AND file_type = 'transcript'
+        """)
+        result = await session.execute(query, {
+            "file_id": file_id,
+            "now": datetime.utcnow().isoformat(),
+        })
+
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Transcript not found")
+
+    logger.info(f"Ignored transcript {file_id}")
+    return {"success": True, "message": f"Transcript {file_id} ignored"}
+
+
+@router.post("/transcripts/{file_id}/unignore")
+async def unignore_transcript(file_id: int) -> dict:
+    """
+    Restore an ignored transcript to 'new' status.
+
+    Args:
+        file_id: ID from available_files table
+
+    Returns:
+        Success message
+    """
+    async with get_session() as session:
+        query = text("""
+            UPDATE available_files
+            SET status = 'new',
+                status_changed_at = :now
+            WHERE id = :file_id AND file_type = 'transcript' AND status = 'ignored'
+        """)
+        result = await session.execute(query, {
+            "file_id": file_id,
+            "now": datetime.utcnow().isoformat(),
+        })
+
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Transcript not found or not currently ignored"
+            )
+
+    logger.info(f"Restored transcript {file_id} to new")
+    return {"success": True, "message": f"Transcript {file_id} restored to new"}
 
 
 # =============================================================================

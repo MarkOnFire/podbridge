@@ -104,24 +104,12 @@ class IngestScanner:
             client = AirtableClient()
 
             # Query SST for records where QC field indicates passed status
-            # NOTE: Field name and pass value may need adjustment based on actual SST schema
-            # Common possibilities: "QC", "QC Status", "Quality Control"
-            # Common pass values: "Passed", "Pass", "Approved", TRUE
-            #
-            # For now, using formula that checks multiple possibilities
-            # User can configure exact field/value once confirmed
+            # The "QC" field is a dropdown with status values
             url = f"{client.API_BASE_URL}/{client.BASE_ID}/{client.TABLE_ID}"
 
             # Airtable formula to find QC-passed records
-            # This checks common field names and values
-            # Adjust based on actual SST schema
-            formula = """OR(
-                {QC} = 'Passed',
-                {QC} = 'Pass',
-                {QC Status} = 'Passed',
-                {QC Status} = 'Pass',
-                {Quality Control} = 'Passed'
-            )"""
+            # "QC" is a single-select dropdown field
+            formula = "{QC} = 'Passed'"
 
             params = {
                 "filterByFormula": formula,
@@ -504,6 +492,98 @@ class IngestScanner:
 
             logger.info(f"Tracked new {remote_file.file_type}: {remote_file.filename}")
             return True
+
+    async def download_file(self, file_id: int, destination_dir: str = "transcripts") -> dict:
+        """
+        Download a file from the ingest server to a local directory.
+
+        SRT files are copied locally for safekeeping since the ingest server
+        is trimmed regularly. Creates the destination directory if needed.
+
+        Args:
+            file_id: ID from available_files table
+            destination_dir: Local directory to save file (default: transcripts/)
+
+        Returns:
+            Dict with download result:
+            - success: bool
+            - local_path: Path where file was saved (if successful)
+            - media_id: Media ID from the file
+            - error: Error message (if failed)
+        """
+        import os
+        from pathlib import Path
+
+        # Get file record from database
+        async with get_session() as session:
+            query = text("""
+                SELECT id, remote_url, filename, media_id, file_type, status
+                FROM available_files
+                WHERE id = :file_id
+            """)
+            result = await session.execute(query, {"file_id": file_id})
+            row = result.fetchone()
+
+            if not row:
+                return {"success": False, "error": f"File {file_id} not found"}
+
+            if row.file_type != 'transcript':
+                return {"success": False, "error": f"File {file_id} is not a transcript"}
+
+        # Create destination directory if needed
+        dest_path = Path(destination_dir)
+        dest_path.mkdir(parents=True, exist_ok=True)
+
+        # Build local filename (use original filename)
+        local_filename = row.filename
+        local_path = dest_path / local_filename
+
+        # Download the file
+        try:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+                auth = None
+                if self.auth:
+                    auth = httpx.BasicAuth(self.auth[0], self.auth[1])
+
+                response = await client.get(row.remote_url, auth=auth)
+                response.raise_for_status()
+
+                # Write to local file
+                with open(local_path, 'wb') as f:
+                    f.write(response.content)
+
+                logger.info(f"Downloaded {row.filename} to {local_path}")
+
+        except httpx.HTTPStatusError as e:
+            error_msg = f"HTTP error downloading {row.filename}: {e.response.status_code}"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+        except Exception as e:
+            error_msg = f"Error downloading {row.filename}: {e}"
+            logger.error(error_msg)
+            return {"success": False, "error": error_msg}
+
+        # Update file status in database
+        async with get_session() as session:
+            update_query = text("""
+                UPDATE available_files
+                SET status = 'queued',
+                    local_path = :local_path,
+                    downloaded_at = :now
+                WHERE id = :file_id
+            """)
+            await session.execute(update_query, {
+                "file_id": file_id,
+                "local_path": str(local_path),
+                "now": datetime.now(timezone.utc).isoformat(),
+            })
+
+        return {
+            "success": True,
+            "local_path": str(local_path),
+            "media_id": row.media_id,
+            "filename": row.filename,
+        }
 
     async def get_pending_screengrabs(self) -> List[dict]:
         """

@@ -45,7 +45,7 @@ Display matches in a "Ready to Queue" screen for one-click processing.
 ### Feature Specification
 See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
 
-### Sprint Status: IN PROGRESS (Wave 2 Complete)
+### Sprint Status: IN PROGRESS (Wave 3 Complete)
 
 ---
 
@@ -80,20 +80,20 @@ See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
 - **QC Field Note**: Formula checks multiple common field names (QC, QC Status, Quality Control)
   with pass values (Passed, Pass). May need adjustment based on actual SST schema.
 
-### Phase 2: Core Scanner (3 tasks) - **PARTIALLY COMPLETE**
+### Phase 2: Core Scanner (3 tasks) - **COMPLETE**
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
 | 11.1.5 | IngestScanner: SST query for QC-passed | orchestrator | **complete** | 11.1.2 |
 | 11.1.6 | IngestScanner: Directory parser & matching | orchestrator | **complete** (already existed) | 11.1.3, 11.1.5 |
-| 11.1.7 | IngestScanner: File download | the-drone | pending | 11.1.6 |
+| 11.1.7 | IngestScanner: File download | orchestrator | **complete** | 11.1.6 |
 
-### Phase 3: API Layer (4 tasks) - **PARTIALLY COMPLETE**
+### Phase 3: API Layer (4 tasks) - **COMPLETE**
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
 | 11.1.8 | Ingest router: Read endpoints | orchestrator | **complete** | 11.1.1, 11.1.2 |
-| 11.1.9 | Ingest router: Action endpoints | orchestrator | pending | 11.1.6, 11.1.7, 11.1.8 |
+| 11.1.9 | Ingest router: Action endpoints | orchestrator | **complete** | 11.1.6, 11.1.7, 11.1.8 |
 | 11.1.10 | Config update endpoint for Settings | orchestrator | **complete** (scheduler reconfiguration added) | 11.1.4, 11.1.8 |
 | 11.1.11 | ScreengrabAttacher service | orchestrator | **complete** (already existed) | 11.1.1, 11.1.7 |
 
@@ -198,6 +198,19 @@ This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
 ---
 
 ## Session Notes
+
+### 2026-01-21 (Wave 3 Implementation - Main Session)
+- Fixed QC field formula: simplified from OR() with multiple field names to just `{QC} = 'Passed'`
+- Completed Task 11.1.7: Added `IngestScanner.download_file()` method
+  - Downloads SRT files from ingest server to local `transcripts/` folder
+  - Updates file status to 'queued' with local path and timestamp
+- Created migration 007 to add `local_path` and `downloaded_at` columns to available_files
+- Completed Task 11.1.9: Added transcript action endpoints
+  - POST `/api/ingest/transcripts/{file_id}/queue` - Download and create job
+  - POST `/api/ingest/transcripts/queue` - Bulk queue operation
+  - POST `/api/ingest/transcripts/{file_id}/ignore` and `/unignore` - Status toggles
+- Backend implementation for Sprint 11.1 is now complete (Waves 1-3)
+- Remaining: Wave 4-6 (Frontend components and testing)
 
 ### 2026-01-21 (Wave 1 Implementation)
 - Completed Sprint 11.1 Wave 1 (Tasks 11.1.1-11.1.3)
