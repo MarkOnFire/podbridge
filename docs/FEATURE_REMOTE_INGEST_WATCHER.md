@@ -2,15 +2,50 @@
 
 ## Overview
 
-Automatically monitor the PBS Wisconsin media ingest server (`mmingest.pbswi.wisc.edu`) for new SRT transcript files and JPG screen grabs. Display newly available files in the dashboard with one-click queueing—without auto-processing.
+Monitor the PBS Wisconsin media ingest server (`mmingest.pbswi.wisc.edu`) on a configurable schedule for SRT transcript files and JPG screen grabs that match QC-passed content in the Airtable SST. Display matches in a "Ready to Queue" screen for one-click processing.
 
-**Goal**: Reduce manual file discovery friction while keeping human control over what gets processed.
+**Goal**: Surface new content that's ready for editorial processing without manual file hunting.
 
 ## User Stories
 
-> As a copy editor, I want to see newly available transcripts from the ingest server so I can quickly add them to the processing queue without manually downloading and uploading files.
+> As a copy editor, I want to see transcripts that are ready for processing (content passed QC and file exists on ingest server) so I can quickly add them to the queue.
 
 > As a copy editor, I want JPG screen grabs to be automatically attached to their corresponding Airtable SST records so I don't have to manually upload them.
+
+---
+
+## Design Decisions (Revised 2026-01-21)
+
+### Trigger: Scheduled Scan (Not Continuous Polling)
+
+**Why**: Content passes QC in Airtable, but files may not appear on the ingest server until hours or days later. A scheduled daily scan captures this naturally without complex state tracking.
+
+**Configuration** (via web UI Settings page):
+- **Scan interval**: Default 24 hours (midnight daily)
+- **Enabled/Disabled toggle**: Can pause scanning
+- **Manual scan button**: "Check Now" for immediate results
+
+### Smart Scanning: QC-Passed Content Only
+
+Instead of tracking every file on the server, we:
+1. Query SST for content where `QC` = passed
+2. For each, check if SRT/JPG exists on ingest server by Media ID
+3. Only track files that match QC-passed content
+
+This is more efficient and only surfaces actionable items.
+
+### Server Access
+
+- **URL**: `https://mmingest.pbswi.wisc.edu/`
+- **Authentication**: None required (open for system-to-system transfers)
+- **Structure**: Project directories + "misc" catch-all. Ignore "promos" folder.
+- **File naming**: Media ID always at start of filename (e.g., `2WLI1215HD_transcript.srt`)
+
+### File Handling
+
+- **SRT files**: Copy to local `transcripts/` folder for safekeeping (server is regularly trimmed)
+- **JPG files**: Download temporarily for Airtable upload, then clean up
+- **Deletions**: Ignore - don't track when files disappear from server
 
 ---
 
@@ -26,68 +61,53 @@ The screengrab attachment feature will perform **additive-only writes** to Airta
 
 This exception is explicitly authorized by the project owner for this specific use case.
 
-## Technical Requirements
+---
 
-### Server Details
-
-- **URL**: `https://mmingest.pbswi.wisc.edu/`
-- **Access Type**: Web directory listing (Apache/nginx autoindex)
-- **File Types**:
-  - `.srt` files (SubRip subtitle format) → Queue for transcript processing
-  - `.jpg` / `.jpeg` files → Attach to SST Screen Grab field
-- **Authentication**: TBD - may require basic auth or VPN access
-
-### Architecture Components
+## Architecture
 
 ```
-┌─────────────────────────────────────┐
-│  mmingest.pbswi.wisc.edu            │
-│  (Web directory listing)            │
-└─────────────────┬───────────────────┘
-                  │ HTTP GET (polling)
-                  ▼
-┌─────────────────────────────────────┐
-│  IngestScanner Service              │
-│  api/services/ingest_scanner.py     │
-│  - Fetch & parse directory HTML     │
-│  - Extract .srt AND .jpg file links │
-│  - Diff against known files         │
-│  - Store new discoveries            │
-│  - Route by file type               │
-└─────────────────┬───────────────────┘
-                  │
-         ┌───────┴───────┐
-         │               │
-         ▼               ▼
-┌─────────────────┐  ┌─────────────────┐
-│  .srt files     │  │  .jpg files     │
-│  (Transcripts)  │  │  (Screen Grabs) │
-└────────┬────────┘  └────────┬────────┘
-         │                    │
-         ▼                    ▼
-┌─────────────────┐  ┌─────────────────────────┐
-│ available_files │  │ ScreengrabAttacher      │
-│ table (status:  │  │ api/services/           │
-│ new/queued/etc) │  │   screengrab_attacher.py│
-└────────┬────────┘  │ - Match Media ID → SST  │
-         │           │ - Check existing grabs  │
-         │           │ - Append (never replace)│
-         │           │ - Log all attachments   │
-         │           └────────────┬────────────┘
-         │                        │
-         ▼                        ▼
-┌─────────────────┐  ┌─────────────────────────┐
-│ Dashboard Panel │  │ Airtable SST            │
-│ - [Add to Queue]│  │ Screen Grab field       │
-│ - [Ignore]      │  │ (fldCCWjcowpE2wJhc)     │
-└─────────────────┘  └─────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Ingest Scanner System                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────┐     ┌──────────────────────────────────────────┐  │
+│  │    Scheduler     │     │              Scan Process                 │  │
+│  │  (configurable)  │────▶│  1. Query SST for QC-passed Media IDs    │  │
+│  │  Default: daily  │     │  2. Filter to those without existing jobs│  │
+│  │  at midnight     │     │  3. For each, check ingest server        │  │
+│  └──────────────────┘     │  4. Match files by Media ID prefix       │  │
+│         ▲                 │  5. Copy SRTs to local transcripts/      │  │
+│         │                 │  6. Store matches in available_files     │  │
+│  ┌──────┴───────┐         │  7. Log screengrabs for later attachment │  │
+│  │ Manual Scan  │         └──────────────────────────────────────────┘  │
+│  │   Button     │                        │                              │
+│  │ "Check Now"  │                        ▼                              │
+│  └──────────────┘         ┌──────────────────────────────────────────┐  │
+│                           │        "Ready to Queue" Screen            │  │
+│  Settings (Web UI):       │  ┌────────────────────────────────────┐  │  │
+│  • Interval (hours)       │  │ Media ID │ Title │ Project │ Status│  │  │
+│  • Enabled (on/off)       │  │ 2WLI1215 │ Ep... │ WI Life │ Ready │  │  │
+│  • Directories to scan    │  │ [Queue]  │       │         │       │  │  │
+│                           │  └────────────────────────────────────┘  │  │
+│                           │  [Queue All Selected]                     │  │
+│                           └──────────────────────────────────────────┘  │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                    Screengrab Attachment                          │   │
+│  │  (Separate timing - screengrabs may arrive later than SRTs)       │   │
+│  │  • Match JPGs to SST by Media ID                                  │   │
+│  │  • Append to Screen Grab field (never replace)                    │   │
+│  │  • Full audit trail                                               │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Database Schema
 
-### New Table: `available_files`
+### Table: `available_files`
 
 ```sql
 CREATE TABLE available_files (
@@ -102,7 +122,7 @@ CREATE TABLE available_files (
     file_type TEXT NOT NULL,               -- 'transcript' or 'screengrab'
 
     -- Extracted metadata
-    media_id TEXT,                         -- Extracted from filename if possible
+    media_id TEXT,                         -- Extracted from filename
     file_size_bytes INTEGER,               -- If available from listing
     remote_modified_at DATETIME,           -- If available from listing
 
@@ -111,7 +131,7 @@ CREATE TABLE available_files (
     last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     -- Status workflow
-    status TEXT DEFAULT 'new',             -- new / queued / ignored / missing
+    status TEXT DEFAULT 'new',             -- new / queued / ignored / attached / no_match
     status_changed_at DATETIME,
 
     -- Linking (after action taken)
@@ -119,7 +139,6 @@ CREATE TABLE available_files (
     airtable_record_id TEXT,               -- SST record if attached (screengrabs)
     attached_at DATETIME,                  -- When screengrab was attached
 
-    -- Indexes for common queries
     UNIQUE(remote_url)
 );
 
@@ -129,16 +148,52 @@ CREATE INDEX idx_available_files_first_seen ON available_files(first_seen_at);
 CREATE INDEX idx_available_files_file_type ON available_files(file_type);
 ```
 
+### Table: `screengrab_attachments` (Audit Log)
+
+```sql
+CREATE TABLE screengrab_attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    available_file_id INTEGER REFERENCES available_files(id),
+    sst_record_id TEXT NOT NULL,
+    media_id TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    remote_url TEXT NOT NULL,
+    attached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    attachments_before INTEGER,
+    attachments_after INTEGER,
+    success BOOLEAN DEFAULT TRUE,
+    error_message TEXT
+);
+
+CREATE INDEX idx_screengrab_attachments_sst ON screengrab_attachments(sst_record_id);
+CREATE INDEX idx_screengrab_attachments_date ON screengrab_attachments(attached_at);
+```
+
+### Table: `ingest_config` (Runtime Settings)
+
+```sql
+CREATE TABLE ingest_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Default values inserted on first run:
+-- scan_interval_hours: 24
+-- scan_enabled: true
+-- last_scan_at: null
+-- scan_time: "00:00" (midnight)
+```
+
 ### Status Values
 
 | Status | File Type | Description |
 |--------|-----------|-------------|
-| `new` | Both | File discovered, not yet acted upon |
+| `new` | Both | File discovered, ready to queue/attach |
 | `queued` | Transcript | User clicked "Add to Queue", job created |
 | `attached` | Screengrab | Successfully attached to SST record |
 | `no_match` | Screengrab | Media ID could not be matched to SST record |
 | `ignored` | Both | User explicitly dismissed this file |
-| `missing` | Both | File was seen before but no longer on server |
 
 ---
 
@@ -152,8 +207,8 @@ List files available for queueing.
 
 **Query Parameters:**
 - `status` (optional): Filter by status (default: `new`)
+- `file_type` (optional): Filter by type (`transcript` or `screengrab`)
 - `limit` (optional): Max results (default: 50)
-- `include_ignored` (optional): Include ignored files (default: false)
 
 **Response:**
 ```json
@@ -162,25 +217,29 @@ List files available for queueing.
     {
       "id": 1,
       "filename": "2WLI1215HD_transcript.srt",
-      "remote_url": "https://mmingest.pbswi.wisc.edu/exports/2WLI1215HD_transcript.srt",
       "media_id": "2WLI1215HD",
-      "first_seen_at": "2025-01-12T14:30:00Z",
+      "file_type": "transcript",
+      "first_seen_at": "2025-01-12T00:00:00Z",
       "status": "new",
-      "file_size_bytes": 45000
+      "sst_record": {
+        "id": "recXYZ123",
+        "title": "Episode Title",
+        "project": "Wisconsin Life"
+      }
     }
   ],
   "total_new": 5,
-  "last_scan_at": "2025-01-12T15:00:00Z"
+  "last_scan_at": "2025-01-12T00:00:00Z"
 }
 ```
 
 #### POST `/api/ingest/queue/{file_id}`
 
-Download file from remote server and add to processing queue.
+Add a discovered file to the processing queue.
 
 **Process:**
-1. Fetch file from `remote_url`
-2. Save to `transcripts/` folder
+1. Verify file exists in `available_files` with status `new`
+2. If not already local, download from `remote_url` to `transcripts/`
 3. Create job via existing queue logic (with SST linking)
 4. Update `available_files.status` to `queued`
 5. Link `available_files.job_id` to new job
@@ -209,43 +268,48 @@ Queue multiple files at once.
 
 Mark a file as ignored (won't show in "new" list).
 
-#### POST `/api/ingest/unignore/{file_id}`
-
-Restore an ignored file to "new" status.
-
 #### POST `/api/ingest/scan`
 
-Trigger an immediate scan of the remote server.
+Trigger an immediate scan (the "Check Now" button).
 
 **Response:**
 ```json
 {
   "success": true,
-  "new_files_found": 3,
-  "total_files_on_server": 150,
+  "qc_passed_checked": 25,
+  "new_transcripts_found": 3,
+  "new_screengrabs_found": 2,
   "scan_duration_ms": 1250
 }
 ```
 
-#### GET `/api/ingest/status`
+#### GET `/api/ingest/config`
 
-Get scanner status and configuration.
+Get current scanner configuration.
 
 **Response:**
 ```json
 {
   "enabled": true,
-  "server_url": "https://mmingest.pbswi.wisc.edu/",
-  "poll_interval_minutes": 15,
-  "last_scan_at": "2025-01-12T15:00:00Z",
+  "scan_interval_hours": 24,
+  "scan_time": "00:00",
+  "last_scan_at": "2025-01-12T00:00:00Z",
   "last_scan_success": true,
-  "files_by_status": {
-    "new": 5,
-    "queued": 42,
-    "attached": 15,
-    "no_match": 2,
-    "ignored": 3
-  }
+  "server_url": "https://mmingest.pbswi.wisc.edu/",
+  "directories": ["/exports/", "/misc/"]
+}
+```
+
+#### PUT `/api/ingest/config`
+
+Update scanner configuration (from Settings page).
+
+**Request Body:**
+```json
+{
+  "enabled": true,
+  "scan_interval_hours": 24,
+  "scan_time": "00:00"
 }
 ```
 
@@ -255,152 +319,51 @@ Get scanner status and configuration.
 
 List discovered screengrab files and their attachment status.
 
-**Query Parameters:**
-- `status` (optional): Filter by status (`new`, `attached`, `no_match`, `ignored`)
-- `limit` (optional): Max results (default: 50)
-
-**Response:**
-```json
-{
-  "screengrabs": [
-    {
-      "id": 42,
-      "filename": "2WLI1215HD_screengrab.jpg",
-      "remote_url": "https://mmingest.pbswi.wisc.edu/images/2WLI1215HD_screengrab.jpg",
-      "media_id": "2WLI1215HD",
-      "status": "new",
-      "first_seen_at": "2025-01-12T14:30:00Z",
-      "sst_record": {
-        "id": "recXYZ123",
-        "title": "Episode Title",
-        "existing_screengrabs": 2
-      }
-    }
-  ],
-  "total_new": 3,
-  "total_no_match": 1
-}
-```
-
 #### POST `/api/ingest/screengrabs/{file_id}/attach`
 
 Manually trigger attachment of a screengrab to its SST record.
-
-**Process:**
-1. Verify Media ID matches an SST record
-2. Fetch current `Screen Grab` attachments from SST record
-3. Download JPG from remote server
-4. **Append** new attachment (preserve existing)
-5. Update SST record via Airtable API
-6. Update `available_files.status` to `attached`
-7. Log the attachment action
-
-**Response:**
-```json
-{
-  "success": true,
-  "sst_record_id": "recXYZ123",
-  "attachment_count_before": 2,
-  "attachment_count_after": 3,
-  "message": "Screengrab attached successfully"
-}
-```
 
 #### POST `/api/ingest/screengrabs/attach-all`
 
 Attach all unattached screengrabs that have matching SST records.
 
-**Response:**
-```json
-{
-  "success": true,
-  "attached": 5,
-  "skipped_no_match": 2,
-  "errors": []
-}
-```
-
-#### POST `/api/ingest/screengrabs/{file_id}/retry-match`
-
-Retry Media ID matching for a `no_match` screengrab (useful after manual SST record creation).
-
 ---
 
-## Service: IngestScanner
+## Services
 
-### File: `api/services/ingest_scanner.py`
+### IngestScanner (`api/services/ingest_scanner.py`)
 
 ```python
 class IngestScanner:
     """
-    Monitors remote ingest server for new SRT files.
+    Scans ingest server for files matching QC-passed content.
 
-    Responsibilities:
-    - Fetch and parse Apache/nginx directory listings
-    - Extract file metadata (name, size, date if available)
-    - Track files in database
-    - Download files on demand for queueing
+    Key difference from original design: We don't track every file.
+    We query SST first, then look for matching files.
     """
 
-    def __init__(self, config: IngestConfig):
-        self.base_url = config.server_url
-        self.poll_interval = config.poll_interval_minutes
-        self.file_extensions = ['.srt', '.txt']  # Configurable
+    async def run_scan(self) -> ScanResult:
+        """
+        Main scan process:
+        1. Query SST for QC-passed records without jobs
+        2. For each Media ID, check ingest server
+        3. Store matches in available_files
+        """
 
-    async def scan_remote_server(self) -> ScanResult:
-        """Fetch directory listing and update database."""
+    async def get_qc_passed_media_ids(self) -> list[str]:
+        """Query Airtable SST for QC-passed Media IDs."""
+
+    async def check_ingest_server(self, media_id: str) -> list[RemoteFile]:
+        """Check if files for this Media ID exist on server."""
 
     async def download_file(self, file_id: int) -> Path:
-        """Download a specific file to transcripts/ folder."""
+        """Download a file to local transcripts/ folder."""
 
     def parse_directory_listing(self, html: str) -> list[RemoteFile]:
         """Parse Apache/nginx autoindex HTML."""
-
-    def extract_media_id(self, filename: str) -> Optional[str]:
-        """Extract media ID from filename patterns."""
 ```
 
-### HTML Parsing Strategy
-
-Apache autoindex typically generates HTML like:
-```html
-<a href="2WLI1215HD_transcript.srt">2WLI1215HD_transcript.srt</a>  12-Jan-2025 14:30  45K
-```
-
-Use BeautifulSoup to:
-1. Find all `<a>` tags with `.srt` or `.txt` href
-2. Extract filename from href
-3. Parse sibling text for date/size if available
-
-### Configuration
-
-Add to `config/ingest.json` or environment variables:
-
-```json
-{
-  "ingest_server": {
-    "enabled": true,
-    "base_url": "https://mmingest.pbswi.wisc.edu/",
-    "directories": ["/exports/", "/transcripts/", "/images/"],
-    "poll_interval_minutes": 15,
-    "transcript_extensions": [".srt", ".txt"],
-    "screengrab_extensions": [".jpg", ".jpeg", ".png"],
-    "auto_attach_screengrabs": true,
-    "auth": {
-      "type": "none",  // or "basic", "header"
-      "username": "",
-      "password": ""
-    },
-    "timeout_seconds": 30
-  }
-}
-```
-
----
-
-## Service: ScreengrabAttacher
-
-### File: `api/services/screengrab_attacher.py`
+### ScreengrabAttacher (`api/services/screengrab_attacher.py`)
 
 ```python
 class ScreengrabAttacher:
@@ -409,310 +372,183 @@ class ScreengrabAttacher:
 
     SAFETY GUARANTEES:
     - ADDITIVE ONLY: Never removes or replaces existing attachments
-    - AUDIT LOGGED: All attachment operations are logged
-    - IDEMPOTENT: Re-running on same file won't duplicate attachments
-
-    Responsibilities:
-    - Match screengrab files to SST records by Media ID
-    - Download images from remote server
-    - Append to Airtable attachment field (never overwrite)
-    - Track attachment history for audit trail
+    - AUDIT LOGGED: All operations logged to screengrab_attachments
+    - IDEMPOTENT: Duplicate filenames detected and skipped
     """
 
     SST_TABLE_ID = "tblTKFOwTvK7xw1H5"
     SCREEN_GRAB_FIELD_ID = "fldCCWjcowpE2wJhc"
 
     async def attach_screengrab(self, file_id: int) -> AttachResult:
-        """
-        Attach a single screengrab to its matching SST record.
-
-        Process:
-        1. Get file record from database
-        2. Look up SST record by Media ID
-        3. Fetch current Screen Grab attachments
-        4. Download image from remote URL
-        5. Upload to Airtable (append to existing)
-        6. Update local tracking record
-        7. Log the operation
-        """
+        """Attach a single screengrab to its matching SST record."""
 
     async def attach_all_pending(self) -> BatchAttachResult:
-        """Attach all 'new' screengrabs that have matching SST records."""
-
-    def _get_existing_attachments(self, record_id: str) -> list[dict]:
-        """Fetch current Screen Grab attachments from SST record."""
-
-    def _append_attachment(
-        self,
-        record_id: str,
-        existing: list[dict],
-        new_url: str,
-        filename: str
-    ) -> None:
-        """
-        Append new attachment to existing ones.
-
-        CRITICAL: This method MUST preserve all existing attachments.
-        The Airtable API replaces the entire field value, so we must:
-        1. Fetch existing attachments
-        2. Add new attachment to the list
-        3. Send complete list back
-        """
-
-    def _is_duplicate(self, existing: list[dict], filename: str) -> bool:
-        """Check if this exact filename is already attached."""
+        """Attach all 'new' screengrabs with matching SST records."""
 ```
 
-### Airtable Attachment Format
+---
 
-Airtable attachment fields expect this format:
+## Configuration
+
+### Default Configuration (`config/llm-config.json`)
 
 ```json
 {
-  "fields": {
-    "Screen Grab": [
-      // Existing attachments (MUST preserve these)
-      {"id": "attXXX", "url": "https://..."},
-      {"id": "attYYY", "url": "https://..."},
-      // New attachment (append)
-      {"url": "https://mmingest.pbswi.wisc.edu/images/2WLI1215HD.jpg"}
-    ]
+  "ingest_server": {
+    "enabled": true,
+    "base_url": "https://mmingest.pbswi.wisc.edu/",
+    "directories": ["/exports/", "/misc/"],
+    "ignore_directories": ["/promos/"],
+    "transcript_extensions": [".srt", ".txt"],
+    "screengrab_extensions": [".jpg", ".jpeg", ".png"],
+    "scan_interval_hours": 24,
+    "scan_time": "00:00",
+    "timeout_seconds": 30,
+    "max_file_size_mb": 100
   }
 }
 ```
 
-**Important**: When updating, existing attachments are referenced by `id`. New attachments only need `url`—Airtable will download and store them.
+### Runtime Settings (Stored in Database)
 
-### Logging & Audit Trail
+These can be changed via the web UI Settings page:
+- `scan_interval_hours`: How often to scan (default: 24)
+- `scan_time`: What time to run daily scan (default: "00:00")
+- `enabled`: Whether scheduled scanning is active
 
-All attachment operations are logged to `screengrab_attachments` table:
+---
 
-```sql
-CREATE TABLE screengrab_attachments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    available_file_id INTEGER REFERENCES available_files(id),
-    sst_record_id TEXT NOT NULL,
-    media_id TEXT NOT NULL,
-    filename TEXT NOT NULL,
-    remote_url TEXT NOT NULL,
-    attached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    attachments_before INTEGER,
-    attachments_after INTEGER,
-    success BOOLEAN DEFAULT TRUE,
-    error_message TEXT
-);
+## Web Dashboard Components
+
+### Ready to Queue Panel (`web/src/components/IngestPanel.tsx`)
+
+Shows on Home page when there are items ready to process:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Ready to Queue                                    [Check Now]   │
+├─────────────────────────────────────────────────────────────────┤
+│ Last scan: 6 hours ago • Next scan: in 18 hours                 │
+├─────────────────────────────────────────────────────────────────┤
+│ ☐ 2WLI1215HD │ Candle Making Workshop │ WI Life    │ [Queue]   │
+│ ☐ 9UNP2005HD │ Lecture on Economics   │ UPlace     │ [Queue]   │
+│ ☐ 2WLI1216HD │ Historic Barns         │ WI Life    │ [Queue]   │
+├─────────────────────────────────────────────────────────────────┤
+│ [Queue Selected (0)]                              [Ignore All]  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Screengrab Panel (`web/src/components/ScreengrabPanel.tsx`)
+
+Shows pending screengrab attachments:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Screengrabs                                    [Attach All (3)] │
+├─────────────────────────────────────────────────────────────────┤
+│ 2WLI1215HD.jpg │ WI Life Ep 1215 │ 2 existing │ [Attach]       │
+│ 9UNP2005HD.jpg │ Economics Lect. │ 0 existing │ [Attach]       │
+│ UNKNOWN123.jpg │ No SST match    │ --         │ [Ignore]       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Settings Page Addition
+
+Add to Settings page:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Ingest Scanner Settings                                         │
+├─────────────────────────────────────────────────────────────────┤
+│ Enabled: [✓]                                                    │
+│ Scan interval: [24] hours                                       │
+│ Scan time: [00:00]                                              │
+│ Server URL: https://mmingest.pbswi.wisc.edu/ (read-only)       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Background Polling
+## Scheduling Implementation
 
-### Option A: FastAPI Background Task
+### Option: APScheduler (Recommended)
 
-Add to worker startup:
+Use APScheduler for reliable scheduled tasks:
 
 ```python
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+scheduler = AsyncIOScheduler()
+
 @app.on_event("startup")
-async def start_ingest_scanner():
-    if settings.ingest_enabled:
-        asyncio.create_task(ingest_polling_loop())
+async def start_scheduler():
+    # Load config from database
+    config = await get_ingest_config()
+    if config.enabled:
+        hour, minute = config.scan_time.split(":")
+        scheduler.add_job(
+            run_ingest_scan,
+            CronTrigger(hour=int(hour), minute=int(minute)),
+            id="ingest_scan"
+        )
+        scheduler.start()
 
-async def ingest_polling_loop():
-    scanner = IngestScanner(config)
-    while True:
-        try:
-            await scanner.scan_remote_server()
-        except Exception as e:
-            logger.error(f"Ingest scan failed: {e}")
-        await asyncio.sleep(config.poll_interval_minutes * 60)
+async def update_scan_schedule(new_config: IngestConfig):
+    """Called when user updates settings."""
+    scheduler.remove_job("ingest_scan")
+    if new_config.enabled:
+        # Re-add with new schedule
+        ...
 ```
-
-### Option B: Separate Script (like watch_transcripts.py)
-
-Create `watch_ingest_server.py` that runs independently and calls the API.
-
-**Recommendation**: Option A for simplicity, integrated with existing API process.
-
----
-
-## Web Dashboard Component
-
-### New Component: `web/src/components/IngestPanel.tsx`
-
-```tsx
-interface IngestPanelProps {
-  // Props
-}
-
-export function IngestPanel() {
-  // State
-  const [availableFiles, setAvailableFiles] = useState<RemoteFile[]>([]);
-  const [lastScan, setLastScan] = useState<Date | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
-
-  // Actions
-  const handleQueue = async (fileId: number) => { ... };
-  const handleQueueAll = async () => { ... };
-  const handleIgnore = async (fileId: number) => { ... };
-  const handleManualScan = async () => { ... };
-
-  return (
-    <Card>
-      <CardHeader>
-        <h3>Available from Ingest Server</h3>
-        <span>Last scan: {formatRelative(lastScan)}</span>
-        <Button onClick={handleManualScan} disabled={isScanning}>
-          {isScanning ? 'Scanning...' : 'Scan Now'}
-        </Button>
-      </CardHeader>
-
-      <CardBody>
-        {availableFiles.length === 0 ? (
-          <EmptyState>No new files available</EmptyState>
-        ) : (
-          <>
-            <Button onClick={handleQueueAll}>
-              Queue All ({availableFiles.length})
-            </Button>
-
-            <FileList>
-              {availableFiles.map(file => (
-                <FileRow key={file.id}>
-                  <span>{file.filename}</span>
-                  <span>{file.media_id}</span>
-                  <span>{formatRelative(file.first_seen_at)}</span>
-                  <Button onClick={() => handleQueue(file.id)}>
-                    Add to Queue
-                  </Button>
-                  <Button variant="ghost" onClick={() => handleIgnore(file.id)}>
-                    Ignore
-                  </Button>
-                </FileRow>
-              ))}
-            </FileList>
-          </>
-        )}
-      </CardBody>
-    </Card>
-  );
-}
-```
-
-### Integration Points
-
-- Add `IngestPanel` to Home page or dedicated "Ingest" page
-- WebSocket updates when new files discovered
-- Badge/notification for new file count
-
----
-
-## Testing Requirements
-
-### Unit Tests
-
-- [ ] `test_ingest_scanner.py`
-  - Directory HTML parsing (various Apache/nginx formats)
-  - Media ID extraction from filenames
-  - File type detection (.srt vs .jpg)
-  - File status transitions
-
-- [ ] `test_screengrab_attacher.py`
-  - Attachment append logic (never overwrites)
-  - Duplicate detection
-  - No-match handling
-  - Audit log creation
-
-### Integration Tests
-
-- [ ] `test_ingest_api.py`
-  - Queue endpoint creates job correctly
-  - Bulk queue operations
-  - Ignore/unignore workflow
-  - Scan endpoint returns correct counts
-
-- [ ] `test_screengrab_api.py`
-  - Attach endpoint adds to SST correctly
-  - Existing attachments preserved
-  - No-match returns appropriate error
-  - Attach-all batch operation
-
-### Manual Testing
-
-- [ ] Verify actual connection to mmingest server
-- [ ] Confirm file download works
-- [ ] Test with various file naming conventions
-- [ ] Verify SST linking works for downloaded files
-- [ ] **Screengrab**: Verify attachment appears in Airtable
-- [ ] **Screengrab**: Verify existing attachments NOT removed
-- [ ] **Screengrab**: Verify duplicate attachment prevented
-
----
-
-## Security Considerations
-
-1. **URL Validation**: Only allow downloads from configured base URL
-2. **File Size Limits**: Reject files over reasonable threshold (100MB)
-3. **Rate Limiting**: Don't hammer the ingest server
-4. **Credential Storage**: If auth needed, use environment variables, not config files
-
----
-
-## Migration Plan
-
-### Database Migration: `alembic/versions/XXX_add_available_files.py`
-
-```python
-def upgrade():
-    op.create_table(
-        'available_files',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('remote_url', sa.Text(), nullable=False, unique=True),
-        sa.Column('filename', sa.Text(), nullable=False),
-        sa.Column('directory_path', sa.Text()),
-        sa.Column('media_id', sa.Text()),
-        sa.Column('file_size_bytes', sa.Integer()),
-        sa.Column('remote_modified_at', sa.DateTime()),
-        sa.Column('first_seen_at', sa.DateTime(), server_default=sa.func.now()),
-        sa.Column('last_seen_at', sa.DateTime(), server_default=sa.func.now()),
-        sa.Column('status', sa.Text(), server_default='new'),
-        sa.Column('status_changed_at', sa.DateTime()),
-        sa.Column('job_id', sa.Integer(), sa.ForeignKey('jobs.id')),
-    )
-    op.create_index('idx_available_files_status', 'available_files', ['status'])
-    op.create_index('idx_available_files_media_id', 'available_files', ['media_id'])
-
-def downgrade():
-    op.drop_table('available_files')
-```
-
----
-
-## Open Questions
-
-1. **Authentication**: Does mmingest require any auth? VPN-only access?
-2. **Directory Structure**: Is it flat or nested? Multiple directories to watch?
-3. **File Naming**: What patterns are used? Can we reliably extract Media IDs?
-4. **Cleanup**: Should we track when files disappear from the server?
-5. **Notifications**: WebSocket push when new files found, or just poll from UI?
 
 ---
 
 ## Success Criteria
 
 ### Transcript Workflow
-- [ ] Scanner successfully connects to mmingest server
-- [ ] New .srt files appear in dashboard within polling interval
-- [ ] One-click adds file to queue with correct Media ID linking
-- [ ] Ignored files don't reappear
-- [ ] No duplicate jobs created for same file
-- [ ] Scan status visible in UI (last scan time, success/failure)
+- [ ] Scheduled scan runs at configured time
+- [ ] Manual "Check Now" triggers immediate scan
+- [ ] Only QC-passed content with matching files shown
+- [ ] One-click queues file with correct SST linking
+- [ ] SRT files copied locally for safekeeping
+- [ ] Settings page allows interval/time configuration
 
 ### Screengrab Workflow
-- [ ] New .jpg files detected and tracked in database
-- [ ] Media ID extracted correctly from filename
-- [ ] SST record lookup finds correct record
-- [ ] Attachment **appends** to existing screengrabs (never replaces)
+- [ ] JPG files detected during scan
+- [ ] SST record matched by Media ID
+- [ ] Attachment **appends** to existing (never replaces)
 - [ ] Duplicate filenames detected and skipped
-- [ ] `no_match` status set when Media ID not found in SST
-- [ ] Audit log captures all attachment operations
-- [ ] Dashboard shows screengrab status and attachment counts
+- [ ] `no_match` shown separately with explanation
+- [ ] Full audit trail in database
+
+---
+
+## Simplified Task Breakdown
+
+### Phase 1: Foundation (4 tasks)
+1. Database migration (available_files, screengrab_attachments, ingest_config)
+2. Pydantic models for ingest types
+3. Configuration schema and defaults
+4. APScheduler integration
+
+### Phase 2: Core Scanner (3 tasks)
+5. IngestScanner: SST query for QC-passed Media IDs
+6. IngestScanner: Directory listing parser and file matching
+7. IngestScanner: File download to local transcripts/
+
+### Phase 3: API Layer (3 tasks)
+8. Ingest router: Read endpoints (available, config, screengrabs)
+9. Ingest router: Action endpoints (queue, ignore, scan, attach)
+10. Config update endpoint for Settings page
+
+### Phase 4: Frontend (3 tasks)
+11. IngestPanel component (Ready to Queue)
+12. ScreengrabPanel component
+13. Settings page ingest section
+
+### Phase 5: Testing (2 tasks)
+14. Unit tests (HTML parsing, Media ID extraction)
+15. Integration tests (API endpoints, SST queries)
+
+**Total: 15 tasks** (reduced from 21)

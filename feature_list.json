@@ -3,7 +3,7 @@
     "_metadata": true,
     "description": "Active feature tasks for Editorial Assistant v3.5+",
     "archive_reference": "planning/archive/feature_list_v3.0_completed.json",
-    "last_updated": "2026-01-15"
+    "last_updated": "2026-01-21"
   },
   {
     "id": "backlog.1",
@@ -35,7 +35,7 @@
     "status": "pending",
     "agent": "orchestrator",
     "priority": "medium",
-    "description": "Design and implement interface for bulk Content Calendar task creation. User workflow: paste list of videos with target days (e.g., 'Midshow 1211 - Cia Siab Inc. - Thursday') \u2192 system looks up Media IDs, determines required platforms, checks editing status \u2192 creates Content Calendar entries in 'All Tasks' table linked to SST records with publish date/time and due date (2 weeks prior). Reference existing automation: /Users/mriechers/Developer/the-lodge/workflow-automation/airtable-pbswi-automations/scripts/content-calendar-automation.js. SAFETY ARCHITECTURE: Controlled Airtable write access with strict guardrails - (1) scope-limited to Content Calendar/All Tasks table ONLY, (2) append-only operations (CREATE, never UPDATE/DELETE), (3) API-level or code-level enforcement of these constraints, (4) explicit user confirmation before any write.",
+    "description": "Design and implement interface for bulk Content Calendar task creation. User workflow: paste list of videos with target days (e.g., 'Midshow 1211 - Cia Siab Inc. - Thursday') → system looks up Media IDs, determines required platforms, checks editing status → creates Content Calendar entries in 'All Tasks' table linked to SST records with publish date/time and due date (2 weeks prior). Reference existing automation: /Users/mriechers/Developer/the-lodge/workflow-automation/airtable-pbswi-automations/scripts/content-calendar-automation.js. SAFETY ARCHITECTURE: Controlled Airtable write access with strict guardrails - (1) scope-limited to Content Calendar/All Tasks table ONLY, (2) append-only operations (CREATE, never UPDATE/DELETE), (3) API-level or code-level enforcement of these constraints, (4) explicit user confirmation before any write.",
     "files": [
       "web/src/pages/Schedule.tsx",
       "api/routers/schedule.py",
@@ -45,7 +45,7 @@
       "Research: Document All Tasks table schema and required fields",
       "Research: Map platform determination logic from SST fields",
       "Research: Understand content-calendar-automation.js patterns",
-      "Design: UX mockup for bulk input \u2192 preview \u2192 confirm flow",
+      "Design: UX mockup for bulk input → preview → confirm flow",
       "Design: Decide on Airtable write policy (agent writes vs human confirms)",
       "Implementation: Working bulk scheduling with editing status visibility"
     ],
@@ -79,23 +79,24 @@
   },
   {
     "id": "11.1.1",
-    "name": "Database migration: available_files table",
+    "name": "Database migration: ingest tables",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "critical",
-    "description": "Create Alembic migration for the available_files table to track remote SRT files discovered on the ingest server. Includes columns for remote_url (unique), filename, directory_path, media_id, file_size_bytes, remote_modified_at, first_seen_at, last_seen_at, status (new/queued/ignored/missing), status_changed_at, and job_id foreign key. Add indexes on status, media_id, and first_seen_at.",
+    "description": "Create Alembic migration for ingest feature tables: available_files (tracks discovered files), screengrab_attachments (audit log), and ingest_config (runtime settings). Update existing migration 006 or create new one. Include all columns from revised spec: file_type, status, airtable_record_id, attached_at. Add proper indexes.",
     "files": [
-      "alembic/versions/XXX_add_available_files.py"
+      "alembic/versions/006_add_ingest_watcher_tables.py"
     ],
     "exit_criteria": [
-      "Migration creates available_files table with all specified columns",
-      "Indexes created on status, media_id, first_seen_at",
-      "Foreign key to jobs table on job_id",
+      "available_files table with all columns per spec",
+      "screengrab_attachments audit table created",
+      "ingest_config key-value table for runtime settings",
+      "Indexes on status, media_id, file_type, first_seen_at",
       "Migration runs without error (up and down)"
     ],
     "dependencies": [],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
     "id": "11.1.2",
@@ -104,97 +105,114 @@
     "status": "pending",
     "agent": "the-drone",
     "priority": "critical",
-    "description": "Create Pydantic models for ingest-related data types: RemoteFile (file discovered on server), AvailableFile (database record), ScanResult (scan operation result), IngestConfig (server configuration). These models support the API endpoints and scanner service.",
+    "description": "Create Pydantic models for ingest-related data types: RemoteFile (file discovered on server), AvailableFile (database record), ScanResult (scan operation result), IngestConfig (runtime settings). Include SST record preview fields for UI display.",
     "files": [
       "api/models/ingest.py"
     ],
     "exit_criteria": [
-      "RemoteFile model with url, filename, size, modified_at",
-      "AvailableFile model matching database schema",
-      "ScanResult with new_files_found, total_files, duration_ms",
-      "IngestConfig with base_url, poll_interval, file_extensions, auth settings"
+      "RemoteFile model with url, filename, size, modified_at, file_type",
+      "AvailableFile model matching database schema with SST record preview",
+      "ScanResult with qc_passed_checked, new_transcripts_found, new_screengrabs_found",
+      "IngestConfig with enabled, scan_interval_hours, scan_time, last_scan_at"
     ],
     "dependencies": [],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
     "id": "11.1.3",
-    "name": "Ingest configuration schema and defaults",
+    "name": "Configuration schema and defaults",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "critical",
-    "description": "Add ingest_server configuration section to config/llm-config.json with sensible defaults. Include enabled flag, base_url, directories to watch, poll_interval_minutes, file_extensions, auth settings, and timeout. Load and validate configuration in the application.",
+    "description": "Add ingest_server configuration section to config/llm-config.json with defaults: enabled=true, base_url, directories=['/exports/', '/misc/'], ignore_directories=['/promos/'], scan_interval_hours=24, scan_time='00:00'. Load and validate on startup. Support runtime override from ingest_config database table.",
     "files": [
       "config/llm-config.json",
       "api/services/config.py"
     ],
     "exit_criteria": [
-      "ingest_server section added to llm-config.json",
+      "ingest_server section in llm-config.json with all defaults",
       "Config loaded and validated on app startup",
-      "Environment variable overrides work (INGEST_SERVER_URL, etc.)",
+      "Runtime settings from database override file defaults",
       "Graceful handling when config section missing"
     ],
-    "dependencies": [],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.1"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
     "id": "11.1.4",
-    "name": "IngestScanner service: directory listing parser",
+    "name": "APScheduler integration for scheduled scans",
     "sprint": "11.1",
     "status": "pending",
     "agent": "orchestrator",
     "priority": "critical",
-    "description": "Create IngestScanner service with HTTP client and HTML parser. Implements parse_directory_listing() to extract file info from Apache/nginx autoindex HTML. Handles various autoindex formats, extracts filenames, sizes, and dates. Uses BeautifulSoup for HTML parsing. Includes robust error handling for network failures and malformed HTML.",
+    "description": "Integrate APScheduler for configurable scheduled scans. Default: daily at midnight. Load schedule from ingest_config table. Support dynamic schedule updates when user changes settings via API. Graceful startup/shutdown with FastAPI lifespan events.",
+    "files": [
+      "api/main.py",
+      "api/services/scheduler.py",
+      "requirements.txt"
+    ],
+    "exit_criteria": [
+      "APScheduler installed and configured",
+      "Scheduled job runs at configured time (default midnight)",
+      "Schedule updates when config changes via PUT /api/ingest/config",
+      "Clean shutdown on app termination",
+      "Can be disabled via config"
+    ],
+    "dependencies": ["11.1.3"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
+  },
+  {
+    "id": "11.1.5",
+    "name": "IngestScanner: SST query for QC-passed Media IDs",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "critical",
+    "description": "Implement get_qc_passed_media_ids() method that queries Airtable SST for records where QC field indicates passed, and filters out Media IDs that already have jobs in the system. This is the 'smart scan' approach - only look for files we care about.",
+    "files": [
+      "api/services/ingest_scanner.py",
+      "api/services/airtable.py"
+    ],
+    "exit_criteria": [
+      "Query SST for QC-passed records (determine exact field value)",
+      "Filter out Media IDs with existing jobs in database",
+      "Return list of Media IDs to search for on ingest server",
+      "Handle Airtable API errors gracefully",
+      "Configurable batch size for large result sets"
+    ],
+    "dependencies": ["11.1.2"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
+  },
+  {
+    "id": "11.1.6",
+    "name": "IngestScanner: Directory parser and file matching",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "critical",
+    "description": "Implement parse_directory_listing() for Apache/nginx autoindex HTML and check_ingest_server() to find files matching a Media ID. Scan configured directories, skip ignore_directories (promos). Extract file type from extension. Media ID is always at start of filename.",
     "files": [
       "api/services/ingest_scanner.py"
     ],
     "exit_criteria": [
-      "parse_directory_listing() extracts files from Apache autoindex HTML",
-      "Handles nginx autoindex format as well",
-      "Extracts filename, optional size, optional date",
-      "Filters by configured file extensions (.srt, .txt)",
-      "Graceful handling of malformed HTML"
+      "parse_directory_listing() extracts files from Apache/nginx HTML",
+      "check_ingest_server(media_id) returns matching files",
+      "File type determined by extension (.srt=transcript, .jpg=screengrab)",
+      "Configured directories scanned, ignore_directories skipped",
+      "Graceful handling of network errors and malformed HTML"
     ],
-    "dependencies": [
-      "11.1.2",
-      "11.1.3"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.3", "11.1.5"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.5",
-    "name": "IngestScanner service: scan and diff logic",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Add scan_remote_server() method to IngestScanner that fetches directory listings, compares against database records, and updates available_files table. New files get status='new', missing files get status='missing', existing files update last_seen_at. Uses extract_media_id() utility for Media ID extraction from filenames.",
-    "files": [
-      "api/services/ingest_scanner.py",
-      "api/services/database.py"
-    ],
-    "exit_criteria": [
-      "scan_remote_server() fetches and parses remote directories",
-      "New files inserted with status='new'",
-      "Existing files update last_seen_at",
-      "Missing files marked status='missing'",
-      "Media ID extracted and stored"
-    ],
-    "dependencies": [
-      "11.1.1",
-      "11.1.4"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
-  },
-  {
-    "id": "11.1.6",
-    "name": "IngestScanner service: file download",
+    "id": "11.1.7",
+    "name": "IngestScanner: File download to local transcripts/",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "high",
-    "description": "Add download_file() method to IngestScanner that downloads a remote file to the transcripts/ folder. Includes URL validation (only allow configured base URL), file size limits (100MB max), proper error handling, and returns the local file path on success.",
+    "description": "Implement download_file() method that downloads a file from remote URL to local transcripts/ folder. SRT files are copied for safekeeping (server is regularly trimmed). JPG files downloaded temporarily for Airtable upload. URL validation to only allow configured base URL.",
     "files": [
       "api/services/ingest_scanner.py"
     ],
@@ -205,236 +223,82 @@
       "Returns Path to downloaded file",
       "Proper cleanup on failure"
     ],
-    "dependencies": [
-      "11.1.4"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.6"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.7",
-    "name": "Ingest API router: read endpoints",
+    "id": "11.1.8",
+    "name": "Ingest router: Read endpoints",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "critical",
-    "description": "Create ingest router with read-only endpoints: GET /api/ingest/available (list new files with filtering), GET /api/ingest/status (scanner status and file counts). Follows existing router patterns from jobs.py and queue.py.",
+    "description": "Implement read-only endpoints: GET /api/ingest/available (list new files with SST preview), GET /api/ingest/config (scanner settings), GET /api/ingest/screengrabs (screengrab-specific view). Include SST record info (title, project) in responses for UI display.",
     "files": [
       "api/routers/ingest.py",
       "api/main.py"
     ],
     "exit_criteria": [
-      "GET /available returns files filtered by status",
-      "GET /available supports limit and include_ignored params",
-      "GET /status returns scanner config, last_scan_at, file counts",
+      "GET /available returns files with status filter and SST preview",
+      "GET /config returns current scanner settings",
+      "GET /screengrabs returns screengrab files with attachment status",
       "Router registered in main.py",
       "Proper error handling and validation"
     ],
-    "dependencies": [
-      "11.1.1",
-      "11.1.2"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.1", "11.1.2"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.8",
-    "name": "Ingest API router: action endpoints",
+    "id": "11.1.9",
+    "name": "Ingest router: Action endpoints",
     "sprint": "11.1",
     "status": "pending",
     "agent": "orchestrator",
     "priority": "critical",
-    "description": "Add action endpoints to ingest router: POST /api/ingest/queue/{file_id} (download and queue single file), POST /api/ingest/queue/bulk (queue multiple files), POST /api/ingest/ignore/{file_id}, POST /api/ingest/unignore/{file_id}, POST /api/ingest/scan (trigger manual scan). Queue endpoints integrate with existing job creation logic including SST auto-linking.",
+    "description": "Implement action endpoints: POST /queue/{file_id} (download and create job), POST /queue/bulk, POST /ignore/{file_id}, POST /scan (manual trigger), POST /screengrabs/{file_id}/attach, POST /screengrabs/attach-all. Queue endpoints integrate with existing job creation and SST auto-linking.",
     "files": [
       "api/routers/ingest.py"
     ],
     "exit_criteria": [
-      "POST /queue/{file_id} downloads file and creates job",
-      "POST /queue/bulk handles multiple files atomically",
-      "POST /ignore and /unignore update file status",
+      "POST /queue/{file_id} downloads file and creates job with SST linking",
+      "POST /queue/bulk handles multiple files",
+      "POST /ignore updates file status",
       "POST /scan triggers immediate scan and returns results",
-      "SST auto-linking works for queued files",
+      "Screengrab attach endpoints use ScreengrabAttacher service",
       "Proper error responses for not found, already queued, etc."
     ],
-    "dependencies": [
-      "11.1.5",
-      "11.1.6",
-      "11.1.7"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
-  },
-  {
-    "id": "11.1.9",
-    "name": "Background polling task for ingest scanner",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "orchestrator",
-    "priority": "high",
-    "description": "Add background polling loop that runs the ingest scanner at configured intervals. Integrates with FastAPI startup/shutdown events. Logs scan results, handles errors gracefully without crashing the polling loop. Respects enabled/disabled config flag.",
-    "files": [
-      "api/main.py",
-      "api/services/ingest_scanner.py"
-    ],
-    "exit_criteria": [
-      "Polling task starts on app startup (if enabled)",
-      "Runs at configured poll_interval_minutes",
-      "Errors logged but don't crash loop",
-      "Clean shutdown on app termination",
-      "Can be disabled via config"
-    ],
-    "dependencies": [
-      "11.1.5"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.6", "11.1.7", "11.1.8"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
     "id": "11.1.10",
-    "name": "IngestPanel React component",
+    "name": "Config update endpoint for Settings page",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "high",
-    "description": "Create IngestPanel React component for the dashboard. Shows list of new files from ingest server with filename, media_id, first_seen time. Includes 'Add to Queue' and 'Ignore' buttons per file, 'Queue All' bulk action, 'Scan Now' button, and last scan timestamp. Uses existing UI patterns (cards, buttons, skeleton loaders).",
+    "description": "Implement PUT /api/ingest/config to update scanner settings from web UI. Validates input, updates ingest_config database table, and triggers scheduler update if interval/time changed. Settings: enabled, scan_interval_hours, scan_time.",
     "files": [
-      "web/src/components/IngestPanel.tsx"
+      "api/routers/ingest.py"
     ],
     "exit_criteria": [
-      "Displays list of available files with metadata",
-      "Add to Queue button queues individual file",
-      "Ignore button hides file from list",
-      "Queue All button with confirmation",
-      "Scan Now button triggers manual scan",
-      "Shows last scan time",
-      "Loading and empty states handled"
+      "PUT /config accepts enabled, scan_interval_hours, scan_time",
+      "Validates input (hours 1-168, time format HH:MM)",
+      "Updates ingest_config table",
+      "Triggers scheduler reschedule on success",
+      "Returns updated config in response"
     ],
-    "dependencies": [
-      "11.1.7",
-      "11.1.8"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.4", "11.1.8"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
     "id": "11.1.11",
-    "name": "Integrate IngestPanel into dashboard",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Add IngestPanel to the Home page or create dedicated Ingest page. Add navigation link if separate page. Consider WebSocket integration for real-time updates when new files discovered. Add badge/notification indicator for new file count in navigation.",
-    "files": [
-      "web/src/pages/Home.tsx",
-      "web/src/components/Layout.tsx"
-    ],
-    "exit_criteria": [
-      "IngestPanel visible on Home page (or dedicated page)",
-      "Navigation updated if separate page",
-      "Badge shows count of new files in nav",
-      "Panel refreshes on WebSocket events (if implemented)"
-    ],
-    "dependencies": [
-      "11.1.10"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
-  },
-  {
-    "id": "11.1.12",
-    "name": "Ingest scanner unit and integration tests",
+    "name": "ScreengrabAttacher service",
     "sprint": "11.1",
     "status": "pending",
     "agent": "orchestrator",
-    "priority": "medium",
-    "description": "Create comprehensive tests for ingest functionality. Unit tests: HTML parsing for various Apache/nginx formats, media ID extraction, file status transitions. Integration tests: API endpoints, queue workflow, scan operation. Mock HTTP responses for remote server.",
-    "files": [
-      "tests/api/test_ingest_scanner.py",
-      "tests/api/test_ingest_router.py"
-    ],
-    "exit_criteria": [
-      "test_ingest_scanner.py covers HTML parsing variants",
-      "test_ingest_scanner.py covers media ID extraction edge cases",
-      "test_ingest_router.py covers all API endpoints",
-      "Mocking used for HTTP and database",
-      "Tests pass in CI"
-    ],
-    "dependencies": [
-      "11.1.8"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
-  },
-  {
-    "id": "11.1.13",
-    "name": "Database migration: screengrab_attachments audit table",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "the-drone",
     "priority": "high",
-    "description": "Create Alembic migration for screengrab_attachments audit log table. Tracks all Airtable attachment operations for accountability. Columns: available_file_id (FK), sst_record_id, media_id, filename, remote_url, attached_at, attachments_before, attachments_after, success, error_message. Critical for audit trail of the controlled Airtable write exception.",
-    "files": [
-      "alembic/versions/XXX_add_screengrab_attachments.py"
-    ],
-    "exit_criteria": [
-      "Migration creates screengrab_attachments table with all columns",
-      "Foreign key to available_files table",
-      "Migration runs without error (up and down)",
-      "Indexes on sst_record_id and attached_at for query performance"
-    ],
-    "dependencies": [
-      "11.1.1"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Screengrab Workflow"
-  },
-  {
-    "id": "11.1.14",
-    "name": "Extend available_files for screengrab support",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Update 11.1.1 migration to include file_type column ('transcript' or 'screengrab'), airtable_record_id, and attached_at columns. Add index on file_type. Update Pydantic models to include new fields and status values ('attached', 'no_match').",
-    "files": [
-      "alembic/versions/XXX_add_available_files.py",
-      "api/models/ingest.py"
-    ],
-    "exit_criteria": [
-      "file_type column distinguishes transcripts from screengrabs",
-      "airtable_record_id stores SST record after attachment",
-      "attached_at timestamp for screengrab attachments",
-      "Status enum includes 'attached' and 'no_match' values",
-      "Index on file_type for efficient filtering"
-    ],
-    "dependencies": [],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Database Schema"
-  },
-  {
-    "id": "11.1.15",
-    "name": "Update IngestScanner for JPG file detection",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "the-drone",
-    "priority": "high",
-    "description": "Extend IngestScanner to detect and track .jpg/.jpeg/.png files in addition to .srt/.txt. Route files by type: transcripts go to existing workflow, screengrabs go to ScreengrabAttacher. Update config to include screengrab_extensions list.",
-    "files": [
-      "api/services/ingest_scanner.py",
-      "config/llm-config.json"
-    ],
-    "exit_criteria": [
-      "Scanner detects .jpg, .jpeg, .png files",
-      "Files tagged with file_type='screengrab' in database",
-      "Configuration includes screengrab_extensions array",
-      "Media ID extraction works for screengrab filenames",
-      "Scan results separate transcript and screengrab counts"
-    ],
-    "dependencies": [
-      "11.1.4",
-      "11.1.14"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Architecture Components"
-  },
-  {
-    "id": "11.1.16",
-    "name": "ScreengrabAttacher service: core logic",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Create ScreengrabAttacher service for Airtable SST attachment. SAFETY CRITICAL: Implements additive-only writes - NEVER removes or replaces existing attachments. Core methods: attach_screengrab(file_id) looks up SST by Media ID, fetches existing Screen Grab attachments, appends new one, updates record. Includes duplicate detection by filename. All operations logged to audit table.",
+    "description": "Complete ScreengrabAttacher service implementation. SAFETY CRITICAL: Additive-only writes to Screen Grab field. Methods: attach_screengrab(file_id), attach_all_pending(). Fetches existing attachments before update, appends new one, logs to audit table. Duplicate detection by filename.",
     "files": [
       "api/services/screengrab_attacher.py"
     ],
@@ -442,137 +306,125 @@
       "attach_screengrab() appends to existing attachments (NEVER replaces)",
       "Fetches current attachments before update to preserve them",
       "Detects duplicate filenames and skips",
-      "Logs all operations to screengrab_attachments table",
+      "Logs all operations to screengrab_attachments audit table",
       "Sets status='no_match' when Media ID not found in SST",
-      "Uses SST_TABLE_ID and SCREEN_GRAB_FIELD_ID constants"
+      "attach_all_pending() processes all new screengrabs with rate limiting"
     ],
-    "dependencies": [
-      "11.1.13",
-      "11.1.14"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Service: ScreengrabAttacher"
+    "dependencies": ["11.1.1", "11.1.7"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.17",
-    "name": "ScreengrabAttacher service: batch operations",
+    "id": "11.1.12",
+    "name": "IngestPanel React component",
     "sprint": "11.1",
     "status": "pending",
-    "agent": "orchestrator",
+    "agent": "the-drone",
     "priority": "high",
-    "description": "Add batch methods to ScreengrabAttacher: attach_all_pending() processes all 'new' screengrabs with matching SST records. Returns BatchAttachResult with attached count, skipped count (no_match), and any errors. Implements rate limiting to avoid Airtable API throttling.",
+    "description": "Create IngestPanel component showing 'Ready to Queue' items. Displays files with Media ID, title (from SST), project. Actions: Queue individual, Queue selected, Ignore. Shows last scan time and next scheduled scan. 'Check Now' button for manual scan.",
     "files": [
-      "api/services/screengrab_attacher.py"
+      "web/src/components/IngestPanel.tsx"
     ],
     "exit_criteria": [
-      "attach_all_pending() processes all new screengrabs",
-      "Returns detailed results (attached, skipped, errors)",
-      "Rate limiting prevents API throttling (5 req/sec default)",
-      "Individual failures don't stop batch processing",
-      "Progress can be tracked via return value"
+      "Displays list of new files with SST metadata",
+      "Queue button creates job for individual file",
+      "Bulk select and Queue Selected functionality",
+      "Ignore button hides file from list",
+      "Check Now button triggers manual scan",
+      "Shows last scan time and next scheduled scan",
+      "Loading and empty states handled"
     ],
-    "dependencies": [
-      "11.1.16"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Service: ScreengrabAttacher"
+    "dependencies": ["11.1.8", "11.1.9"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.18",
-    "name": "Screengrab API endpoints",
-    "sprint": "11.1",
-    "status": "pending",
-    "agent": "orchestrator",
-    "priority": "critical",
-    "description": "Add screengrab-specific endpoints to ingest router: GET /api/ingest/screengrabs (list with SST match preview), POST /api/ingest/screengrabs/{file_id}/attach (attach single), POST /api/ingest/screengrabs/attach-all (batch attach), POST /api/ingest/screengrabs/{file_id}/retry-match (retry SST lookup). Response includes attachment counts before/after.",
-    "files": [
-      "api/routers/ingest.py"
-    ],
-    "exit_criteria": [
-      "GET /screengrabs returns files with SST match info",
-      "POST /attach performs single attachment with audit logging",
-      "POST /attach-all processes all pending with summary response",
-      "POST /retry-match allows re-lookup after SST record creation",
-      "Response includes attachment_count_before and attachment_count_after",
-      "Proper error handling for no_match, already_attached, API failures"
-    ],
-    "dependencies": [
-      "11.1.16",
-      "11.1.17",
-      "11.1.8"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Screengrab-Specific Endpoints"
-  },
-  {
-    "id": "11.1.19",
+    "id": "11.1.13",
     "name": "ScreengrabPanel React component",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "high",
-    "description": "Create ScreengrabPanel component for dashboard showing screengrab attachment status. Displays: pending screengrabs with SST match preview (title, existing grab count), 'Attach' button per file, 'Attach All' bulk action, 'no_match' items with explanation. Shows attachment audit trail (recent attachments with before/after counts).",
+    "description": "Create ScreengrabPanel component showing screengrab attachment status. Displays pending screengrabs with SST match info and existing attachment count. Actions: Attach individual, Attach All. Shows no-match items separately with explanation.",
     "files": [
       "web/src/components/ScreengrabPanel.tsx"
     ],
     "exit_criteria": [
       "Lists pending screengrabs with Media ID and SST match info",
       "Shows existing screengrab count on SST record",
-      "Attach button with confirmation (shows what will happen)",
-      "Attach All with preview of how many will be processed",
-      "No-match items displayed separately with explanation",
-      "Recent attachments audit log section"
+      "Attach button with confirmation",
+      "Attach All button with count",
+      "No-match items displayed separately",
+      "Loading and empty states handled"
     ],
-    "dependencies": [
-      "11.1.18"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Web Dashboard Component"
+    "dependencies": ["11.1.8", "11.1.9", "11.1.11"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.20",
-    "name": "Integrate ScreengrabPanel into dashboard",
+    "id": "11.1.14",
+    "name": "Settings page ingest section",
     "sprint": "11.1",
     "status": "pending",
     "agent": "the-drone",
     "priority": "high",
-    "description": "Add ScreengrabPanel to dashboard, either as tab in IngestPanel or separate section. Update /api/ingest/status to include screengrab counts (new, attached, no_match). Consider auto_attach_screengrabs config option for hands-free operation.",
+    "description": "Add Ingest Scanner Settings section to Settings page. Controls: enabled toggle, scan interval (hours), scan time (HH:MM picker). Shows server URL as read-only. Updates config via PUT /api/ingest/config.",
     "files": [
-      "web/src/pages/Home.tsx",
-      "web/src/components/IngestPanel.tsx"
+      "web/src/pages/Settings.tsx"
     ],
     "exit_criteria": [
-      "ScreengrabPanel visible on dashboard",
-      "Status endpoint includes screengrab metrics",
-      "Badge shows count of pending screengrabs",
-      "Optional: auto-attach toggle in settings (if enabled in config)"
+      "Ingest Scanner Settings section in Settings page",
+      "Enabled toggle updates config",
+      "Scan interval input (1-168 hours)",
+      "Scan time picker (HH:MM format)",
+      "Server URL displayed read-only",
+      "Save button calls PUT /api/ingest/config",
+      "Success/error feedback to user"
     ],
-    "dependencies": [
-      "11.1.19",
-      "11.1.11"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md"
+    "dependencies": ["11.1.10"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   },
   {
-    "id": "11.1.21",
-    "name": "Screengrab unit and integration tests",
+    "id": "11.1.15",
+    "name": "Unit tests for ingest scanner",
     "sprint": "11.1",
     "status": "pending",
     "agent": "orchestrator",
-    "priority": "high",
-    "description": "Comprehensive tests for screengrab workflow. CRITICAL: Test that existing attachments are NEVER removed - this is the key safety constraint. Unit tests: attachment append logic, duplicate detection, no-match handling, audit log creation. Integration tests: API endpoints, batch operations. Mock Airtable API responses.",
+    "priority": "medium",
+    "description": "Create unit tests for IngestScanner service. Test HTML parsing for various Apache/nginx formats, Media ID extraction from filenames, file type detection. Mock HTTP responses.",
     "files": [
-      "tests/api/test_screengrab_attacher.py",
-      "tests/api/test_screengrab_api.py"
+      "tests/test_ingest_scanner.py"
     ],
     "exit_criteria": [
-      "Test verifies existing attachments preserved (CRITICAL)",
-      "Test verifies duplicate filename detection",
-      "Test verifies no_match status when SST not found",
-      "Test verifies audit log entries created",
-      "API endpoint tests cover all responses",
-      "Batch operation tests verify partial failure handling",
+      "Tests for parse_directory_listing() with Apache HTML samples",
+      "Tests for parse_directory_listing() with nginx HTML samples",
+      "Tests for Media ID extraction edge cases",
+      "Tests for file type detection by extension",
+      "Mocking used for HTTP requests",
+      "Tests pass in CI"
+    ],
+    "dependencies": ["11.1.6"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
+  },
+  {
+    "id": "11.1.16",
+    "name": "Integration tests for ingest API and screengrab attacher",
+    "sprint": "11.1",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "medium",
+    "description": "Create integration tests for ingest API endpoints and ScreengrabAttacher. CRITICAL: Test that existing Airtable attachments are NEVER removed. Test SST query, API endpoints, queue workflow, screengrab attachment with mocked Airtable.",
+    "files": [
+      "tests/test_ingest_api.py",
+      "tests/test_screengrab_attacher.py"
+    ],
+    "exit_criteria": [
+      "Tests for all ingest API endpoints",
+      "Tests for queue workflow (download, create job, SST link)",
+      "Tests verify existing Airtable attachments preserved (CRITICAL)",
+      "Tests verify duplicate filename detection",
+      "Tests verify no_match status when SST not found",
+      "Tests verify audit log entries created",
       "Airtable API mocked for all tests"
     ],
-    "dependencies": [
-      "11.1.18"
-    ],
-    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md - Testing Requirements"
+    "dependencies": ["11.1.9", "11.1.11"],
+    "source": "docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)"
   }
 ]

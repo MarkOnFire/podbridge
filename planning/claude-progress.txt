@@ -1,171 +1,137 @@
 # Claude Progress Tracker
-# Last Updated: 2026-01-15
+# Last Updated: 2026-01-21
 
 ## V3.5 Orchestration Status
 
 **Orchestrator:** The Conductor
 **Mode:** Multi-Sprint Planning
-**Status:** Ready for Wave 1 Execution
-
-### V3.5 Sprint Summary (17 total sprints)
-
-| Priority | Sprints | Status |
-|----------|---------|--------|
-| P1 (Critical) | 11.1, 11.2, 12.1 | NOT STARTED |
-| P2 (High) | 12.2-12.4, 13.1-13.5 | NOT STARTED |
-| P3 (Nice-to-have) | 13.6, 14.1, 15.1, 16.1 | NOT STARTED |
-| P4 (Polish) | 17.1, 17.2 | NOT STARTED |
-
-### Recommended Execution Order
-
-**Wave 1 (Start Immediately - Parallel):**
-- Sprint 11.1: Remote Ingest Watcher (21 tasks, 7 internal waves)
-- Sprint 12.1: Embedded Chat Prototype (8 tasks)
-- Sprint 13.1: Langfuse Integration (7 tasks)
-- Sprint 13.2 + 13.3: UX Cleanup + Tests (10 tasks combined)
-
-**Wave 2 (After Wave 1):**
-- Sprint 11.2: Ingest Verification (4 tasks) - after 11.1
-- Sprint 13.4: Data Viz Foundation (8 tasks) - after 13.1 (soft dependency)
-
-**Wave 3 (After Chat Prototype Validation):**
-- Sprint 12.2: Chat Database (7 tasks)
-- Sprint 13.5: Data Viz Cost & Trends (6 tasks) - after 13.4
-
-**Wave 4 (Sequential Chat):**
-- Sprint 12.3: Chat WebSocket (6 tasks) - after 12.2
-- Sprint 12.4: Chat UI Polish (8 tasks) - after 12.3
-
-**Wave 5 (P3 Work - Parallel):**
-- Sprint 13.6: Data Viz Diagnostics (7 tasks) [OPTIONAL]
-- Sprint 14.1: Content Calendar (10 tasks)
-- Sprint 15.1: Large Transcript Optimization (8 tasks)
-- Sprint 16.1: Plugin System (8 tasks)
-
-**Wave 6 (Final):**
-- Sprint 17.1: Google Docs Export (6 tasks)
-- Sprint 17.2: Project Rename (6 tasks)
+**Status:** Ready for Sprint 11.1 Execution
 
 ---
 
-## Current Sprint: 11.1 - Remote Ingest Server Watcher (EXPANDED)
+## Current Sprint: 11.1 - Remote Ingest Server Watcher (REVISED)
 
 ### Sprint Goal
-Automatically monitor the PBS Wisconsin media ingest server (mmingest.pbswi.wisc.edu)
-for new SRT transcript files AND JPG screen grabs. Display newly available files in
-the dashboard with one-click queueing for transcripts and auto-attachment to Airtable
-SST records for screengrabs.
+Monitor the PBS Wisconsin media ingest server on a configurable schedule for SRT
+transcript files and JPG screen grabs that match QC-passed content in Airtable SST.
+Display matches in a "Ready to Queue" screen for one-click processing.
+
+### Key Design Decisions (2026-01-21 Revision)
+
+1. **Trigger**: Scheduled scan at configurable interval (default: daily at midnight)
+   - Not continuous polling
+   - Manual "Check Now" button available
+   - Settings configurable via web UI
+
+2. **Smart Scanning**: Only look for files matching QC-passed Media IDs
+   - Query SST for QC-passed records without existing jobs
+   - Then check ingest server for matching files
+   - Much more efficient than tracking all files
+
+3. **Server Access**: No auth needed (open for system-to-system transfers)
+   - URL: https://mmingest.pbswi.wisc.edu/
+   - Structure: Project directories + "misc" folder
+   - Ignore: "promos" folder
+
+4. **File Naming**: Media ID always at start of filename
+
+5. **File Handling**:
+   - SRT files: Copy to local transcripts/ folder (server is trimmed regularly)
+   - JPG files: Download temporarily for Airtable upload
+   - Deletions: Ignore
+
+6. **Screengrab Timing**: May arrive later than transcripts, handled separately
 
 ### Feature Specification
-See: docs/FEATURE_REMOTE_INGEST_WATCHER.md
+See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
 
 ### Sprint Status: NOT STARTED
 
-### Sprint Expansion (2026-01-12)
-Added screengrab auto-attachment functionality (tasks 11.1.13-11.1.21):
-- Controlled Airtable write exception for Screen Grab field ONLY
-- ADDITIVE ONLY - never overwrites existing attachments
-- Full audit trail for all attachment operations
-- Dashboard UI for screengrab status and management
-
 ---
 
-## Task Breakdown
+## Simplified Task Breakdown (16 tasks, down from 21)
 
-### Phase 1: Foundation (No Dependencies)
-These can be worked in parallel:
+### Phase 1: Foundation (4 tasks) - No dependencies
 
 | ID | Task | Agent | Status |
 |----|------|-------|--------|
-| 11.1.1 | Database migration: available_files table | the-drone | pending |
+| 11.1.1 | Database migration: ingest tables | the-drone | pending |
 | 11.1.2 | Pydantic models for ingest types | the-drone | pending |
-| 11.1.3 | Ingest configuration schema and defaults | the-drone | pending |
-| 11.1.14 | Extend available_files for screengrab support | the-drone | pending |
+| 11.1.3 | Configuration schema and defaults | the-drone | pending |
+| 11.1.4 | APScheduler integration | orchestrator | pending |
 
-### Phase 2: Core Services (Depends on Phase 1)
-
-| ID | Task | Agent | Status | Depends On |
-|----|------|-------|--------|------------|
-| 11.1.4 | IngestScanner: directory listing parser | orchestrator | pending | 11.1.2, 11.1.3 |
-| 11.1.5 | IngestScanner: scan and diff logic | orchestrator | pending | 11.1.1, 11.1.4 |
-| 11.1.6 | IngestScanner: file download | the-drone | pending | 11.1.4 |
-| 11.1.13 | Database migration: screengrab_attachments audit table | the-drone | pending | 11.1.1 |
-| 11.1.15 | Update IngestScanner for JPG file detection | the-drone | pending | 11.1.4, 11.1.14 |
-
-### Phase 3: API Layer (Depends on Phase 2)
+### Phase 2: Core Scanner (3 tasks)
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
-| 11.1.7 | Ingest API: read endpoints | the-drone | pending | 11.1.1, 11.1.2 |
-| 11.1.8 | Ingest API: action endpoints | orchestrator | pending | 11.1.5, 11.1.6, 11.1.7 |
-| 11.1.9 | Background polling task | orchestrator | pending | 11.1.5 |
-| 11.1.16 | ScreengrabAttacher service: core logic | orchestrator | pending | 11.1.13, 11.1.14 |
-| 11.1.17 | ScreengrabAttacher service: batch operations | orchestrator | pending | 11.1.16 |
-| 11.1.18 | Screengrab API endpoints | orchestrator | pending | 11.1.16, 11.1.17, 11.1.8 |
+| 11.1.5 | IngestScanner: SST query for QC-passed | orchestrator | pending | 11.1.2 |
+| 11.1.6 | IngestScanner: Directory parser & matching | orchestrator | pending | 11.1.3, 11.1.5 |
+| 11.1.7 | IngestScanner: File download | the-drone | pending | 11.1.6 |
 
-### Phase 4: Frontend (Depends on Phase 3)
+### Phase 3: API Layer (4 tasks)
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
-| 11.1.10 | IngestPanel React component | the-drone | pending | 11.1.7, 11.1.8 |
-| 11.1.11 | Dashboard integration | the-drone | pending | 11.1.10 |
-| 11.1.19 | ScreengrabPanel React component | the-drone | pending | 11.1.18 |
-| 11.1.20 | Integrate ScreengrabPanel into dashboard | the-drone | pending | 11.1.19, 11.1.11 |
+| 11.1.8 | Ingest router: Read endpoints | the-drone | pending | 11.1.1, 11.1.2 |
+| 11.1.9 | Ingest router: Action endpoints | orchestrator | pending | 11.1.6, 11.1.7, 11.1.8 |
+| 11.1.10 | Config update endpoint for Settings | the-drone | pending | 11.1.4, 11.1.8 |
+| 11.1.11 | ScreengrabAttacher service | orchestrator | pending | 11.1.1, 11.1.7 |
 
-### Phase 5: Testing (Depends on Phase 3-4)
+### Phase 4: Frontend (3 tasks)
 
 | ID | Task | Agent | Status | Depends On |
 |----|------|-------|--------|------------|
-| 11.1.12 | Ingest scanner unit and integration tests | orchestrator | pending | 11.1.8 |
-| 11.1.21 | Screengrab unit and integration tests | orchestrator | pending | 11.1.18 |
+| 11.1.12 | IngestPanel React component | the-drone | pending | 11.1.8, 11.1.9 |
+| 11.1.13 | ScreengrabPanel React component | the-drone | pending | 11.1.8, 11.1.9, 11.1.11 |
+| 11.1.14 | Settings page ingest section | the-drone | pending | 11.1.10 |
+
+### Phase 5: Testing (2 tasks)
+
+| ID | Task | Agent | Status | Depends On |
+|----|------|-------|--------|------------|
+| 11.1.15 | Unit tests for ingest scanner | orchestrator | pending | 11.1.6 |
+| 11.1.16 | Integration tests | orchestrator | pending | 11.1.9, 11.1.11 |
 
 ---
 
 ## Agent Assignment Summary
 
-| Agent | Tasks | Estimated Effort |
-|-------|-------|------------------|
-| the-drone | 11.1.1-3, 11.1.6-7, 11.1.10-11, 11.1.13-15, 11.1.19-20 | 12 tasks (~5-6 hours) |
-| orchestrator | 11.1.4-5, 11.1.8-9, 11.1.12, 11.1.16-18, 11.1.21 | 9 tasks (~5-6 hours) |
+| Agent | Tasks | Count |
+|-------|-------|-------|
+| the-drone | 11.1.1-3, 11.1.7-8, 11.1.10, 11.1.12-14 | 9 tasks |
+| orchestrator | 11.1.4-6, 11.1.9, 11.1.11, 11.1.15-16 | 7 tasks |
 
 ---
 
 ## Parallelization Strategy
 
-### Wave 1 (Start immediately)
+### Wave 1 (Start immediately - no dependencies)
 - 11.1.1: Database migration (the-drone)
 - 11.1.2: Pydantic models (the-drone)
 - 11.1.3: Configuration (the-drone)
-- 11.1.14: Screengrab schema extension (the-drone)
 
-### Wave 2 (After Wave 1 completes)
-- 11.1.4: Directory parser (orchestrator)
-- 11.1.7: Read endpoints (the-drone) - can start after 11.1.1, 11.1.2
-- 11.1.13: Screengrab audit table (the-drone) - can start after 11.1.1
+### Wave 2 (After Wave 1)
+- 11.1.4: APScheduler (orchestrator) - needs 11.1.3
+- 11.1.5: SST query (orchestrator) - needs 11.1.2
+- 11.1.8: Read endpoints (the-drone) - needs 11.1.1, 11.1.2
 
-### Wave 3 (After Wave 2 completes)
-- 11.1.5: Scan logic (orchestrator)
-- 11.1.6: File download (the-drone)
-- 11.1.15: JPG detection (the-drone)
-- 11.1.16: ScreengrabAttacher core (orchestrator)
+### Wave 3 (After Wave 2)
+- 11.1.6: Directory parser (orchestrator) - needs 11.1.3, 11.1.5
+- 11.1.10: Config update endpoint (the-drone) - needs 11.1.4, 11.1.8
 
-### Wave 4 (After Wave 3 completes)
-- 11.1.8: Action endpoints (orchestrator)
-- 11.1.9: Background polling (orchestrator)
-- 11.1.17: Screengrab batch operations (orchestrator)
+### Wave 4 (After Wave 3)
+- 11.1.7: File download (the-drone) - needs 11.1.6
+- 11.1.11: ScreengrabAttacher (orchestrator) - needs 11.1.1, 11.1.7
 
-### Wave 5 (After Wave 4 completes)
-- 11.1.10: IngestPanel component (the-drone)
-- 11.1.18: Screengrab API endpoints (orchestrator)
+### Wave 5 (After Wave 4)
+- 11.1.9: Action endpoints (orchestrator) - needs 11.1.6, 11.1.7, 11.1.8
+- 11.1.15: Unit tests (orchestrator) - needs 11.1.6
 
-### Wave 6 (After Wave 5 completes)
-- 11.1.11: Dashboard integration (the-drone)
-- 11.1.12: Ingest tests (orchestrator)
-- 11.1.19: ScreengrabPanel component (the-drone)
-- 11.1.21: Screengrab tests (orchestrator)
-
-### Wave 7 (Final)
-- 11.1.20: ScreengrabPanel integration (the-drone)
+### Wave 6 (After Wave 5)
+- 11.1.12: IngestPanel (the-drone) - needs 11.1.8, 11.1.9
+- 11.1.13: ScreengrabPanel (the-drone) - needs 11.1.8, 11.1.9, 11.1.11
+- 11.1.14: Settings section (the-drone) - needs 11.1.10
+- 11.1.16: Integration tests (orchestrator) - needs 11.1.9, 11.1.11
 
 ---
 
@@ -183,46 +149,44 @@ This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
 
 ---
 
-## Open Questions (From Feature Spec)
+## Open Questions (RESOLVED 2026-01-21)
 
-1. Authentication: Does mmingest require any auth? VPN-only access?
-2. Directory Structure: Is it flat or nested? Multiple directories to watch?
-3. File Naming: What patterns are used? Can we reliably extract Media IDs?
-4. Cleanup: Should we track when files disappear from the server?
-5. Notifications: WebSocket push when new files found, or just poll from UI?
+| Question | Answer |
+|----------|--------|
+| Authentication | None needed - open for system-to-system transfers |
+| Directory Structure | Project directories + "misc" folder. Ignore "promos" |
+| File Naming | Media ID always at start of filename |
+| Cleanup Strategy | Ignore deletions. Copy SRTs locally for safekeeping |
+| Trigger | Scheduled scan (default daily at midnight), configurable via Settings |
+| QC Field | `QC` field in SST indicates pass status |
 
 ---
 
-## Previous Sprints Summary
+## V3.5 Sprint Roadmap
 
-### Completed Sprints
-- Sprint 2.1-2.2: FastAPI foundation, database, Pydantic models, CRUD endpoints
-- Sprint 3.1: React dashboard scaffold, status bar
-- Sprint 4.1-4.2: Claude Desktop agent instructions, watch folder script
-- Sprint 5.1: Manager agent QA review
-- Sprint 6.1-6.3: Airtable SST integration (linking, context, workstation)
-- Sprint 7.1-7.3: WebSocket updates, bulk uploader, timestamp agent
-- Sprint 8.1-8.5: UX improvements (accessibility, feedback, navigation)
-- Sprint 9.1-9.3: Bug fixes and testing
-- Sprint 10.1-10.2: MCP server for Claude Desktop integration
+### Wave 1 (Parallel - Start Now)
+- **Sprint 11.1**: Remote Ingest Watcher (16 tasks) ← CURRENT
+- Sprint 12.1: Embedded Chat Prototype (8 tasks)
+- Sprint 13.1: Langfuse Integration (7 tasks)
+- Sprint 13.2 + 13.3: UX Cleanup + Tests (10 tasks)
 
-### Backlog Items
-- backlog.1: Project rename assessment (cardigan-editorial-assistant)
-- backlog.2: Content Calendar bulk scheduling interface
+### Wave 2-6 (Future)
+- Chat completion sprints (12.2-12.4)
+- Data visualization sprints (13.4-13.6)
+- Content Calendar, Large Transcript Optimization, Plugin System
 
 ---
 
 ## Session Notes
 
-### 2026-01-12 (Update)
-- EXPANDED Sprint 11.1 with screengrab auto-attachment functionality
-- Added 9 new tasks (11.1.13-11.1.21) for screengrab workflow
-- Total sprint now has 21 tasks across 7 implementation waves
-- Key safety constraint: ADDITIVE ONLY writes to Airtable Screen Grab field
-- Full audit trail required for all attachment operations
+### 2026-01-21 (Design Revision)
+- REVISED Sprint 11.1 based on user feedback
+- Changed from continuous polling to scheduled scan (default: daily midnight)
+- Changed from "track all files" to "smart scan" (only QC-passed content)
+- Answered all open questions about server access, file naming, etc.
+- Reduced task count from 21 to 16
+- Updated feature spec, feature_list.json, and this file
 
-### 2026-01-12 (Initial)
+### 2026-01-12 (Original)
 - Created Sprint 11.1 task breakdown from FEATURE_REMOTE_INGEST_WATCHER.md
-- 12 discrete tasks organized into 5 implementation phases
-- Agent assignments: 7 tasks for the-drone, 5 tasks for orchestrator
-- Ready to begin Wave 1 (foundation tasks)
+- Added screengrab auto-attachment functionality (tasks 11.1.13-11.1.21)
