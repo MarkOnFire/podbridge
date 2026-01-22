@@ -9,6 +9,13 @@ Items are worked incrementally. Any agent can pick up work.
 
 ## Normal Priority / Stray bugs and feature tweaks
 
+- [ ] **Test: Verify hallucination prevention in editor agent** (2026-01-22)
+	- New tool verification gates added to prevent Airtable data fabrication
+	- Test by asking editor agent to work on a real project (e.g., `2WLIExchangeStudentSM`)
+	- Verify agent actually calls `get_sst_metadata()` instead of fabricating data
+	- Confirm agent asks for user input if tools fail
+	- Related commit: `814a8cc` (fix: Add tool verification gates)
+
 - [ ] **Bug/Feature: Phase retry tracking is incomplete** (2026-01-21)
 	- Multiple issues observed when retrying phases via the UI (job 169):
 	- [ ] `attempts` counter stays at 1 even after successful retries
