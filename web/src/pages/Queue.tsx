@@ -6,6 +6,7 @@ import { SkeletonQueue } from '../components/ui/Skeleton'
 import { useDebounce } from '../hooks/useDebounce'
 import { useJobsWebSocket } from '../hooks/useWebSocket'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
+import { getStatusBadgeColor } from '../utils/statusColors'
 import TranscriptUploader from '../components/TranscriptUploader'
 
 interface Job {
@@ -260,27 +261,6 @@ export default function Queue() {
     setPage(1) // Reset to first page when filter changes
   }
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      case 'in_progress':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'completed':
-        return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'failed':
-        return 'bg-red-500/20 text-red-400 border-red-500/30'
-      case 'investigating':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
-      case 'paused':
-        return 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-      case 'cancelled':
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-      default:
-        return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-    }
-  }
-
   const handleUploadComplete = () => {
     // Refresh jobs and stats after upload
     fetchJobs()
@@ -432,7 +412,7 @@ export default function Queue() {
                   </td>
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${statusColor(
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${getStatusBadgeColor(
                         job.status
                       )}`}
                     >

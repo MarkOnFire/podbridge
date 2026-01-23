@@ -112,7 +112,7 @@ async def get_phase_backends():
 
     phase_backends = config.get("phase_backends", {})
     available_backends = list(config.get("backends", {}).keys())
-    available_phases = ["analyst", "formatter", "seo", "manager", "copy_editor"]
+    available_phases = ["analyst", "formatter", "seo", "manager", "copy_editor", "chat"]
 
     return PhaseBackendsResponse(
         phase_backends=phase_backends,
@@ -130,7 +130,7 @@ async def update_phase_backends(update: PhaseBackendsUpdate):
     """
     config = _load_config()
     available_backends = list(config.get("backends", {}).keys())
-    valid_phases = {"analyst", "formatter", "seo", "manager", "copy_editor"}
+    valid_phases = {"analyst", "formatter", "seo", "manager", "copy_editor", "chat"}
 
     # Validate the update
     for phase, backend in update.phase_backends.items():
@@ -173,7 +173,7 @@ async def get_routing_config():
         {"max_minutes": 30, "tier": 1},
         {"max_minutes": None, "tier": 2}
     ]
-    default_phase_tiers = {"analyst": 1, "formatter": 0, "seo": 0, "manager": 2, "copy_editor": 1}
+    default_phase_tiers = {"analyst": 1, "formatter": 0, "seo": 0, "manager": 2, "copy_editor": 1, "chat": 1}
     default_escalation = {
         "enabled": True,
         "on_failure": True,
@@ -202,7 +202,7 @@ async def update_routing_config(update: RoutingConfigUpdate):
     """
     config = _load_config()
     routing = config.get("routing", {})
-    valid_phases = {"analyst", "formatter", "seo", "manager", "copy_editor"}
+    valid_phases = {"analyst", "formatter", "seo", "manager", "copy_editor", "chat"}
 
     # Apply updates (only non-None values)
     if update.duration_thresholds is not None:

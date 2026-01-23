@@ -2,6 +2,7 @@
 from api.models.job import Job, JobCreate, JobUpdate, JobList, JobStatus, JobBase
 from api.models.events import SessionEvent, EventCreate, EventData, EventType
 from api.models.config import ConfigItem, ConfigCreate, ConfigUpdate, ConfigValueType
+from api.models.chat import ChatMessage, ChatRequest, ChatResponse
 from api.models.ingest import (
     FileType,
     FileStatus,
@@ -42,6 +43,10 @@ __all__ = [
     "ConfigCreate",
     "ConfigUpdate",
     "ConfigValueType",
+    # Chat models (Sprint 12.1)
+    "ChatMessage",
+    "ChatRequest",
+    "ChatResponse",
     # Ingest models (Sprint 11.1)
     "FileType",
     "FileStatus",

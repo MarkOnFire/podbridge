@@ -1,161 +1,96 @@
 # Claude Progress Tracker
-# Last Updated: 2026-01-21
+# Last Updated: 2026-01-22
 
 ## V3.5 Orchestration Status
 
 **Orchestrator:** The Conductor
 **Mode:** Multi-Sprint Planning
-**Status:** Ready for Sprint 11.1 Execution
+**Status:** Sprint 12.1 COMPLETE - Ready for Next Sprint
 
 ---
 
-## Current Sprint: 11.1 - Remote Ingest Server Watcher (REVISED)
+## Completed Sprint: 11.1 - Remote Ingest Server Watcher
 
 ### Sprint Goal
 Monitor the PBS Wisconsin media ingest server on a configurable schedule for SRT
 transcript files and JPG screen grabs that match QC-passed content in Airtable SST.
 Display matches in a "Ready to Queue" screen for one-click processing.
 
-### Key Design Decisions (2026-01-21 Revision)
+### Sprint Status: COMPLETE (2026-01-22)
 
-1. **Trigger**: Scheduled scan at configurable interval (default: daily at midnight)
-   - Not continuous polling
-   - Manual "Check Now" button available
-   - Settings configurable via web UI
+All 16 tasks completed across 5 phases:
+- Phase 1: Foundation (4 tasks) - COMPLETE
+- Phase 2: Core Scanner (3 tasks) - COMPLETE
+- Phase 3: API Layer (4 tasks) - COMPLETE
+- Phase 4: Frontend (3 tasks) - COMPLETE
+- Phase 5: Testing (2 tasks) - COMPLETE
 
-2. **Smart Scanning**: Only look for files matching QC-passed Media IDs
-   - Query SST for QC-passed records without existing jobs
-   - Then check ingest server for matching files
-   - Much more efficient than tracking all files
+### Final Task Status
 
-3. **Server Access**: No auth needed (open for system-to-system transfers)
-   - URL: https://mmingest.pbswi.wisc.edu/
-   - Structure: Project directories + "misc" folder
-   - Ignore: "promos" folder
+| ID | Task | Status |
+|----|------|--------|
+| 11.1.1 | Database migration: ingest tables | **complete** |
+| 11.1.2 | Pydantic models for ingest types | **complete** |
+| 11.1.3 | Configuration schema and defaults | **complete** |
+| 11.1.4 | APScheduler integration | **complete** |
+| 11.1.5 | IngestScanner: SST query for QC-passed | **complete** |
+| 11.1.6 | IngestScanner: Directory parser & matching | **complete** |
+| 11.1.7 | IngestScanner: File download | **complete** |
+| 11.1.8 | Ingest router: Read endpoints | **complete** |
+| 11.1.9 | Ingest router: Action endpoints | **complete** |
+| 11.1.10 | Config update endpoint for Settings | **complete** |
+| 11.1.11 | ScreengrabAttacher service | **complete** |
+| 11.1.12 | IngestPanel React component | **complete** |
+| 11.1.13 | ScreengrabPanel React component | **complete** |
+| 11.1.14 | Settings page ingest section | **complete** |
+| 11.1.15 | Unit tests for ingest scanner | **complete** |
+| 11.1.16 | Integration tests | **complete** |
 
-4. **File Naming**: Media ID always at start of filename
+### Test Coverage
 
-5. **File Handling**:
-   - SRT files: Copy to local transcripts/ folder (server is trimmed regularly)
-   - JPG files: Download temporarily for Airtable upload
-   - Deletions: Ignore
+- **Unit tests (test_ingest_scanner.py)**: 40 tests passing
+  - Directory listing parsing (Apache/nginx)
+  - Media ID extraction
+  - File type detection
+  - HTTP mocking
+  - Size parsing
+  - Smart scanning workflow
 
-6. **Screengrab Timing**: May arrive later than transcripts, handled separately
+- **Integration tests (test_ingest_api.py)**: 12 tests passing
+  - Config endpoints (GET/PUT)
+  - Scan endpoint
+  - Available files endpoint
+  - Transcript queue/ignore endpoints
+  - Screengrab endpoints
 
-### Feature Specification
-See: docs/FEATURE_REMOTE_INGEST_WATCHER.md (Revised 2026-01-21)
+- **Attacher tests (test_screengrab_attacher.py)**: 9 tests passing
+  - CRITICAL: Attachment preservation (3 tests)
+  - Duplicate detection
+  - No-match handling
+  - Audit logging
 
-### Sprint Status: IN PROGRESS (Wave 3 Complete)
+**Total: 61 tests passing in 0.62s**
 
----
+### Files Created/Modified
 
-## Simplified Task Breakdown (16 tasks, down from 21)
+**New Files:**
+- `web/src/components/IngestPanel.tsx` - Ready to Queue UI
+- `web/src/components/ScreengrabPanel.tsx` - Screengrab attachment UI
+- `tests/test_ingest_scanner.py` - 40 unit tests
+- `tests/test_ingest_api.py` - 12 API tests
+- `tests/test_screengrab_attacher.py` - 9 attacher tests
 
-### Phase 1: Foundation (4 tasks) - **COMPLETE**
+**Modified Files:**
+- `web/src/pages/Settings.tsx` - Added Ingest tab
 
-| ID | Task | Agent | Status |
-|----|------|-------|--------|
-| 11.1.1 | Database migration: ingest tables | the-drone | **complete** (existed in 006) |
-| 11.1.2 | Pydantic models for ingest types | the-drone | **complete** |
-| 11.1.3 | Configuration schema and defaults | the-drone | **complete** |
-| 11.1.4 | APScheduler integration | orchestrator | **complete** |
+### Validation
 
-**Wave 1 Implementation (2026-01-21):**
-- Created `api/models/ingest.py` with all Pydantic types
-- Created `api/services/ingest_config.py` for config management
-- Added config initialization on API startup
-- Added GET/PUT `/api/ingest/config` endpoints
-- Commit: 5ee3887
-
-**Wave 2 Implementation (2026-01-21 - The Conductor):**
-- Added `IngestScanner.get_qc_passed_media_ids()` with SST query
-- Implemented smart scanning: query SST first, then check for matching files
-- Added `IngestScanner.check_ingest_server_for_media_id()` method
-- Updated `ScanResult` to include `qc_passed_checked` field
-- Added APScheduler dependency to `requirements.txt`
-- Created `api/services/ingest_scheduler.py` for scheduled scanning
-- Integrated scheduler into `api/main.py` lifespan (startup/shutdown)
-- Updated config endpoint to reconfigure scheduler on settings change
-- Added GET `/api/ingest/available` endpoint with SST enrichment
-- **QC Field Note**: Formula checks multiple common field names (QC, QC Status, Quality Control)
-  with pass values (Passed, Pass). May need adjustment based on actual SST schema.
-
-### Phase 2: Core Scanner (3 tasks) - **COMPLETE**
-
-| ID | Task | Agent | Status | Depends On |
-|----|------|-------|--------|------------|
-| 11.1.5 | IngestScanner: SST query for QC-passed | orchestrator | **complete** | 11.1.2 |
-| 11.1.6 | IngestScanner: Directory parser & matching | orchestrator | **complete** (already existed) | 11.1.3, 11.1.5 |
-| 11.1.7 | IngestScanner: File download | orchestrator | **complete** | 11.1.6 |
-
-### Phase 3: API Layer (4 tasks) - **COMPLETE**
-
-| ID | Task | Agent | Status | Depends On |
-|----|------|-------|--------|------------|
-| 11.1.8 | Ingest router: Read endpoints | orchestrator | **complete** | 11.1.1, 11.1.2 |
-| 11.1.9 | Ingest router: Action endpoints | orchestrator | **complete** | 11.1.6, 11.1.7, 11.1.8 |
-| 11.1.10 | Config update endpoint for Settings | orchestrator | **complete** (scheduler reconfiguration added) | 11.1.4, 11.1.8 |
-| 11.1.11 | ScreengrabAttacher service | orchestrator | **complete** (already existed) | 11.1.1, 11.1.7 |
-
-### Phase 4: Frontend (3 tasks)
-
-| ID | Task | Agent | Status | Depends On |
-|----|------|-------|--------|------------|
-| 11.1.12 | IngestPanel React component | the-drone | pending | 11.1.8, 11.1.9 |
-| 11.1.13 | ScreengrabPanel React component | the-drone | pending | 11.1.8, 11.1.9, 11.1.11 |
-| 11.1.14 | Settings page ingest section | the-drone | pending | 11.1.10 |
-
-### Phase 5: Testing (2 tasks)
-
-| ID | Task | Agent | Status | Depends On |
-|----|------|-------|--------|------------|
-| 11.1.15 | Unit tests for ingest scanner | orchestrator | pending | 11.1.6 |
-| 11.1.16 | Integration tests | orchestrator | pending | 11.1.9, 11.1.11 |
+- Frontend build: SUCCESS (451KB bundle)
+- Test suite: 61/61 passing
 
 ---
 
-## Agent Assignment Summary
-
-| Agent | Tasks | Count |
-|-------|-------|-------|
-| the-drone | 11.1.1-3, 11.1.7-8, 11.1.10, 11.1.12-14 | 9 tasks |
-| orchestrator | 11.1.4-6, 11.1.9, 11.1.11, 11.1.15-16 | 7 tasks |
-
----
-
-## Parallelization Strategy
-
-### Wave 1 (Start immediately - no dependencies)
-- 11.1.1: Database migration (the-drone)
-- 11.1.2: Pydantic models (the-drone)
-- 11.1.3: Configuration (the-drone)
-
-### Wave 2 (After Wave 1)
-- 11.1.4: APScheduler (orchestrator) - needs 11.1.3
-- 11.1.5: SST query (orchestrator) - needs 11.1.2
-- 11.1.8: Read endpoints (the-drone) - needs 11.1.1, 11.1.2
-
-### Wave 3 (After Wave 2)
-- 11.1.6: Directory parser (orchestrator) - needs 11.1.3, 11.1.5
-- 11.1.10: Config update endpoint (the-drone) - needs 11.1.4, 11.1.8
-
-### Wave 4 (After Wave 3)
-- 11.1.7: File download (the-drone) - needs 11.1.6
-- 11.1.11: ScreengrabAttacher (orchestrator) - needs 11.1.1, 11.1.7
-
-### Wave 5 (After Wave 4)
-- 11.1.9: Action endpoints (orchestrator) - needs 11.1.6, 11.1.7, 11.1.8
-- 11.1.15: Unit tests (orchestrator) - needs 11.1.6
-
-### Wave 6 (After Wave 5)
-- 11.1.12: IngestPanel (the-drone) - needs 11.1.8, 11.1.9
-- 11.1.13: ScreengrabPanel (the-drone) - needs 11.1.8, 11.1.9, 11.1.11
-- 11.1.14: Settings section (the-drone) - needs 11.1.10
-- 11.1.16: Integration tests (orchestrator) - needs 11.1.9, 11.1.11
-
----
-
-## Safety Constraints (CRITICAL)
+## Safety Constraints (VERIFIED)
 
 ### Airtable Write Policy Exception
 This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
@@ -165,39 +100,109 @@ This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
 3. **Audit**: All operations logged to screengrab_attachments table
 4. **Idempotent**: Re-running won't duplicate (filename-based duplicate detection)
 
-**Testing requirement**: Tests MUST verify existing attachments are preserved.
-
----
-
-## Open Questions (RESOLVED 2026-01-21)
-
-| Question | Answer |
-|----------|--------|
-| Authentication | None needed - open for system-to-system transfers |
-| Directory Structure | Project directories + "misc" folder. Ignore "promos" |
-| File Naming | Media ID always at start of filename |
-| Cleanup Strategy | Ignore deletions. Copy SRTs locally for safekeeping |
-| Trigger | Scheduled scan (default daily at midnight), configurable via Settings |
-| QC Field | `QC` field in SST indicates pass status |
+**Testing requirement**: Tests VERIFY existing attachments are preserved (3 dedicated tests).
 
 ---
 
 ## V3.5 Sprint Roadmap
 
-### Wave 1 (Parallel - Start Now)
-- **Sprint 11.1**: Remote Ingest Watcher (16 tasks) ← CURRENT
-- Sprint 12.1: Embedded Chat Prototype (8 tasks)
+### Completed
+- **Sprint 11.1**: Remote Ingest Watcher (16 tasks) - COMPLETE
+- **Sprint 12.1**: Embedded Chat Prototype (8 tasks) - COMPLETE
+
+### Next Up (Wave 1 - Parallel)
 - Sprint 13.1: Langfuse Integration (7 tasks)
 - Sprint 13.2 + 13.3: UX Cleanup + Tests (10 tasks)
 
-### Wave 2-6 (Future)
+### Future (Wave 2-6)
 - Chat completion sprints (12.2-12.4)
 - Data visualization sprints (13.4-13.6)
 - Content Calendar, Large Transcript Optimization, Plugin System
 
 ---
 
+## Completed Sprint: 12.1 - Embedded Chat Prototype
+
+### Sprint Goal
+Validate embedded chat interaction pattern with minimal implementation before
+committing to full WebSocket/persistence system.
+
+### Sprint Status: COMPLETE (2026-01-22)
+
+All 8 tasks completed across 4 waves:
+- Wave 1: Backend Foundation (3 tasks) - COMPLETE
+- Wave 2: API Endpoint (2 tasks) - COMPLETE
+- Wave 3: Frontend (2 tasks) - COMPLETE
+- Wave 4: Validation (1 task) - COMPLETE
+
+### Final Task Status
+
+| ID | Task | Status |
+|----|------|--------|
+| 12.1.1 | Pydantic chat models | **complete** |
+| 12.1.2 | Context builder service | **complete** |
+| 12.1.3 | Chat config in llm-config.json | **complete** |
+| 12.1.4 | Chat router (POST /api/chat/message) | **complete** |
+| 12.1.5 | Router registration in main.py | **complete** |
+| 12.1.6 | ChatPrototype React component | **complete** |
+| 12.1.7 | JobDetail integration (slide-out panel) | **complete** |
+| 12.1.8 | Validation with real projects | **complete** |
+
+### Files Created/Modified
+
+**New Files:**
+- `api/models/chat.py` - ChatMessage, ChatRequest, ChatResponse models
+- `api/services/chat_context.py` - Context builder with editor personality
+- `api/routers/chat_prototype.py` - POST /api/chat/message endpoint
+- `web/src/components/chat/ChatPrototype.tsx` - Chat panel component
+
+**Modified Files:**
+- `config/llm-config.json` - Added chat configuration section
+- `api/main.py` - Registered chat_prototype router
+- `web/src/pages/JobDetail.tsx` - Added chat toggle button and slide-out panel
+
+### Validation Results
+
+- Frontend build: SUCCESS (456KB bundle)
+- API imports: SUCCESS
+- Chat endpoint registered: /api/chat/message
+- Context builder tested with real project:
+  - Editor personality: 40,860 chars
+  - Full context with project: 59,598 chars
+  - Transcript truncation working (10k char limit)
+
+### Design Decisions
+
+1. **REST-based** (no WebSocket) - simpler prototype for UX validation
+2. **No DB persistence** - React state only, validates interaction pattern
+3. **Slide-out panel** - user can view job details while chatting
+4. **Reuses LLMClient.chat()** - no new methods needed
+5. **Context from MCP patterns** - adapted load_project_for_editing() logic
+
+---
+
 ## Session Notes
+
+### 2026-01-22 (Sprint 12.1 Complete)
+- Completed all 8 tasks for Embedded Chat Prototype
+- Wave 1 (parallel): Created chat models, context builder, config
+- Wave 2 (sequential): Created router and registered in main.py
+- Wave 3 (parallel): Created ChatPrototype component and JobDetail integration
+- Wave 4: Validated with real project data
+- Frontend build SUCCESS (456KB)
+- Prototype ready for user testing
+
+### 2026-01-22 (Sprint 11.1 Completion)
+- Completed Phase 4 (Frontend) and Phase 5 (Testing)
+- Created IngestPanel.tsx - transcript queue UI with bulk actions
+- Created ScreengrabPanel.tsx - screengrab attachment UI with filters
+- Modified Settings.tsx - added Ingest tab with config controls
+- Created test_ingest_scanner.py - 40 unit tests
+- Created test_ingest_api.py - 12 API endpoint tests
+- Created test_screengrab_attacher.py - 9 tests (including 3 CRITICAL safety tests)
+- Validated: npm build SUCCESS, pytest 61/61 passing
+- Archived Sprint 11.1 tasks from feature_list.json
+- Sprint 11.1 is now COMPLETE
 
 ### 2026-01-21 (Wave 3 Implementation - Main Session)
 - Fixed QC field formula: simplified from OR() with multiple field names to just `{QC} = 'Passed'`
@@ -210,7 +215,6 @@ This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
   - POST `/api/ingest/transcripts/queue` - Bulk queue operation
   - POST `/api/ingest/transcripts/{file_id}/ignore` and `/unignore` - Status toggles
 - Backend implementation for Sprint 11.1 is now complete (Waves 1-3)
-- Remaining: Wave 4-6 (Frontend components and testing)
 
 ### 2026-01-21 (Wave 1 Implementation)
 - Completed Sprint 11.1 Wave 1 (Tasks 11.1.1-11.1.3)

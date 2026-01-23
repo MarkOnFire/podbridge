@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import ModelStatsWidget from '../components/ModelStatsWidget'
 import PhaseStatsWidget from '../components/PhaseStatsWidget'
+import { AGENT_INFO } from '../constants/agents'
 
 interface PresetInfo {
   description: string
@@ -35,46 +36,6 @@ interface ConnectionLog {
   error?: string
   latency?: number
 }
-
-interface AgentInfo {
-  id: string
-  name: string
-  icon: string
-  description: string
-}
-
-const AGENT_INFO: AgentInfo[] = [
-  {
-    id: 'analyst',
-    name: 'Analyst',
-    icon: '🔍',
-    description: 'Analyzes raw transcripts to identify key topics, themes, speakers and structural elements. Produces a detailed analysis document that guides downstream agents.'
-  },
-  {
-    id: 'formatter',
-    name: 'Formatter',
-    icon: '📝',
-    description: 'Transforms raw transcripts into clean, readable markdown. Handles speaker attribution, paragraph breaks, timestamps and basic structural formatting.'
-  },
-  {
-    id: 'seo',
-    name: 'SEO Specialist',
-    icon: '🎯',
-    description: 'Generates search-optimized metadata including titles, descriptions, tags and keywords. Optimizes for streaming platform discovery and search rankings.'
-  },
-  {
-    id: 'manager',
-    name: 'QA Manager',
-    icon: '✅',
-    description: 'Reviews all automated outputs for quality before completion. Audits cheaper model work and flags issues. Always runs on big-brain tier for oversight.'
-  },
-  {
-    id: 'copy_editor',
-    name: 'Copy Editor',
-    icon: '✏️',
-    description: 'Reviews and refines formatted content for clarity, grammar and PBS style guidelines. Ensures broadcast-quality prose while preserving speaker voice.'
-  }
-]
 
 export default function System() {
   const [health, setHealth] = useState<HealthStatus | null>(null)

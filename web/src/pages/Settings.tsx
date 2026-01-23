@@ -1,5 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { usePreferences, TextSize } from '../context/PreferencesContext'
+import IngestPanel from '../components/IngestPanel'
+import ScreengrabPanel from '../components/ScreengrabPanel'
+import { AGENT_INFO } from '../constants/agents'
 
 interface DurationThreshold {
   max_minutes: number | null
@@ -28,45 +31,23 @@ interface WorkerConfig {
   heartbeat_interval_seconds: number
 }
 
-interface AgentInfo {
-  id: string
-  name: string
-  icon: string
-  description: string
+interface IngestConfig {
+  enabled: boolean
+  scan_interval_hours: number
+  scan_time: string  // "HH:MM" format
+  last_scan_at: string | null
+  last_scan_success: boolean | null
+  server_url: string
+  directories: string[]
+  ignore_directories: string[]
+  next_scan_at: string | null
 }
 
-const AGENT_INFO: AgentInfo[] = [
-  {
-    id: 'analyst',
-    name: 'Analyst',
-    icon: '🔍',
-    description: 'Analyzes transcripts to identify key topics, themes, speakers and structural elements.'
-  },
-  {
-    id: 'formatter',
-    name: 'Formatter',
-    icon: '📝',
-    description: 'Transforms raw transcripts into clean, readable markdown with proper structure.'
-  },
-  {
-    id: 'seo',
-    name: 'SEO Specialist',
-    icon: '🎯',
-    description: 'Generates search-optimized metadata for streaming platform discovery.'
-  },
-  {
-    id: 'manager',
-    name: 'QA Manager',
-    icon: '✅',
-    description: 'Reviews all outputs for quality. Always runs on big-brain tier for accurate oversight.'
-  },
-  {
-    id: 'copy_editor',
-    name: 'Copy Editor',
-    icon: '✏️',
-    description: 'Reviews and refines content for clarity, grammar and PBS style guidelines.'
-  }
-]
+interface IngestConfigUpdate {
+  enabled?: boolean
+  scan_interval_hours?: number  // 1-168
+  scan_time?: string  // "HH:MM" format
+}
 
 const TIER_COLORS = ['green', 'cyan', 'purple'] as const
 const TIER_STYLES: Record<string, { bg: string; border: string; text: string }> = {
@@ -75,12 +56,13 @@ const TIER_STYLES: Record<string, { bg: string; border: string; text: string }> 
   purple: { bg: 'bg-purple-900/20', border: 'border-purple-500/30', text: 'text-purple-400' },
 }
 
-type TabId = 'agents' | 'routing' | 'worker' | 'system' | 'accessibility'
+type TabId = 'agents' | 'routing' | 'worker' | 'ingest' | 'system' | 'accessibility'
 
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'agents', label: 'Agents', icon: '🤖' },
   { id: 'routing', label: 'Routing', icon: '🔀' },
   { id: 'worker', label: 'Worker', icon: '⚙️' },
+  { id: 'ingest', label: 'Ingest', icon: '📥' },
   { id: 'system', label: 'System', icon: '🖥️' },
   { id: 'accessibility', label: 'Accessibility', icon: '♿' },
 ]
@@ -101,6 +83,7 @@ export default function Settings() {
   const { preferences, updatePreferences } = usePreferences()
   const [routing, setRouting] = useState<RoutingConfig | null>(null)
   const [worker, setWorker] = useState<WorkerConfig | null>(null)
+  const [ingestConfig, setIngestConfig] = useState<IngestConfig | null>(null)
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -112,6 +95,7 @@ export default function Settings() {
   // Track unsaved changes
   const [pendingRouting, setPendingRouting] = useState<Partial<RoutingConfig> | null>(null)
   const [pendingWorker, setPendingWorker] = useState<Partial<WorkerConfig> | null>(null)
+  const [pendingIngest, setPendingIngest] = useState<Partial<IngestConfigUpdate> | null>(null)
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -139,6 +123,17 @@ export default function Settings() {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const fetchIngestConfig = useCallback(async () => {
+    try {
+      const response = await fetch('/api/ingest/config')
+      if (response.ok) {
+        setIngestConfig(await response.json())
+      }
+    } catch (err) {
+      console.error('Failed to fetch ingest config:', err)
     }
   }, [])
 
@@ -180,8 +175,9 @@ export default function Settings() {
 
   useEffect(() => {
     fetchConfig()
+    fetchIngestConfig()
     fetchSystemStatus()
-  }, [fetchConfig, fetchSystemStatus])
+  }, [fetchConfig, fetchIngestConfig, fetchSystemStatus])
 
   // Poll system status when on System tab
   useEffect(() => {
@@ -219,6 +215,13 @@ export default function Settings() {
   const handleWorkerChange = (key: keyof WorkerConfig, value: number) => {
     setPendingWorker({
       ...pendingWorker,
+      [key]: value
+    })
+  }
+
+  const handleIngestChange = (key: keyof IngestConfigUpdate, value: boolean | number | string) => {
+    setPendingIngest({
+      ...pendingIngest,
       [key]: value
     })
   }
@@ -267,8 +270,20 @@ export default function Settings() {
         }
       }
 
+      // Save ingest config if changed
+      if (pendingIngest) {
+        const res = await fetch('/api/ingest/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pendingIngest)
+        })
+        if (!res.ok) throw new Error('Failed to save ingest config')
+      }
+
       setSuccess('Settings saved successfully. Restart workers to apply changes.')
       await fetchConfig()
+      await fetchIngestConfig()
+      setPendingIngest(null)
       setTimeout(() => setSuccess(null), 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
@@ -280,15 +295,30 @@ export default function Settings() {
   const handleReset = () => {
     setPendingRouting(null)
     setPendingWorker(null)
+    setPendingIngest(null)
   }
 
-  const hasChanges = pendingRouting !== null || pendingWorker !== null
+  const hasChanges = pendingRouting !== null || pendingWorker !== null || pendingIngest !== null
 
   const getCurrentWorker = (): WorkerConfig => {
     return {
       max_concurrent_jobs: pendingWorker?.max_concurrent_jobs ?? worker?.max_concurrent_jobs ?? 3,
       poll_interval_seconds: pendingWorker?.poll_interval_seconds ?? worker?.poll_interval_seconds ?? 5,
       heartbeat_interval_seconds: pendingWorker?.heartbeat_interval_seconds ?? worker?.heartbeat_interval_seconds ?? 60
+    }
+  }
+
+  const getCurrentIngest = (): IngestConfig => {
+    return {
+      enabled: pendingIngest?.enabled ?? ingestConfig?.enabled ?? false,
+      scan_interval_hours: pendingIngest?.scan_interval_hours ?? ingestConfig?.scan_interval_hours ?? 24,
+      scan_time: pendingIngest?.scan_time ?? ingestConfig?.scan_time ?? '02:00',
+      last_scan_at: ingestConfig?.last_scan_at ?? null,
+      last_scan_success: ingestConfig?.last_scan_success ?? null,
+      server_url: ingestConfig?.server_url ?? '',
+      directories: ingestConfig?.directories ?? [],
+      ignore_directories: ingestConfig?.ignore_directories ?? [],
+      next_scan_at: ingestConfig?.next_scan_at ?? null
     }
   }
 
@@ -312,6 +342,19 @@ export default function Settings() {
 
   const getTierColor = (tier: number): string => {
     return TIER_COLORS[tier] || 'cyan'
+  }
+
+  const formatDateTime = (isoString: string | null): string => {
+    if (!isoString) return 'Never'
+    const date = new Date(isoString)
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
   }
 
   if (loading) {
@@ -691,6 +734,137 @@ export default function Settings() {
                     <span>15s</span>
                     <span>30s</span>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* INGEST TAB */}
+        {activeTab === 'ingest' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Ingest Scanner</h2>
+              <p className="text-sm text-gray-400 mb-6">
+                Automatically scan network locations for new transcript files and add them to the processing queue.
+              </p>
+
+              <div className="space-y-4">
+                {/* Enable Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
+                  <div>
+                    <div className="font-medium text-white">Enable Scanner</div>
+                    <div className="text-sm text-gray-400">Automatically discover and ingest new transcripts</div>
+                  </div>
+                  <Toggle
+                    checked={getCurrentIngest().enabled}
+                    onChange={() => handleIngestChange('enabled', !getCurrentIngest().enabled)}
+                    label="Enable ingest scanner"
+                  />
+                </div>
+
+                {/* Scan Interval */}
+                <div className="p-4 bg-gray-900 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label htmlFor="scan-interval" className="font-medium text-white">Scan Interval</label>
+                      <div className="text-sm text-gray-400">Hours between automatic scans</div>
+                    </div>
+                    <span className="text-gray-300">{getCurrentIngest().scan_interval_hours}h</span>
+                  </div>
+                  <input
+                    id="scan-interval"
+                    type="range"
+                    min="1"
+                    max="168"
+                    step="1"
+                    value={getCurrentIngest().scan_interval_hours}
+                    onChange={(e) => handleIngestChange('scan_interval_hours', parseInt(e.target.value))}
+                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                    aria-valuemin={1}
+                    aria-valuemax={168}
+                    aria-valuenow={getCurrentIngest().scan_interval_hours}
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>1h</span>
+                    <span>24h (daily)</span>
+                    <span>168h (weekly)</span>
+                  </div>
+                </div>
+
+                {/* Scan Time */}
+                <div className="p-4 bg-gray-900 rounded-lg">
+                  <div className="mb-2">
+                    <label htmlFor="scan-time" className="font-medium text-white block">Preferred Scan Time</label>
+                    <div className="text-sm text-gray-400">Daily time to run scheduled scans (24-hour format)</div>
+                  </div>
+                  <input
+                    id="scan-time"
+                    type="time"
+                    value={getCurrentIngest().scan_time}
+                    onChange={(e) => handleIngestChange('scan_time', e.target.value)}
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Server URL (read-only) */}
+                <div className="p-4 bg-gray-900 rounded-lg">
+                  <div className="mb-2">
+                    <div className="font-medium text-white">Server URL</div>
+                    <div className="text-sm text-gray-400">Remote file server location</div>
+                  </div>
+                  <code className="block p-2 bg-gray-800 rounded text-cyan-400 text-sm">
+                    {getCurrentIngest().server_url || 'Not configured'}
+                  </code>
+                </div>
+
+                {/* Last Scan Info */}
+                {getCurrentIngest().last_scan_at && (
+                  <div className="p-4 bg-gray-900 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-white">Last Scan</div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        getCurrentIngest().last_scan_success
+                          ? 'bg-green-900/20 text-green-400'
+                          : 'bg-red-900/20 text-red-400'
+                      }`}>
+                        {getCurrentIngest().last_scan_success ? 'Success' : 'Failed'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {formatDateTime(getCurrentIngest().last_scan_at)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Next Scheduled Scan */}
+                {getCurrentIngest().next_scan_at && (
+                  <div className="p-4 bg-gray-900 rounded-lg">
+                    <div className="font-medium text-white mb-2">Next Scheduled Scan</div>
+                    <div className="text-sm text-gray-400">
+                      {formatDateTime(getCurrentIngest().next_scan_at)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ready to Queue - IngestPanel */}
+            <IngestPanel />
+
+            {/* Screengrabs Available - ScreengrabPanel */}
+            <ScreengrabPanel />
+
+            {/* Configuration Note */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
+              <div className="flex items-start space-x-3">
+                <span className="text-yellow-400 text-xl">💡</span>
+                <div>
+                  <h3 className="text-sm font-medium text-white">Server Configuration</h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Network paths and credentials are managed in server environment variables.
+                    Contact your system administrator to modify the server URL or monitored directories.
+                  </p>
                 </div>
               </div>
             </div>

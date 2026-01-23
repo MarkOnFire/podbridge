@@ -1,6 +1,11 @@
 {
   "primary_backend": "openrouter",
   "fallback_backend": "openrouter",
+  "chat": {
+    "backend": "openrouter",
+    "max_tokens": 4096,
+    "temperature": 0.7
+  },
   "backends": {
     "local-ollama": {
       "type": "ollama",
@@ -120,7 +125,8 @@
     "formatter": "openrouter-cheapskate",
     "seo": "openrouter-cheapskate",
     "manager": "openrouter-big-brain",
-    "copy_editor": "openrouter"
+    "copy_editor": "openrouter",
+    "chat": "openrouter"
   },
   "routing": {
     "tiers": [
@@ -152,7 +158,8 @@
       "formatter": 0,
       "seo": 0,
       "manager": 2,
-      "copy_editor": 1
+      "copy_editor": 1,
+      "chat": 1
     },
     "escalation": {
       "enabled": true,

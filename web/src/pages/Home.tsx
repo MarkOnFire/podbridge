@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { SkeletonDashboard } from '../components/ui/Skeleton'
 import { useJobsWebSocket } from '../hooks/useWebSocket'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
+import { getStatusTextColor } from '../utils/statusColors'
 
 interface QueueStats {
   pending: number
@@ -80,23 +81,6 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [fetchData, isConnected])
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'text-yellow-400'
-      case 'in_progress':
-        return 'text-blue-400'
-      case 'completed':
-        return 'text-green-400'
-      case 'failed':
-        return 'text-red-400'
-      case 'investigating':
-        return 'text-orange-400'
-      default:
-        return 'text-gray-400'
-    }
-  }
-
   if (loading) {
     return <SkeletonDashboard />
   }
@@ -161,7 +145,7 @@ export default function Home() {
                       {formatRelativeTime(job.queued_at + 'Z')}
                     </div>
                   </div>
-                  <span className={`text-sm font-medium ${statusColor(job.status)}`}>
+                  <span className={`text-sm font-medium ${getStatusTextColor(job.status)}`}>
                     {job.status}
                   </span>
                 </div>

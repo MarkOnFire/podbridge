@@ -7,6 +7,7 @@ import Breadcrumb from '../components/ui/Breadcrumb'
 import { useToast } from '../components/ui/Toast'
 import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
 import { formatRelativeTime, formatTimestamp, formatDuration } from '../utils/formatTime'
+import ChatPanel from '../components/chat/ChatPanel'
 
 interface JobPhase {
   name: string
@@ -90,6 +91,7 @@ export default function JobDetail() {
   const [sstMetadata, setSstMetadata] = useState<SSTMetadata | null>(null)
   const [sstLoading, setSstLoading] = useState(false)
   const [retryingPhase, setRetryingPhase] = useState<string | null>(null)
+  const [showChat, setShowChat] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const modalRef = useFocusTrap(!!viewingOutput)
   const { toast } = useToast()
@@ -362,6 +364,14 @@ export default function JobDetail() {
               className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-md text-sm"
             >
               Cancel
+            </button>
+          )}
+          {job.status === 'completed' && (
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm"
+            >
+              {showChat ? 'Close Chat' : 'Open Chat'}
             </button>
           )}
         </div>
@@ -737,6 +747,16 @@ export default function JobDetail() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Chat Panel */}
+      {showChat && job && (
+        <div className="fixed right-0 top-0 h-full w-1/2 min-w-[400px] bg-gray-900 border-l border-gray-700 z-40 shadow-xl">
+          <ChatPanel
+            projectName={job.project_name}
+            onClose={() => setShowChat(false)}
+          />
         </div>
       )}
     </div>
