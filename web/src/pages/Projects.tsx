@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import { useFocusTrap } from '../hooks/useFocusTrap'
 import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 import { ARTIFACT_LABELS } from '../utils/artifactLabels'
+import ScreengrabsBox from '../components/ScreengrabsBox'
 
 interface CompletedJob {
   id: number
@@ -488,6 +489,11 @@ export default function Projects() {
                     </div>
                   )}
                 </div>
+
+                {/* Screengrabs */}
+                {sstMetadata?.media_id && (
+                  <ScreengrabsBox mediaId={sstMetadata.media_id} />
+                )}
 
                 {/* Project Path */}
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">

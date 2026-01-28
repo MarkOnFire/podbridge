@@ -43,7 +43,9 @@ DEFAULT_CONFIG = IngestConfig(
     last_scan_at=None,
     last_scan_success=None,
     server_url="https://mmingest.pbswi.wisc.edu/",
-    directories=["/exports/", "/misc/"],
+    # /exports/ removed - returns 404
+    # /SCC2SRT/ and /wisconsinlife/ added - contain transcript files
+    directories=["/misc/", "/SCC2SRT/", "/wisconsinlife/"],
     ignore_directories=["/promos/"],
 )
 

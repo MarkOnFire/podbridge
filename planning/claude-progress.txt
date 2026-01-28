@@ -1,11 +1,11 @@
 # Claude Progress Tracker
-# Last Updated: 2026-01-22
+# Last Updated: 2026-01-23
 
 ## V3.5 Orchestration Status
 
 **Orchestrator:** The Conductor
 **Mode:** Multi-Sprint Planning
-**Status:** Sprint 12.1 COMPLETE - Ready for Next Sprint
+**Status:** Sprint 13.x COMPLETE - Ready for Next Sprint
 
 ---
 
@@ -109,6 +109,7 @@ This sprint includes a CONTROLLED EXCEPTION to the read-only Airtable policy:
 ### Completed
 - **Sprint 11.1**: Remote Ingest Watcher (16 tasks) - COMPLETE
 - **Sprint 12.1**: Embedded Chat Prototype (8 tasks) - COMPLETE
+- **Sprint 13.x**: "Ready for Work" UX Refinement (8 tasks) - COMPLETE
 
 ### Next Up (Wave 1 - Parallel)
 - Sprint 13.1: Langfuse Integration (7 tasks)
@@ -181,7 +182,75 @@ All 8 tasks completed across 4 waves:
 
 ---
 
+## Completed Sprint: 13.x - "Ready for Work" UX Refinement
+
+### Sprint Goal
+Refactor transcript/screengrab discovery into a cleaner, less overwhelming workflow
+with better filtering and contextual placement. Promote transcript discovery to
+top-level navigation while moving screengrab attachments to contextual JobDetail panels.
+
+### Sprint Status: COMPLETE (2026-01-23)
+
+All 8 tasks completed across 4 phases:
+- Phase 1: API Enhancements (2 tasks) - COMPLETE
+- Phase 2: New ReadyForWork Page (3 tasks) - COMPLETE
+- Phase 3: Screengrab Context on JobDetail (2 tasks) - COMPLETE
+- Phase 4: Settings Cleanup (1 task) - COMPLETE
+
+### Final Task Status
+
+| ID | Task | Status |
+|----|------|--------|
+| 13.1.1 | Extend /available API with search/date/job filters | **complete** |
+| 13.1.2 | Add /screengrabs/for-media-id endpoint | **complete** |
+| 13.2.1 | Create ReadyForWork.tsx page | **complete** |
+| 13.2.2 | Add route to App.tsx | **complete** |
+| 13.2.3 | Add nav link to Layout.tsx | **complete** |
+| 13.3.1 | Create ScreengrabSlideout component | **complete** |
+| 13.3.2 | Integrate slideout into JobDetail | **complete** |
+| 13.4.1 | Simplify Settings Ingest tab | **complete** |
+
+### Files Created/Modified
+
+**New Files:**
+- `web/src/pages/ReadyForWork.tsx` - Top-level transcript discovery page
+- `web/src/components/ScreengrabSlideout.tsx` - Contextual screengrab panel
+
+**Modified Files:**
+- `api/routers/ingest.py` - Extended /available with search/days/exclude_with_jobs params, added /screengrabs/for-media-id/{media_id} endpoint
+- `web/src/App.tsx` - Added /ready route
+- `web/src/components/Layout.tsx` - Added "Ready for Work" nav link (second position)
+- `web/src/pages/JobDetail.tsx` - Integrated screengrab slideout panel
+- `web/src/pages/Settings.tsx` - Simplified Ingest tab (removed panels, added links)
+
+### Validation Results
+
+- Frontend build: SUCCESS (472KB bundle, reduced from 485KB)
+- Ingest tests: 52/52 passing
+
+### Key UX Improvements
+
+1. **Promoted Discovery**: "Ready for Work" is now second nav item (after Dashboard)
+2. **Filtered Search**: Debounced search by filename/Media ID + configurable date range
+3. **Cleaner Defaults**: Hides files that already have jobs (exclude_with_jobs=true)
+4. **Contextual Screengrabs**: Only appear on JobDetail when matching Media ID exists
+5. **Reduced Bundle**: Refactoring removed 13KB from frontend bundle
+
+---
+
 ## Session Notes
+
+### 2026-01-23 (Sprint 13.x Complete)
+- Planned and completed Sprint 13.x: "Ready for Work" UX Refinement
+- Phase 1: Extended /available API with search, days, exclude_with_jobs params
+- Phase 1: Added /screengrabs/for-media-id/{media_id} endpoint
+- Phase 2: Created ReadyForWork.tsx page with filters and bulk actions
+- Phase 2: Added route and nav link (second position in nav)
+- Phase 3: Created ScreengrabSlideout component for contextual attachment
+- Phase 3: Integrated slideout into JobDetail page
+- Phase 4: Simplified Settings Ingest tab (removed panels, added links)
+- Frontend build SUCCESS (472KB, down 13KB from 485KB)
+- Ingest tests: 52/52 passing
 
 ### 2026-01-22 (Sprint 12.1 Complete)
 - Completed all 8 tasks for Embedded Chat Prototype

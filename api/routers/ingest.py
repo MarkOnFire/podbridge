@@ -112,6 +112,9 @@ class ScreengrabListResponse(BaseModel):
     total_new: int
     total_attached: int
     total_no_match: int
+    # Airtable attachment info (only populated for /screengrabs/for-media-id endpoint)
+    sst_existing_attachments: Optional[int] = None
+    sst_record_id: Optional[str] = None
 
 
 class AttachResponse(BaseModel):
@@ -156,6 +159,20 @@ async def list_available_files(
         description="Filter by file type (transcript or screengrab)"
     ),
     limit: int = Query(default=50, le=200),
+    search: Optional[str] = Query(
+        default=None,
+        description="Search by filename or Media ID (case-insensitive)"
+    ),
+    days: Optional[int] = Query(
+        default=30,
+        ge=1,
+        le=365,
+        description="Filter by first_seen_at within N days (default: 30)"
+    ),
+    exclude_with_jobs: bool = Query(
+        default=True,
+        description="Hide files that already have linked jobs"
+    ),
 ) -> AvailableFilesResponse:
     """
     List files available for queueing.
@@ -167,6 +184,9 @@ async def list_available_files(
         status: Filter by status (default: new)
         file_type: Filter by type (default: transcript)
         limit: Maximum results to return
+        search: Search term for filename or Media ID
+        days: Filter to files seen within N days (default: 30)
+        exclude_with_jobs: Hide files already linked to jobs (default: true)
 
     Returns:
         List of available files with SST metadata
@@ -190,6 +210,20 @@ async def list_available_files(
         if file_type:
             query += " AND file_type = :file_type"
             params["file_type"] = file_type
+
+        # Search filter: match filename OR media_id
+        if search:
+            query += " AND (filename LIKE :search OR media_id LIKE :search)"
+            params["search"] = f"%{search}%"
+
+        # Date filter: only files seen within N days
+        if days:
+            query += " AND first_seen_at >= datetime('now', :days_offset)"
+            params["days_offset"] = f"-{days} days"
+
+        # Exclude files that already have jobs
+        if exclude_with_jobs:
+            query += " AND job_id IS NULL"
 
         query += " ORDER BY first_seen_at DESC LIMIT :limit"
 
@@ -405,6 +439,95 @@ async def list_screengrabs(
         total_new=totals.get("new", 0),
         total_attached=totals.get("attached", 0),
         total_no_match=totals.get("no_match", 0),
+    )
+
+
+@router.get("/screengrabs/for-media-id/{media_id}", response_model=ScreengrabListResponse)
+async def get_screengrabs_for_media_id(
+    media_id: str,
+    include_attached: bool = Query(
+        default=False,
+        description="Include already-attached screengrabs (default: false)"
+    ),
+) -> ScreengrabListResponse:
+    """
+    Get screengrabs matching a specific Media ID.
+
+    Used by JobDetail page to show contextual screengrab attachment prompts.
+    Also checks Airtable SST record for existing attachments.
+
+    Args:
+        media_id: The Media ID to match
+        include_attached: Whether to include already-attached screengrabs
+
+    Returns:
+        List of matching screengrabs with their status, plus existing Airtable attachments count
+    """
+    from api.services.airtable import AirtableClient
+
+    # Look up existing attachments in Airtable SST record
+    sst_existing_attachments: Optional[int] = None
+    sst_record_id: Optional[str] = None
+    try:
+        airtable = AirtableClient()
+        sst_record = await airtable.search_sst_by_media_id(media_id)
+        if sst_record:
+            sst_record_id = sst_record.get("id")
+            attachments = sst_record.get("fields", {}).get("Screen Grab", []) or []
+            sst_existing_attachments = len(attachments)
+    except Exception as e:
+        logger.warning(f"Failed to check Airtable attachments for {media_id}: {e}")
+
+    async with get_session() as session:
+        # Build query for matching media_id
+        query = """
+            SELECT id, remote_url, filename, media_id, status,
+                   first_seen_at, airtable_record_id, attached_at
+            FROM available_files
+            WHERE file_type = 'screengrab'
+              AND media_id = :media_id
+        """
+        params = {"media_id": media_id}
+
+        if not include_attached:
+            query += " AND status IN ('new', 'no_match')"
+
+        query += " ORDER BY first_seen_at DESC"
+
+        result = await session.execute(text(query), params)
+        rows = result.fetchall()
+
+        screengrabs = [
+            ScreengrabFile(
+                id=row.id,
+                filename=row.filename,
+                remote_url=row.remote_url,
+                media_id=row.media_id,
+                status=row.status,
+                first_seen_at=row.first_seen_at,
+                sst_record_id=row.airtable_record_id,
+                attached_at=row.attached_at,
+            )
+            for row in rows
+        ]
+
+        # Get totals for this media_id
+        totals_query = text("""
+            SELECT status, COUNT(*) as count
+            FROM available_files
+            WHERE file_type = 'screengrab' AND media_id = :media_id
+            GROUP BY status
+        """)
+        result = await session.execute(totals_query, {"media_id": media_id})
+        totals = {row.status: row.count for row in result.fetchall()}
+
+    return ScreengrabListResponse(
+        screengrabs=screengrabs,
+        total_new=totals.get("new", 0),
+        total_attached=totals.get("attached", 0),
+        total_no_match=totals.get("no_match", 0),
+        sst_existing_attachments=sst_existing_attachments,
+        sst_record_id=sst_record_id,
     )
 
 

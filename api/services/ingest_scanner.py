@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, unquote
 
 import httpx
 from bs4 import BeautifulSoup
@@ -377,8 +377,19 @@ class IngestScanner:
             "2WLI1209HD_transcript.srt" -> "2WLI1209HD"
             "9UNP2005_screengrab.jpg" -> "9UNP2005"
             "WPT_2401_final.srt" -> None (doesn't match pattern)
+            "2WLI1209HD%20(2).srt" -> "2WLI1209HD" (URL-encoded)
+            "2WLI1209HD.srt.srt" -> "2WLI1209HD" (duplicate extension)
         """
-        match = self.MEDIA_ID_PATTERN.search(filename)
+        # URL-decode the filename first (handles %20, etc.)
+        decoded = unquote(filename)
+
+        # Strip duplicate extensions (e.g., .srt.srt -> .srt)
+        while decoded.endswith('.srt.srt'):
+            decoded = decoded[:-4]
+        while decoded.endswith('.txt.txt'):
+            decoded = decoded[:-4]
+
+        match = self.MEDIA_ID_PATTERN.search(decoded)
         if match:
             return match.group(1).upper()
         return None

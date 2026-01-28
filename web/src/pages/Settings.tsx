@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { usePreferences, TextSize } from '../context/PreferencesContext'
-import IngestPanel from '../components/IngestPanel'
-import ScreengrabPanel from '../components/ScreengrabPanel'
 import { AGENT_INFO } from '../constants/agents'
 
 interface DurationThreshold {
@@ -849,11 +848,40 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Ready to Queue - IngestPanel */}
-            <IngestPanel />
+            {/* Link to Ready for Work page */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-white">Ready for Work</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    View and queue transcripts from the ingest server with search and filtering.
+                  </p>
+                </div>
+                <Link
+                  to="/ready"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors font-medium"
+                >
+                  Open Ready for Work
+                </Link>
+              </div>
+            </div>
 
-            {/* Screengrabs Available - ScreengrabPanel */}
-            <ScreengrabPanel />
+            {/* Screengrab Info */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-white">Screengrab Attachments</h3>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Screengrabs are now attached contextually from the job detail page. When a completed job has matching screengrabs available, you'll see an "Attach Screengrabs" button in the job header.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             {/* Configuration Note */}
             <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">

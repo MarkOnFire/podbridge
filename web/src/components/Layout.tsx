@@ -109,6 +109,12 @@ export default function Layout() {
                 Dashboard
               </NavLink>
               <NavLink
+                to="/ready"
+                className={navLinkClass}
+              >
+                Ready for Work
+              </NavLink>
+              <NavLink
                 to="/queue"
                 className={navLinkClass}
               >

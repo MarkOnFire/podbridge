@@ -187,7 +187,7 @@ class IngestConfig(BaseModel):
         description="Base URL of ingest server"
     )
     directories: List[str] = Field(
-        default_factory=lambda: ["/exports/", "/misc/"],
+        default_factory=lambda: ["/misc/", "/SCC2SRT/", "/wisconsinlife/"],
         description="Directories to scan"
     )
     ignore_directories: List[str] = Field(

@@ -8,6 +8,7 @@ import { useToast } from '../components/ui/Toast'
 import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
 import { formatRelativeTime, formatTimestamp, formatDuration } from '../utils/formatTime'
 import ChatPanel from '../components/chat/ChatPanel'
+import ScreengrabSlideout from '../components/ScreengrabSlideout'
 
 interface JobPhase {
   name: string
@@ -92,6 +93,8 @@ export default function JobDetail() {
   const [sstLoading, setSstLoading] = useState(false)
   const [retryingPhase, setRetryingPhase] = useState<string | null>(null)
   const [showChat, setShowChat] = useState(false)
+  const [showScreengrabs, setShowScreengrabs] = useState(false)
+  const [hasScreengrabs, setHasScreengrabs] = useState(false)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
   const modalRef = useFocusTrap(!!viewingOutput)
   const { toast } = useToast()
@@ -144,6 +147,29 @@ export default function JobDetail() {
 
     fetchSstMetadata()
   }, [id, job?.airtable_record_id])
+
+  // Check for available screengrabs when job has a media_id
+  useEffect(() => {
+    const checkScreengrabs = async () => {
+      if (!job?.media_id) {
+        setHasScreengrabs(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/ingest/screengrabs/for-media-id/${job.media_id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setHasScreengrabs(data.screengrabs && data.screengrabs.length > 0)
+        }
+      } catch (err) {
+        // Silently fail - screengrab check is supplementary
+        console.error('Failed to check screengrabs:', err)
+      }
+    }
+
+    checkScreengrabs()
+  }, [job?.media_id])
 
   const handleAction = async (action: string) => {
     const actionLabels: Record<string, { success: string; error: string }> = {
@@ -372,6 +398,17 @@ export default function JobDetail() {
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm"
             >
               {showChat ? 'Close Chat' : 'Open Chat'}
+            </button>
+          )}
+          {hasScreengrabs && (
+            <button
+              onClick={() => setShowScreengrabs(!showScreengrabs)}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-sm flex items-center space-x-1.5"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>{showScreengrabs ? 'Close' : 'Screengrabs'}</span>
             </button>
           )}
         </div>
@@ -756,6 +793,16 @@ export default function JobDetail() {
           <ChatPanel
             projectName={job.project_name}
             onClose={() => setShowChat(false)}
+          />
+        </div>
+      )}
+
+      {/* Screengrab Slideout */}
+      {showScreengrabs && job?.media_id && (
+        <div className="fixed right-0 top-0 h-full w-1/3 min-w-[350px] bg-gray-900 border-l border-gray-700 z-40 shadow-xl">
+          <ScreengrabSlideout
+            mediaId={job.media_id}
+            onClose={() => setShowScreengrabs(false)}
           />
         </div>
       )}
