@@ -119,6 +119,62 @@ class AirtableClient:
             except httpx.HTTPError:
                 raise
 
+    async def batch_search_sst_by_media_ids(self, media_ids: list[str]) -> dict[str, dict]:
+        """
+        Batch search SST table by multiple Media IDs.
+
+        Makes a single Airtable API call with an OR formula to fetch multiple
+        records efficiently. Much faster than N individual lookups.
+
+        Args:
+            media_ids: List of Media IDs to search for (max ~100 per batch)
+
+        Returns:
+            Dict mapping media_id -> record dict for found records.
+            Missing media_ids won't have entries in the result.
+        """
+        if not media_ids:
+            return {}
+
+        # Build OR formula: OR({Media ID}='id1', {Media ID}='id2', ...)
+        # Airtable has a formula length limit, so we batch in groups of ~50
+        results: dict[str, dict] = {}
+        batch_size = 50  # Conservative batch size to avoid formula length limits
+
+        url = f"{self.API_BASE_URL}/{self.BASE_ID}/{self.TABLE_ID}"
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            for i in range(0, len(media_ids), batch_size):
+                batch = media_ids[i:i + batch_size]
+
+                # Build OR formula for this batch
+                conditions = [f"{{{self.MEDIA_ID_FIELD}}}='{mid}'" for mid in batch]
+                formula = f"OR({','.join(conditions)})"
+
+                params = {
+                    "filterByFormula": formula,
+                    "maxRecords": len(batch),
+                    "fields[]": ["Media ID", "Title", "Project"],  # Only fetch needed fields
+                }
+
+                try:
+                    response = await client.get(url, headers=self.headers, params=params)
+                    response.raise_for_status()
+
+                    data = response.json()
+                    for record in data.get("records", []):
+                        mid = record.get("fields", {}).get(self.MEDIA_ID_FIELD)
+                        if mid:
+                            results[mid] = record
+
+                except httpx.HTTPError as e:
+                    # Log but don't fail the whole batch
+                    import logging
+                    logging.getLogger(__name__).warning(f"Batch SST lookup failed: {e}")
+                    continue
+
+        return results
+
     async def get_sst_record(self, record_id: str) -> Optional[dict]:
         """
         Fetch a specific SST record by Airtable record ID.

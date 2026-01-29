@@ -3,12 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../components/ui/Toast'
 import { formatRelativeTime } from '../utils/formatTime'
 
-interface SSTRecordInfo {
-  id: string
-  title: string | null
-  project: string | null
-}
-
 interface AvailableFile {
   id: number
   filename: string
@@ -16,8 +10,8 @@ interface AvailableFile {
   file_type: string
   remote_url: string
   first_seen_at: string
+  remote_modified_at: string | null  // Server modification time
   status: string
-  sst_record: SSTRecordInfo | null
 }
 
 interface AvailableFilesResponse {
@@ -429,27 +423,17 @@ export default function ReadyForWork() {
                       ) : (
                         <span className="font-medium text-gray-300 truncate">{file.filename}</span>
                       )}
-                      <span className="text-xs text-gray-500">
-                        {formatRelativeTime(file.first_seen_at + 'Z')}
+                      <span className="text-xs text-gray-500" title={
+                        file.remote_modified_at
+                          ? `Server: ${new Date(file.remote_modified_at + 'Z').toLocaleString()}`
+                          : `Discovered: ${new Date(file.first_seen_at + 'Z').toLocaleString()}`
+                      }>
+                        {formatRelativeTime(
+                          (file.remote_modified_at || file.first_seen_at) + 'Z'
+                        )}
                       </span>
                     </div>
 
-                    {file.sst_record && (
-                      <div className="text-sm text-gray-400 mt-0.5 truncate">
-                        {file.sst_record.title && (
-                          <span className="mr-2">{file.sst_record.title}</span>
-                        )}
-                        {file.sst_record.project && (
-                          <span className="text-gray-500">• {file.sst_record.project}</span>
-                        )}
-                      </div>
-                    )}
-
-                    {!file.sst_record && file.media_id && (
-                      <div className="text-xs text-yellow-500 mt-0.5">
-                        No SST record found
-                      </div>
-                    )}
                   </div>
                 </div>
 

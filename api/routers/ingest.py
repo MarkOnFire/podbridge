@@ -71,6 +71,7 @@ class AvailableFile(BaseModel):
     file_type: str
     remote_url: str
     first_seen_at: datetime
+    remote_modified_at: Optional[datetime] = None  # Server modification time
     status: str
     sst_record: Optional[SSTRecordInfo] = None
 
@@ -177,8 +178,8 @@ async def list_available_files(
     """
     List files available for queueing.
 
-    Returns transcript files discovered on the ingest server that match
-    QC-passed content in Airtable SST, enriched with SST metadata.
+    Returns transcript files discovered on the ingest server.
+    SST validation is deferred to queue time for performance.
 
     Args:
         status: Filter by status (default: new)
@@ -189,15 +190,13 @@ async def list_available_files(
         exclude_with_jobs: Hide files already linked to jobs (default: true)
 
     Returns:
-        List of available files with SST metadata
+        List of available files
     """
-    from api.services.airtable import AirtableClient
-
     async with get_session() as session:
         # Query available_files table
         query = """
             SELECT id, remote_url, filename, media_id, file_type,
-                   first_seen_at, status
+                   first_seen_at, remote_modified_at, status
             FROM available_files
             WHERE 1=1
         """
@@ -225,42 +224,28 @@ async def list_available_files(
         if exclude_with_jobs:
             query += " AND job_id IS NULL"
 
-        query += " ORDER BY first_seen_at DESC LIMIT :limit"
+        # Sort by server modification time when available, otherwise first_seen
+        query += " ORDER BY COALESCE(remote_modified_at, first_seen_at) DESC LIMIT :limit"
 
         result = await session.execute(text(query), params)
         rows = result.fetchall()
 
-        # Enrich with SST metadata
-        airtable = AirtableClient()
-        files = []
-
-        for row in rows:
-            sst_record_info = None
-
-            # Fetch SST record if we have a Media ID
-            if row.media_id:
-                try:
-                    sst_record = await airtable.search_sst_by_media_id(row.media_id)
-                    if sst_record:
-                        fields = sst_record.get("fields", {})
-                        sst_record_info = SSTRecordInfo(
-                            id=sst_record["id"],
-                            title=fields.get("Title"),
-                            project=fields.get("Project"),
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to fetch SST record for {row.media_id}: {e}")
-
-            files.append(AvailableFile(
+        # Build file list without SST enrichment for performance
+        # SST validation happens when files are actually queued
+        files = [
+            AvailableFile(
                 id=row.id,
                 filename=row.filename,
                 media_id=row.media_id,
                 file_type=row.file_type,
                 remote_url=row.remote_url,
                 first_seen_at=row.first_seen_at,
+                remote_modified_at=row.remote_modified_at,
                 status=row.status,
-                sst_record=sst_record_info,
-            ))
+                sst_record=None,  # Deferred to queue time
+            )
+            for row in rows
+        ]
 
         # Get total count of new files
         count_query = text("""
