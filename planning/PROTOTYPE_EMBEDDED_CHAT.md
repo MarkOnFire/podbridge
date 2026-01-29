@@ -98,7 +98,7 @@ def build_chat_context(project_name: str | None) -> str:
 def load_editor_personality() -> str:
     """Load Cardigan editor personality from agent instructions."""
     try:
-        with open("agent-instructions/EDITOR_AGENT_INSTRUCTIONS.md") as f:
+        with open("claude-desktop-project/EDITOR_AGENT_INSTRUCTIONS.md") as f:
             return f.read()
     except:
         return "You are a helpful editorial assistant for PBS Wisconsin."

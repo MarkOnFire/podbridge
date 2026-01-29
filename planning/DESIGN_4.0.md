@@ -213,7 +213,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application
 COPY api/ ./api/
 COPY config/ ./config/
-COPY agent-instructions/ ./agent-instructions/
+COPY claude-desktop-project/ ./claude-desktop-project/
 
 # Create data directories
 RUN mkdir -p /app/data /app/OUTPUT /app/transcripts

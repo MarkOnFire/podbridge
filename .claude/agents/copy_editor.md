@@ -1,6 +1,6 @@
 # Copy-Editor Agent Instructions
 
-> **Canonical source:** `agent-instructions/EDITOR_AGENT_INSTRUCTIONS.md`
+> **Canonical source:** `claude-desktop-project/EDITOR_AGENT_INSTRUCTIONS.md`
 >
 > This file contains Claude Code-specific overrides and supplements.
 > For the full editorial rules, tool verification requirements, deliverable

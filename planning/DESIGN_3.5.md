@@ -112,7 +112,7 @@ CREATE TABLE chat_messages (
 - **MCP Server Tools**: Reuse `load_project_for_editing()`, `get_formatted_transcript()`, `save_revision()`, `get_sst_metadata()` functions
 - **Existing WebSocket**: Follow patterns from job status WebSocket (`api/routers/websocket.py`)
 - **LLM Client**: Adapt `api/services/llm.py` for streaming
-- **Agent Instructions**: Use Cardigan personality from `agent-instructions/EDITOR_AGENT_INSTRUCTIONS.md`
+- **Agent Instructions**: Use Cardigan personality from `claude-desktop-project/EDITOR_AGENT_INSTRUCTIONS.md`
 
 ### 1.5 Prototype Strategy
 

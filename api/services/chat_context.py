@@ -11,7 +11,7 @@ from typing import Optional
 
 
 # Path constants
-AGENT_INSTRUCTIONS_DIR = Path(__file__).parent.parent.parent / "agent-instructions"
+AGENT_INSTRUCTIONS_DIR = Path(__file__).parent.parent.parent / "claude-desktop-project"
 EDITOR_PERSONALITY_PATH = AGENT_INSTRUCTIONS_DIR / "EDITOR_AGENT_INSTRUCTIONS.md"
 OUTPUT_DIR = Path(__file__).parent.parent.parent / "OUTPUT"
 

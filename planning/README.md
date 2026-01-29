@@ -16,7 +16,8 @@
 ## Project Context
 
 **Design Documents**:
-- `DESIGN_v3.0.md` - v3.0 architecture and implementation (historical reference)
+- `archive/DESIGN_v3.0.md` - v3.0 architecture and implementation (archived)
+- `DESIGN_3.5.md` - v3.5 architecture and implementation (current)
 - `DESIGN_4.0.md` - Future vision and deferred features (planning only)
 
 **Sprint Status**:

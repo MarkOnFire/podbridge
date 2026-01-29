@@ -30,4 +30,4 @@ The interactive editor's job is to take the initial AI-generated "brainstorming"
 
 ### Core Instructions
 
-The complete and authoritative instructions for this agent are located in the `claude-desktop/` directory, primarily in the **`CUSTOM_INSTRUCTIONS.md`** file. Any agent, whether Claude or Gemini, assuming this role must adhere strictly to the workflows, templates, and principles defined in that document.
+The complete and authoritative instructions for this agent are located in the `claude-desktop-project/` directory, primarily in **`EDITOR_AGENT_INSTRUCTIONS.md`**. Any agent, whether Claude or Gemini, assuming this role must adhere strictly to the workflows, templates, and principles defined in that document.

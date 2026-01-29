@@ -76,5 +76,31 @@
     ],
     "source": "User request 2026-01-14",
     "notes": "Tactical infrastructure task, not a product feature. Can be done independently of sprint work. See planning/DESIGN_4.0.md Part 6 for detailed setup instructions."
+  },
+  {
+    "id": "backlog.4",
+    "name": "SEMRush keyword report upload and enrichment",
+    "sprint": "backlog",
+    "status": "pending",
+    "agent": "orchestrator",
+    "priority": "medium",
+    "description": "Add ability to upload a SEMRush CSV keyword report on the Job Detail page. Upload saves raw CSV to OUTPUT/{media_id}/semrush/ for permanent storage (paid data worth preserving). After upload, automatically trigger a revised keyword report that cross-references AI-suggested keywords with real search volume, keyword difficulty, and competition data from SEMRush. This is an optional enrichment step - jobs work fine without it, but SEMRush data produces better-informed keyword recommendations.",
+    "files": [
+      "api/routers/jobs.py",
+      "api/services/worker.py",
+      "web/src/pages/JobDetail.tsx",
+      ".claude/agents/seo.md"
+    ],
+    "exit_criteria": [
+      "Upload button on Job Detail page for CSV files",
+      "API endpoint POST /api/jobs/{job_id}/semrush accepts CSV upload",
+      "Raw CSV saved to OUTPUT/{media_id}/semrush/ folder",
+      "SEO agent re-runs keyword report with SEMRush data as additional context",
+      "Revised keyword report saved as new version (keyword_report_v2.md)",
+      "UI shows SEMRush data status (none / uploaded / report updated)",
+      "Works as optional step - no SEMRush data required for normal pipeline"
+    ],
+    "source": "User request 2026-01-29",
+    "notes": "No SEMRush API access - user runs reports manually and uploads CSV. Design keeps SEMRush as enrichment layer, not a dependency. Raw CSV preserved because it's paid data worth referencing later."
   }
 ]

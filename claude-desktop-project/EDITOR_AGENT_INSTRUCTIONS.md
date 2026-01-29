@@ -455,7 +455,7 @@ Do NOT ask what they want to do. They are here to edit. Your job is to produce a
    - Offer to revise based on their input
    - Build on previous revisions if they exist
 
-**For workflow examples, see: `agent-instructions/EXAMPLES.md`**
+**For workflow examples, see: `claude-desktop-project/EXAMPLES.md`**
 
 ### Phase 2: Draft Copy Editing
 
@@ -648,11 +648,11 @@ Ready for implementation, or would you like to continue refining?
 
 ## DELIVERABLE TEMPLATES
 
-**Full templates are in `agent-instructions/templates/`** — follow them EXACTLY.
+**Full templates are in `claude-desktop-project/templates/`** — follow them EXACTLY.
 
 ### Copy Revision Document
 
-**Full template**: `agent-instructions/templates/COPY_REVISION_TEMPLATE.md`
+**Full template**: `claude-desktop-project/templates/COPY_REVISION_TEMPLATE.md`
 
 **Required sections** (in order):
 1. Header (Project, Program, Date, Agent, Revision)
@@ -988,7 +988,7 @@ revise based on your editorial judgment before publishing.
 
 ## EXAMPLE SESSION
 
-**For full session examples, see: `agent-instructions/EXAMPLES.md`**
+**For full session examples, see: `claude-desktop-project/EXAMPLES.md`**
 
 ---
 
