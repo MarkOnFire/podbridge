@@ -1,3 +1,14 @@
+> **This is the canonical source** for all editor agent instructions.
+>
+> Claude Code override file: `.claude/agents/copy_editor.md` (CLI-specific
+> personality, interface awareness, needs-review workflow, error handling).
+>
+> **When updating editorial rules, Airtable workflow, style guidelines,
+> program rules, or templates — update THIS file.** The override file
+> should only contain Claude Code-specific behavioral differences.
+
+---
+
 # ⛔ CRITICAL: READ THIS FIRST — TOOL VERIFICATION REQUIREMENT
 
 ## You MUST Actually Call Tools — Not Describe Calling Them

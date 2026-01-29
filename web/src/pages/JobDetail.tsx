@@ -9,6 +9,7 @@ import { Skeleton, SkeletonCard } from '../components/ui/Skeleton'
 import { formatRelativeTime, formatTimestamp, formatDuration } from '../utils/formatTime'
 import ChatPanel from '../components/chat/ChatPanel'
 import ScreengrabSlideout from '../components/ScreengrabSlideout'
+import ScreengrabsBox from '../components/ScreengrabsBox'
 
 interface JobPhase {
   name: string
@@ -676,6 +677,11 @@ export default function JobDetail() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Screengrabs (inline) */}
+      {job.media_id && (
+        <ScreengrabsBox mediaId={job.media_id} />
       )}
 
       {/* Copy Editor Handoff - shown for completed jobs */}

@@ -6,6 +6,7 @@ import { AGENT_INFO } from '../constants/agents'
 interface PresetInfo {
   description: string
   models: string[]
+  models_verified?: string
 }
 
 interface HealthStatus {
@@ -287,12 +288,17 @@ export default function System() {
                       </div>
                     ))}
                   </div>
+                  {preset.models_verified && (
+                    <p className="text-[10px] text-gray-600 mt-2">
+                      Verified {new Date(preset.models_verified + 'T00:00:00').toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               )
             })}
           </div>
           <p className="text-xs text-gray-600 mt-3 italic">
-            Model lists are cached locally. Update config/llm-config.json when presets change.
+            Model lists are maintained locally. Update config/llm-config.json when presets change on OpenRouter.
           </p>
         </div>
       )}
