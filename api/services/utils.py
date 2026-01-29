@@ -3,11 +3,86 @@
 Provides timezone-aware datetime handling, SRT parsing, and common utilities.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
+
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Filename Sanitization
+# =============================================================================
+
+# Patterns for OS-generated duplicate file suffixes
+# These should be stripped to normalize Media IDs
+# ORDER MATTERS: More specific patterns must come before generic ones
+DUPLICATE_FILE_PATTERNS = [
+    # Windows: "file - Copy.txt", "file - Copy (2).txt"
+    # Must come BEFORE macOS pattern to catch "- Copy (2)" as one unit
+    re.compile(r'\s*-\s*Copy(?:\s*\((\d+)\))?\s*$', re.IGNORECASE),
+    # Generic: "file copy.txt", "file copy 2.txt"
+    re.compile(r'\s+copy(?:\s+(\d+))?\s*$', re.IGNORECASE),
+    # macOS: "file (1).txt", "file (2).txt", etc.
+    # Must come AFTER Windows pattern to avoid partial matches
+    re.compile(r'\s*\((\d+)\)\s*$'),
+    # macOS alternate: "file 2.txt" (less common, only match if digit at very end)
+    # Note: Commented out to avoid false positives with legitimate IDs like "WEB02"
+    # re.compile(r'\s+(\d+)\s*$'),
+]
+
+
+def sanitize_duplicate_filename(filename: str) -> Tuple[str, bool]:
+    """Remove OS-generated duplicate suffixes from filename.
+
+    Detects patterns like "(1)", "- Copy", "copy 2" that operating systems
+    add when saving duplicate files. These patterns should be stripped
+    to normalize Media IDs.
+
+    IMPORTANT: This does NOT strip legitimate PBS naming patterns like:
+    - _REV20251022 (revision dates)
+    - _SM, HD, WEB02 (segment/format markers)
+    - _midshow, _excerpt (position markers)
+
+    Args:
+        filename: Filename or Media ID (with or without extension)
+
+    Returns:
+        Tuple of (sanitized_name, was_duplicate):
+        - sanitized_name: Filename with duplicate suffix removed
+        - was_duplicate: True if a duplicate pattern was found and removed
+
+    Examples:
+        >>> sanitize_duplicate_filename("2WLIComicArtistSM (1)")
+        ('2WLIComicArtistSM', True)
+        >>> sanitize_duplicate_filename("2WLI1209HD - Copy")
+        ('2WLI1209HD', True)
+        >>> sanitize_duplicate_filename("9UNP2005HD copy 2")
+        ('9UNP2005HD', True)
+        >>> sanitize_duplicate_filename("2WLI1209HD_REV20251022")
+        ('2WLI1209HD_REV20251022', False)
+        >>> sanitize_duplicate_filename("2WLI1209HD")
+        ('2WLI1209HD', False)
+    """
+    original = filename
+    was_duplicate = False
+
+    for pattern in DUPLICATE_FILE_PATTERNS:
+        match = pattern.search(filename)
+        if match:
+            # Found a duplicate pattern - remove it
+            filename = pattern.sub('', filename).strip()
+            was_duplicate = True
+            logger.warning(
+                f"Detected duplicate file suffix in '{original}' -> "
+                f"normalized to '{filename}'"
+            )
+            break  # Only remove one pattern (they shouldn't stack)
+
+    return filename, was_duplicate
 
 
 def utc_now() -> datetime:
@@ -167,9 +242,10 @@ def calculate_transcript_metrics(
 def extract_media_id(filename: str) -> str:
     """Extract Media ID from transcript filename.
 
-    Removes processing suffixes but PRESERVES revision identifiers.
-    Handles PBS Wisconsin naming conventions:
+    Removes processing suffixes and OS duplicate patterns, but PRESERVES
+    revision identifiers. Handles PBS Wisconsin naming conventions:
     - _ForClaude suffix: Stripped (processing artifact)
+    - (1), - Copy, copy 2: Stripped (OS duplicate suffixes)
     - _REV[date] suffix: PRESERVED (distinct Media ID for revised content)
 
     Revised video files are denoted as original Media ID plus _REV followed by
@@ -179,7 +255,7 @@ def extract_media_id(filename: str) -> str:
         filename: Transcript filename (with or without extension)
 
     Returns:
-        Extracted media ID (base filename without processing suffixes)
+        Extracted media ID (base filename without processing/duplicate suffixes)
 
     Examples:
         >>> extract_media_id("2WLI1209HD_ForClaude.txt")
@@ -192,6 +268,10 @@ def extract_media_id(filename: str) -> str:
         'Some_Project_Name'
         >>> extract_media_id("2WLI1209HD_ForClaude_REV20251202.txt")
         '2WLI1209HD_REV20251202'
+        >>> extract_media_id("2WLIComicArtistSM (1).srt")
+        '2WLIComicArtistSM'
+        >>> extract_media_id("2WLI1209HD - Copy.txt")
+        '2WLI1209HD'
     """
     # Get filename without path
     base_name = Path(filename).name
@@ -202,6 +282,9 @@ def extract_media_id(filename: str) -> str:
     # Remove only _ForClaude suffix (processing artifact)
     # PRESERVE _REV[date] suffix as it denotes a distinct revised Media ID
     stem = re.sub(r'_ForClaude', '', stem, flags=re.IGNORECASE)
+
+    # Remove OS duplicate patterns (1), - Copy, copy 2, etc.
+    stem, was_duplicate = sanitize_duplicate_filename(stem)
 
     return stem
 

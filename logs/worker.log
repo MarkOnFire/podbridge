@@ -6768,3 +6768,205 @@
 [Worker] Shutdown complete
 {"timestamp": "2026-01-22T23:44:13.867777+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-75211", "poll_interval": 5, "max_concurrent": 3}}
 {"timestamp": "2026-01-22T23:44:13.867777+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-75211", "poll_interval": 5, "max_concurrent": 3}}
+{"timestamp": "2026-01-23T22:50:16.191228+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job claimed", "extra": {"worker_id": "worker-75211", "job_id": 171, "active_jobs": 1, "max_concurrent": 3}}
+{"timestamp": "2026-01-23T22:50:16.191228+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job claimed", "extra": {"worker_id": "worker-75211", "job_id": 171, "active_jobs": 1, "max_concurrent": 3}}
+{"timestamp": "2026-01-23T22:50:16.195458+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Processing job", "extra": {"job_id": 171, "project_name": "WC_S01_trailer"}}
+{"timestamp": "2026-01-23T22:50:16.195458+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Processing job", "extra": {"job_id": 171, "project_name": "WC_S01_trailer"}}
+{"timestamp": "2026-01-23T22:50:16.409634+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Transcript metrics calculated", "extra": {"job_id": 171, "word_count": 640, "estimated_duration_minutes": 4.27, "is_long_form": false}}
+{"timestamp": "2026-01-23T22:50:16.409634+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Transcript metrics calculated", "extra": {"job_id": 171, "word_count": 640, "estimated_duration_minutes": 4.27, "is_long_form": false}}
+{"timestamp": "2026-01-23T22:50:16.412748+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "analyst"}}
+{"timestamp": "2026-01-23T22:50:16.412748+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "analyst"}}
+{"timestamp": "2026-01-23T22:50:16.413343+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-23T22:50:16.413343+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-23T22:50:17.562238+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-23T22:50:17.562238+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-23T22:50:48.838298+00:00", "level": "INFO", "logger": "api.services.langfuse_client", "message": "Langfuse client initialized (host: https://us.cloud.langfuse.com)", "extra": {}}
+{"timestamp": "2026-01-23T22:50:48.838298+00:00", "level": "INFO", "logger": "api.services.langfuse_client", "message": "Langfuse client initialized (host: https://us.cloud.langfuse.com)", "extra": {}}
+{"timestamp": "2026-01-23T22:50:48.838422+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:50:48.838422+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:50:48.843623+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "formatter"}}
+{"timestamp": "2026-01-23T22:50:48.843623+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "formatter"}}
+{"timestamp": "2026-01-23T22:50:48.844163+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "formatter", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-23T22:50:48.844163+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "formatter", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-23T22:51:05.286326+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:51:05.286326+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:51:05.306261+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "seo"}}
+{"timestamp": "2026-01-23T22:51:05.306261+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "seo"}}
+{"timestamp": "2026-01-23T22:51:05.307531+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "seo", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-23T22:51:05.307531+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "seo", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-23T22:51:50.407814+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:51:50.407814+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:51:50.427752+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "manager"}}
+{"timestamp": "2026-01-23T22:51:50.427752+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 171, "phase": "manager"}}
+{"timestamp": "2026-01-23T22:51:50.428794+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "manager", "tier": 2, "tier_label": "big-brain", "backend": "openrouter-big-brain"}}
+{"timestamp": "2026-01-23T22:51:50.428794+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 171, "phase": "manager", "tier": 2, "tier_label": "big-brain", "backend": "openrouter-big-brain"}}
+{"timestamp": "2026-01-23T22:52:12.775007+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:52:12.775007+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-23T22:52:12.803307+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Archived transcript", "extra": {"source_file": "WC_S01_trailer.srt", "destination": "transcripts/archive/WC_S01_trailer.srt"}}
+{"timestamp": "2026-01-23T22:52:12.803307+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Archived transcript", "extra": {"source_file": "WC_S01_trailer.srt", "destination": "transcripts/archive/WC_S01_trailer.srt"}}
+{"timestamp": "2026-01-23T22:52:12.803475+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job completed successfully", "extra": {"job_id": 171, "project_name": "WC_S01_trailer", "total_cost": 0.011879}}
+{"timestamp": "2026-01-23T22:52:12.803475+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job completed successfully", "extra": {"job_id": 171, "project_name": "WC_S01_trailer", "total_cost": 0.011879}}
+{"timestamp": "2026-01-24T01:07:07.148214+00:00", "level": "ERROR", "logger": "api.services.langfuse_client", "message": "Failed to initialize Langfuse client: unable to infer type for attribute \"description\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:07.576198+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/queue/?page=0 \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:07.577224+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/queue/?page_size=101 \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:07.578816+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/queue/?status=invalid_status \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:07.594912+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.598967+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.599120+00:00", "level": "WARNING", "logger": "api.services.worker", "message": "Phase timed out", "extra": {"job_id": 1, "phase": "analyst", "tier_label": "cheapskate", "timeout_seconds": 1}}
+{"timestamp": "2026-01-24T01:07:07.599193+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Escalating phase to next tier", "extra": {"job_id": 1, "phase": "analyst", "from_tier": "cheapskate", "to_tier": "default", "reason": "Timeout after 1s"}}
+{"timestamp": "2026-01-24T01:07:07.599270+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "analyst", "tier": 1, "tier_label": "default", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.601044+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.601178+00:00", "level": "ERROR", "logger": "api.services.worker", "message": "Phase failed", "extra": {"job_id": 1, "phase": "analyst", "tier_label": "cheapskate", "error": "LLM Error"}, "exception": "Traceback (most recent call last):\n  File \"/Users/mriechers/Developer/ai-editorial-assistant-v3/api/services/worker.py\", line 1064, in _run_phase\n    response: LLMResponse = await asyncio.wait_for(\n                            ^^^^^^^^^^^^^^^^^^^^^^^\n    ...<9 lines>...\n    )\n    ^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/tasks.py\", line 488, in wait_for\n    return await fut\n           ^^^^^^^^^\n  File \"/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py\", line 2326, in _execute_mock_call\n    raise effect\nException: LLM Error"}
+{"timestamp": "2026-01-24T01:07:07.603333+00:00", "level": "WARNING", "logger": "api.services.worker", "message": "Phase failed at max tier, no more escalation possible", "extra": {"job_id": 1, "phase": "analyst", "final_tier": 0}}
+{"timestamp": "2026-01-24T01:07:07.859445+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Manager analyzing failure", "extra": {"job_id": 1, "error": "Test error"}}
+{"timestamp": "2026-01-24T01:07:07.859759+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running recovery analysis", "extra": {"job_id": 1, "backend": "openrouter-big-brain"}}
+{"timestamp": "2026-01-24T01:07:07.859890+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Manager decision", "extra": {"job_id": 1, "action": "FAIL", "reason": "Unrecoverable error", "analysis_cost": 0.01}}
+{"timestamp": "2026-01-24T01:07:07.863475+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Processing job", "extra": {"job_id": 1, "project_name": "Test Project"}}
+{"timestamp": "2026-01-24T01:07:07.864071+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Transcript metrics calculated", "extra": {"job_id": 1, "word_count": 3, "estimated_duration_minutes": 0.02, "is_long_form": false}}
+{"timestamp": "2026-01-24T01:07:07.864195+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 1, "phase": "analyst"}}
+{"timestamp": "2026-01-24T01:07:07.864342+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.864687+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 1, "phase": "formatter"}}
+{"timestamp": "2026-01-24T01:07:07.864816+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "formatter", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.865112+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 1, "phase": "seo"}}
+{"timestamp": "2026-01-24T01:07:07.865238+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "seo", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.865508+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 1, "phase": "manager"}}
+{"timestamp": "2026-01-24T01:07:07.865618+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 1, "phase": "manager", "tier": 2, "tier_label": "big-brain", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-24T01:07:07.868506+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Archived transcript", "extra": {"source_file": "test_transcript.txt", "destination": "transcripts/archive/test_transcript.txt"}}
+{"timestamp": "2026-01-24T01:07:07.868623+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job completed successfully", "extra": {"job_id": 1, "project_name": "Test Project", "total_cost": 0.01}}
+{"timestamp": "2026-01-24T01:07:07.870371+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-78151", "poll_interval": 0.1, "max_concurrent": 1}}
+{"timestamp": "2026-01-24T01:07:08.195486+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/ingest/config \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.197977+00:00", "level": "INFO", "logger": "api.routers.ingest", "message": "Ingest config updated: enabled=False, interval=12h, time=15:30", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.198557+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.199925+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.200787+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.201955+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 400 Bad Request\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.203347+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 400 Bad Request\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.204396+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.205327+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 422 Unprocessable Entity\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.207128+00:00", "level": "INFO", "logger": "api.routers.ingest", "message": "Ingest config updated: enabled=True, interval=24h, time=09:00", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.207606+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: PUT http://testserver/api/ingest/config \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.210105+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST http://testserver/api/ingest/scan \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.211729+00:00", "level": "ERROR", "logger": "api.routers.ingest", "message": "Scan failed: Connection failed", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.212267+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST http://testserver/api/ingest/scan \"HTTP/1.1 500 Internal Server Error\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.216372+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/ingest/available \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.219102+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/ingest/available?status=queued \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.221446+00:00", "level": "INFO", "logger": "api.routers.ingest", "message": "Queued transcript 1: job 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.221945+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST http://testserver/api/ingest/transcripts/1/queue \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.223559+00:00", "level": "INFO", "logger": "api.routers.ingest", "message": "Ignored transcript 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.223989+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST http://testserver/api/ingest/transcripts/1/ignore \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.226202+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: GET http://testserver/api/ingest/screengrabs \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.228185+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST http://testserver/api/ingest/screengrabs/1/attach \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.239174+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 1 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.239468+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Found 1 files in /exports/", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.239546+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 1 Media IDs, found 1 new files (1 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.240746+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 1 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.240886+00:00", "level": "WARNING", "logger": "api.services.ingest_scanner", "message": "Failed to scan directory / for 2WLI1209HD: Connection failed", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.240941+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 1 Media IDs, found 0 new files (0 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.242158+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 1 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.242754+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Found 0 files in /", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.242815+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 1 Media IDs, found 0 new files (0 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.245359+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 2 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.245447+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 2 Media IDs, found 0 new files (0 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.246229+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 2 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.246314+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 2 Media IDs, found 0 new files (0 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.247195+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 1 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.247281+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 1 Media IDs, found 1 new files (1 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.248069+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Checking 2 QC-passed Media IDs", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.248147+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Smart scan complete: checked 2 Media IDs, found 0 new files (0 transcripts, 0 screengrabs)", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.249652+00:00", "level": "INFO", "logger": "api.services.ingest_scanner", "message": "Tracked new transcript: 2WLI1209HD.srt", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.253104+00:00", "level": "WARNING", "logger": "api.services.ingest_scanner", "message": "Failed to scan directory /dir1/ for 2WLI1209HD: Failed", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.255167+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Attached screengrab new_image.jpg to 2WLI1209HD (record recXXXXXXXXXXXXXX): 2 -> 3", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.258240+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Attached screengrab first_image.jpg to 2WLI1209HD (record recXXXXXXXXXXXXXX): 0 -> 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.269813+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Attached screengrab first_image.jpg to 2WLI1209HD (record recXXXXXXXXXXXXXX): 0 -> 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.271383+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Skipped duplicate screengrab: image.jpg for 2WLI1209HD", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.272794+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Skipped duplicate screengrab: duplicate.jpg for 2WLI1209HD", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.275906+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Attached screengrab image.jpg to 2WLI1209HD (record recXXXXXXXXXXXXXX): 0 -> 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.279457+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Attached screengrab 2WLI1209HD.jpg to 2WLI1209HD (record recXXX1): 0 -> 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.279705+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Attached screengrab 2WLI1210HD.jpg to 2WLI1210HD (record recXXX2): 0 -> 1", "extra": {}}
+{"timestamp": "2026-01-24T01:07:08.279860+00:00", "level": "INFO", "logger": "api.services.screengrab_attacher", "message": "Batch attach complete: 2 attached, 0 no match, 0 duplicates, 0 errors", "extra": {}}
+[worker-75211] Starting Editorial Assistant job worker...
+[worker-75211] Poll interval: 5s
+[worker-75211] Heartbeat interval: 60s
+[worker-75211] Concurrent jobs: 3
+[worker-75211] Max retries: 3
+[worker-75211] Press Ctrl+C to stop
+
+
+[Worker] Shutdown signal received, stopping...
+[Worker] Shutdown complete
+{"timestamp": "2026-01-24T02:02:27.482548+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-87491", "poll_interval": 5, "max_concurrent": 3}}
+{"timestamp": "2026-01-24T02:02:27.482548+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-87491", "poll_interval": 5, "max_concurrent": 3}}
+[worker-87491] Starting Editorial Assistant job worker...
+[worker-87491] Poll interval: 5s
+[worker-87491] Heartbeat interval: 60s
+[worker-87491] Concurrent jobs: 3
+[worker-87491] Max retries: 3
+[worker-87491] Press Ctrl+C to stop
+
+
+[Worker] Shutdown signal received, stopping...
+[Worker] Shutdown complete
+{"timestamp": "2026-01-24T02:24:59.780836+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-91418", "poll_interval": 5, "max_concurrent": 3}}
+{"timestamp": "2026-01-24T02:24:59.780836+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-91418", "poll_interval": 5, "max_concurrent": 3}}
+[worker-91418] Starting Editorial Assistant job worker...
+[worker-91418] Poll interval: 5s
+[worker-91418] Heartbeat interval: 60s
+[worker-91418] Concurrent jobs: 3
+[worker-91418] Max retries: 3
+[worker-91418] Press Ctrl+C to stop
+
+
+[Worker] Shutdown signal received, stopping...
+[Worker] Shutdown complete
+{"timestamp": "2026-01-28T19:59:33.751460+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-19966", "poll_interval": 5, "max_concurrent": 3}}
+{"timestamp": "2026-01-28T19:59:33.751460+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-19966", "poll_interval": 5, "max_concurrent": 3}}
+[worker-19966] Starting Editorial Assistant job worker...
+[worker-19966] Poll interval: 5s
+[worker-19966] Heartbeat interval: 60s
+[worker-19966] Concurrent jobs: 3
+[worker-19966] Max retries: 3
+[worker-19966] Press Ctrl+C to stop
+
+
+[Worker] Shutdown signal received, stopping...
+[Worker] Shutdown complete
+{"timestamp": "2026-01-29T03:11:50.644021+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-10520", "poll_interval": 5, "max_concurrent": 3}}
+{"timestamp": "2026-01-29T03:11:50.644021+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Worker starting", "extra": {"worker_id": "worker-10520", "poll_interval": 5, "max_concurrent": 3}}
+{"timestamp": "2026-01-29T03:11:55.651746+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job claimed", "extra": {"worker_id": "worker-10520", "job_id": 172, "active_jobs": 1, "max_concurrent": 3}}
+{"timestamp": "2026-01-29T03:11:55.651746+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job claimed", "extra": {"worker_id": "worker-10520", "job_id": 172, "active_jobs": 1, "max_concurrent": 3}}
+{"timestamp": "2026-01-29T03:11:55.651985+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Processing job", "extra": {"job_id": 172, "project_name": "2WLIComicArtistSM _1"}}
+{"timestamp": "2026-01-29T03:11:55.651985+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Processing job", "extra": {"job_id": 172, "project_name": "2WLIComicArtistSM _1"}}
+{"timestamp": "2026-01-29T03:11:55.757374+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Transcript metrics calculated", "extra": {"job_id": 172, "word_count": 1195, "estimated_duration_minutes": 7.97, "is_long_form": false}}
+{"timestamp": "2026-01-29T03:11:55.757374+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Transcript metrics calculated", "extra": {"job_id": 172, "word_count": 1195, "estimated_duration_minutes": 7.97, "is_long_form": false}}
+{"timestamp": "2026-01-29T03:11:55.759191+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "analyst"}}
+{"timestamp": "2026-01-29T03:11:55.759191+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "analyst"}}
+{"timestamp": "2026-01-29T03:11:55.759610+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-29T03:11:55.759610+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "analyst", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-29T03:11:57.621749+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-29T03:11:57.621749+00:00", "level": "INFO", "logger": "httpx", "message": "HTTP Request: POST https://openrouter.ai/api/v1/chat/completions \"HTTP/1.1 200 OK\"", "extra": {}}
+{"timestamp": "2026-01-29T03:12:32.336436+00:00", "level": "INFO", "logger": "api.services.langfuse_client", "message": "Langfuse client initialized (host: https://us.cloud.langfuse.com)", "extra": {}}
+{"timestamp": "2026-01-29T03:12:32.336436+00:00", "level": "INFO", "logger": "api.services.langfuse_client", "message": "Langfuse client initialized (host: https://us.cloud.langfuse.com)", "extra": {}}
+{"timestamp": "2026-01-29T03:12:32.336586+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:12:32.336586+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:12:32.342518+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "formatter"}}
+{"timestamp": "2026-01-29T03:12:32.342518+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "formatter"}}
+{"timestamp": "2026-01-29T03:12:32.345023+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "formatter", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-29T03:12:32.345023+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "formatter", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-29T03:12:51.365227+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:12:51.365227+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:12:51.369950+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "seo"}}
+{"timestamp": "2026-01-29T03:12:51.369950+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "seo"}}
+{"timestamp": "2026-01-29T03:12:51.370699+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "seo", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-29T03:12:51.370699+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "seo", "tier": 0, "tier_label": "cheapskate", "backend": "openrouter-cheapskate"}}
+{"timestamp": "2026-01-29T03:13:22.510840+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:13:22.510840+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:13:22.520054+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "manager"}}
+{"timestamp": "2026-01-29T03:13:22.520054+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Running phase", "extra": {"job_id": 172, "phase": "manager"}}
+{"timestamp": "2026-01-29T03:13:22.520694+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "manager", "tier": 2, "tier_label": "big-brain", "backend": "openrouter-big-brain"}}
+{"timestamp": "2026-01-29T03:13:22.520694+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Phase attempting with tier", "extra": {"job_id": 172, "phase": "manager", "tier": 2, "tier_label": "big-brain", "backend": "openrouter-big-brain"}}
+{"timestamp": "2026-01-29T03:13:52.686668+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:13:52.686668+00:00", "level": "WARNING", "logger": "api.services.langfuse_client", "message": "Failed to create Langfuse trace: 'Langfuse' object has no attribute 'trace'", "extra": {}}
+{"timestamp": "2026-01-29T03:13:52.694490+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Archived transcript", "extra": {"source_file": "2WLIComicArtistSM (1).srt", "destination": "transcripts/archive/2WLIComicArtistSM (1).srt"}}
+{"timestamp": "2026-01-29T03:13:52.694490+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Archived transcript", "extra": {"source_file": "2WLIComicArtistSM (1).srt", "destination": "transcripts/archive/2WLIComicArtistSM (1).srt"}}
+{"timestamp": "2026-01-29T03:13:52.694571+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job completed successfully", "extra": {"job_id": 172, "project_name": "2WLIComicArtistSM _1", "total_cost": 0.025586}}
+{"timestamp": "2026-01-29T03:13:52.694571+00:00", "level": "INFO", "logger": "api.services.worker", "message": "Job completed successfully", "extra": {"job_id": 172, "project_name": "2WLIComicArtistSM _1", "total_cost": 0.025586}}

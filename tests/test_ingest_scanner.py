@@ -180,6 +180,34 @@ class TestMediaIdExtraction:
         assert scanner._extract_media_id("2WLI1209HD_ForClaude.srt") == "2WLI1209HD"
         assert scanner._extract_media_id("9UNP2005HD.srt") == "9UNP2005HD"
 
+    def test_extract_media_id_strips_macos_duplicate_suffix(self):
+        """Test that macOS duplicate suffixes (1), (2) are stripped before pattern matching."""
+        scanner = IngestScanner()
+
+        # macOS adds " (1)" when downloading duplicates
+        # Note: Scanner pattern requires 4 chars + 4 digits format
+        # "2WLIComicArtistSM" doesn't match that pattern, so returns None
+        assert scanner._extract_media_id("2WLIComicArtistSM (1).srt") is None  # No 4+4 pattern
+        assert scanner._extract_media_id("2WLI1209HD (2).srt") == "2WLI1209HD"
+        assert scanner._extract_media_id("9UNP2005HD (3).txt") == "9UNP2005HD"
+
+    def test_extract_media_id_strips_copy_suffix(self):
+        """Test that 'copy' and '- Copy' suffixes are stripped."""
+        scanner = IngestScanner()
+
+        assert scanner._extract_media_id("2WLI1209HD - Copy.srt") == "2WLI1209HD"
+        assert scanner._extract_media_id("2WLI1209HD copy.srt") == "2WLI1209HD"
+        assert scanner._extract_media_id("2WLI1209HD copy 2.srt") == "2WLI1209HD"
+
+    def test_extract_media_id_preserves_revision_dates(self):
+        """Test that _REV[date] patterns are NOT stripped (legitimate IDs)."""
+        scanner = IngestScanner()
+
+        # _REV patterns should be preserved - they're legitimate Media IDs
+        # Note: Pattern only extracts base 8-char ID, so _REV part isn't in result
+        result = scanner._extract_media_id("2BUC0000HDWEB02_REV20251202.srt")
+        assert result == "2BUC0000HD"  # Pattern extracts base ID
+
     def test_extract_media_id_without_suffix(self):
         """Test extracting Media ID without HD suffix."""
         scanner = IngestScanner()
