@@ -121,6 +121,33 @@ def save_manifest(project_name: str, manifest: dict) -> None:
         json.dump(manifest, f, indent=2, default=str)
 
 
+def ensure_project_folder(project_name: str) -> tuple[Path, bool]:
+    """Ensure project folder exists, creating with minimal manifest if needed.
+
+    When the editor works on a project that hasn't been through the transcript
+    pipeline (e.g., editing from Airtable data only), the OUTPUT folder won't
+    exist yet. This creates it with a provenance manifest so the pipeline can
+    later add its outputs alongside the editor's work.
+
+    Returns:
+        Tuple of (project_path, was_created).
+    """
+    project_path = get_project_path(project_name)
+    if project_path.exists():
+        return project_path, False
+
+    project_path.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "project_name": project_name,
+        "origin": "editor",
+        "created_at": datetime.now().isoformat(),
+        "phases": [],
+        "outputs": {},
+    }
+    save_manifest(project_name, manifest)
+    return project_path, True
+
+
 def get_next_version(project_path: Path, prefix: str) -> int:
     """Find the next version number for a file type."""
     pattern = re.compile(rf"{prefix}_v(\d+)\.md")
@@ -820,11 +847,33 @@ async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
 
     project_path = get_project_path(project_name)
     if not project_path.exists():
-        return [TextContent(type="text", text=f"Error: Project '{project_name}' not found")]
+        return [TextContent(type="text", text="\n".join([
+            f"# Project: {project_name}",
+            "",
+            f"No OUTPUT folder exists for '{project_name}'. This project has not been processed through the transcript pipeline.",
+            "",
+            "## How to proceed",
+            "",
+            f"1. **Fetch Airtable context** — Use `get_sst_metadata` with media_id `{project_name}`",
+            f"2. **Save your work** — `save_revision` and `save_keyword_report` will create the project folder automatically",
+            f"3. **Or submit for processing** — Add a transcript to the ingest queue via the web dashboard",
+        ]))]
 
     manifest = load_manifest(project_name)
     if not manifest:
-        return [TextContent(type="text", text=f"Error: No manifest found for '{project_name}'")]
+        # Folder exists but no manifest — list what's there so the editor isn't stuck
+        existing_files = sorted(f.name for f in project_path.iterdir() if f.is_file())
+        file_list = [f"- {name}" for name in existing_files] if existing_files else ["- _(empty folder)_"]
+        return [TextContent(type="text", text="\n".join([
+            f"# Project: {project_name}",
+            "",
+            "Project folder exists but has no manifest.json. This may be a partially created project.",
+            "",
+            "## Files found",
+            *file_list,
+            "",
+            "Use `save_revision` or `save_keyword_report` to create a manifest and save your work.",
+        ]))]
 
     outputs = manifest.get("outputs", {})
     result_parts = []
@@ -971,9 +1020,7 @@ async def handle_save_revision(arguments: dict) -> list[TextContent]:
     if not project_name or not content:
         return [TextContent(type="text", text="Error: project_name and content are required")]
 
-    project_path = get_project_path(project_name)
-    if not project_path.exists():
-        return [TextContent(type="text", text=f"Error: Project '{project_name}' not found")]
+    project_path, was_created = ensure_project_folder(project_name)
 
     # Get next version number
     version = get_next_version(project_path, "copy_revision")
@@ -995,9 +1042,10 @@ async def handle_save_revision(arguments: dict) -> list[TextContent]:
         })
         save_manifest(project_name, manifest)
 
+    created_note = f"\n📁 New project folder created for '{project_name}'" if was_created else ""
     return [TextContent(
         type="text",
-        text=f"✅ Saved revision as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}"
+        text=f"✅ Saved revision as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}{created_note}"
     )]
 
 
@@ -1009,9 +1057,7 @@ async def handle_save_keyword_report(arguments: dict) -> list[TextContent]:
     if not project_name or not content:
         return [TextContent(type="text", text="Error: project_name and content are required")]
 
-    project_path = get_project_path(project_name)
-    if not project_path.exists():
-        return [TextContent(type="text", text=f"Error: Project '{project_name}' not found")]
+    project_path, was_created = ensure_project_folder(project_name)
 
     # Get next version number
     version = get_next_version(project_path, "keyword_report")
@@ -1033,9 +1079,10 @@ async def handle_save_keyword_report(arguments: dict) -> list[TextContent]:
         })
         save_manifest(project_name, manifest)
 
+    created_note = f"\n📁 New project folder created for '{project_name}'" if was_created else ""
     return [TextContent(
         type="text",
-        text=f"✅ Saved keyword report as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}"
+        text=f"✅ Saved keyword report as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}{created_note}"
     )]
 
 
