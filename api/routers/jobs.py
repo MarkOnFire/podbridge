@@ -213,11 +213,26 @@ async def retry_job(job_id: int):
     is_truncation = job.error_message and "TRUNCATION" in job.error_message
     phases_to_reset = {"formatter", "seo", "manager", "timestamp"} if is_truncation else None
 
-    # Reset phase statuses and set forced tier
+    # Reset phase statuses and set forced tier, archiving previous run data
     updated_phases = []
     for phase in phases:
         phase_dict = phase.model_dump()
         if phases_to_reset is None or phase.name in phases_to_reset:
+            # Archive current run before resetting (if it had results)
+            if phase_dict.get("model") or phase_dict.get("tier") is not None:
+                prev_run = {
+                    "tier": phase_dict.get("tier"),
+                    "tier_label": phase_dict.get("tier_label"),
+                    "model": phase_dict.get("model"),
+                    "cost": phase_dict.get("cost", 0),
+                    "tokens": phase_dict.get("tokens", 0),
+                    "completed_at": phase_dict.get("completed_at"),
+                }
+                previous_runs = phase_dict.get("previous_runs") or []
+                previous_runs.append(prev_run)
+                phase_dict["previous_runs"] = previous_runs
+                phase_dict["retry_count"] = (phase_dict.get("retry_count") or 0) + 1
+
             # Reset this phase to pending with forced escalation tier
             phase_dict["status"] = "pending"
             phase_dict["completed_at"] = None

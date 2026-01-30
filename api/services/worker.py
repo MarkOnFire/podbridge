@@ -310,14 +310,33 @@ class JobWorker:
                         if hasattr(p[key], 'isoformat'):
                             p[key] = p[key].isoformat()
 
-            # Find and update the phase
+            # Find and update the phase, archiving the previous run
             phase_updated = False
             for p in phases:
                 if p.get("name") == phase_name:
+                    # Archive the current run before overwriting
+                    if p.get("model") or p.get("tier") is not None:
+                        prev_run = {
+                            "tier": p.get("tier"),
+                            "tier_label": p.get("tier_label"),
+                            "model": p.get("model"),
+                            "cost": p.get("cost", 0),
+                            "tokens": p.get("tokens", 0),
+                            "completed_at": p.get("completed_at"),
+                        }
+                        previous_runs = p.get("previous_runs") or []
+                        previous_runs.append(prev_run)
+                        p["previous_runs"] = previous_runs
+                    p["retry_count"] = (p.get("retry_count") or 0) + 1
+
+                    # Update with new results
                     p["status"] = phase_result.get("status", "completed")
                     p["cost"] = phase_result.get("cost", 0)
                     p["tokens"] = phase_result.get("tokens", 0)
                     p["model"] = phase_result.get("model")
+                    p["tier"] = phase_result.get("tier")
+                    p["tier_label"] = phase_result.get("tier_label")
+                    p["tier_reason"] = phase_result.get("tier_reason")
                     p["completed_at"] = datetime.now(timezone.utc).isoformat()
                     phase_updated = True
                     break

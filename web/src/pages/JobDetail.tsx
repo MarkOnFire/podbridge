@@ -11,6 +11,15 @@ import ChatPanel from '../components/chat/ChatPanel'
 import ScreengrabSlideout from '../components/ScreengrabSlideout'
 import ScreengrabsBox from '../components/ScreengrabsBox'
 
+interface PreviousRun {
+  tier?: number
+  tier_label?: string
+  model?: string
+  cost?: number
+  tokens?: number
+  completed_at?: string
+}
+
 interface JobPhase {
   name: string
   status: string
@@ -23,6 +32,8 @@ interface JobPhase {
   tier_label?: string
   tier_reason?: string
   attempts?: number
+  retry_count: number
+  previous_runs?: PreviousRun[]
 }
 
 interface JobOutputs {
@@ -602,6 +613,14 @@ export default function JobDetail() {
                         {phase.attempts} attempts
                       </span>
                     )}
+                    {phase.retry_count > 0 && (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full bg-amber-900/50 text-amber-300"
+                        title={`Retried ${phase.retry_count} time${phase.retry_count > 1 ? 's' : ''}`}
+                      >
+                        &#8635; {phase.retry_count}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-4 text-sm text-gray-400">
                     {phase.cost !== undefined && (
@@ -624,6 +643,23 @@ export default function JobDetail() {
                         Reason: <span className="text-gray-400">{phase.tier_reason}</span>
                       </div>
                     )}
+                  </div>
+                )}
+                {phase.previous_runs && phase.previous_runs.length > 0 && (
+                  <div className="mt-1.5 ml-8 text-xs text-gray-500">
+                    <div className="text-gray-600 mb-1">Previous runs:</div>
+                    {phase.previous_runs.map((run, i) => (
+                      <div key={i} className="flex items-center gap-2 text-gray-500 ml-2">
+                        <span className="text-gray-600">#{i + 1}</span>
+                        <span className={`px-1.5 py-0 rounded text-[10px] ${
+                          run.tier === 2 ? 'bg-purple-900/30 text-purple-400' :
+                          run.tier === 1 ? 'bg-blue-900/30 text-blue-400' :
+                          'bg-green-900/30 text-green-400'
+                        }`}>{run.tier_label || 'unknown'}</span>
+                        {run.model && <span className="font-mono">{run.model}</span>}
+                        <span>${(run.cost || 0).toFixed(4)}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -768,12 +804,20 @@ export default function JobDetail() {
               </span>
             </div>
           )}
-          <div>
-            <span className="text-gray-400">Retries:</span>
-            <span className="ml-2 text-white">
-              {job.retry_count} / {job.max_retries}
-            </span>
-          </div>
+          {(() => {
+            const retriedPhases = (job.phases || []).filter((p) => p.retry_count > 0);
+            const totalRetries = retriedPhases.reduce((sum, p) => sum + (p.retry_count || 0), 0);
+            return (
+              <div>
+                <span className="text-gray-400">Retries:</span>
+                <span className="ml-2 text-white">
+                  {totalRetries === 0
+                    ? 'None'
+                    : `${totalRetries} (${retriedPhases.map((p) => p.name).join(', ')})`}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
