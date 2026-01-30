@@ -1,5 +1,12 @@
 **Summary of Interaction and Project State (Handoff)**
 
+> **Historical note (Jan 2026):** References to `claude-desktop/` in this document
+> reflect the original directory name used during the v2 era. That directory was
+> later renamed to `agent-instructions/`, then to `claude-desktop-project/` in the
+> documentation refactor. File names also changed:
+> `CUSTOM_INSTRUCTIONS.md` → `EDITOR_AGENT_INSTRUCTIONS.md`,
+> `GEMINI_SUBSTITUTE.md` → `GEMINI.md`.
+
 **Date**: Friday, January 9, 2026
 
 **1. Objective of Interaction:**

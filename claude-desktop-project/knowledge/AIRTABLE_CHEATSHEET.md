@@ -1,3 +1,5 @@
+<!-- SYNC: This file is mirrored at docs/AIRTABLE_CHEATSHEET.md -->
+<!-- for developer reference. Keep both copies in sync. -->
 # PBSWI AirTable Quick Reference
 
 **Base ID:** `appZ2HGwhiifQToB6`

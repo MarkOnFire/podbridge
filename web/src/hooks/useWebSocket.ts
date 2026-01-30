@@ -87,10 +87,11 @@ export function useJobsWebSocket(options: UseJobsWebSocketOptions = {}): UseJobs
 
     try {
       // Determine WebSocket URL based on current location
+      // Uses window.location.host (includes port when non-standard) so
+      // WebSocket routes through Vite's proxy in dev and works through
+      // Cloudflare Tunnel in remote access mode
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const host = window.location.hostname
-      const port = import.meta.env.DEV ? '8000' : window.location.port
-      const wsUrl = `${protocol}//${host}:${port}/api/ws/jobs`
+      const wsUrl = `${protocol}//${window.location.host}/api/ws/jobs`
 
       const ws = new WebSocket(wsUrl)
 

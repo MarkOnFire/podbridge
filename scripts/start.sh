@@ -81,6 +81,29 @@ cd web && npm run dev >> ../logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd "$PROJECT_DIR"
 
+# Check if tunnel is enabled
+if [ -f "$PROJECT_DIR/.env" ]; then
+    ENABLE_TUNNEL=$(grep '^ENABLE_TUNNEL=' "$PROJECT_DIR/.env" 2>/dev/null | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+fi
+ENABLE_TUNNEL="${ENABLE_TUNNEL:-false}"
+
+# Start Cloudflare Tunnel (optional)
+TUNNEL_ENABLED=false
+if [ "$ENABLE_TUNNEL" = "true" ]; then
+    if ! command -v cloudflared &> /dev/null; then
+        echo "⚠️  cloudflared not installed. Tunnel will not start."
+        echo "   Install: brew install cloudflared"
+        echo "   See: docs/REMOTE_ACCESS.md"
+    elif [ ! -f "$PROJECT_DIR/config/cloudflared.yml" ]; then
+        echo "⚠️  config/cloudflared.yml not found. Tunnel will not start."
+    else
+        echo "🌐 Starting Cloudflare Tunnel..."
+        cloudflared tunnel --config "$PROJECT_DIR/config/cloudflared.yml" run >> logs/tunnel.log 2>&1 &
+        TUNNEL_PID=$!
+        TUNNEL_ENABLED=true
+    fi
+fi
+
 # Wait a moment for startup
 sleep 3
 
@@ -115,6 +138,14 @@ if $API_OK && $FRONTEND_OK; then
         echo "   ✅ metadata.neighborhood alias working"
     else
         echo "   ⚠️  metadata.neighborhood alias may not be resolving (try localhost)"
+    fi
+    if $TUNNEL_ENABLED; then
+        sleep 2  # Give tunnel a moment to connect
+        if pgrep -f 'cloudflared tunnel' > /dev/null 2>&1; then
+            echo "   ✅ Tunnel:  https://cardigan.bymarkriechers.com"
+        else
+            echo "   ⚠️  Tunnel failed to start. Check logs/tunnel.log"
+        fi
     fi
     echo ""
     echo "   Logs: tail -f logs/api.log logs/worker.log logs/watcher.log logs/frontend.log"

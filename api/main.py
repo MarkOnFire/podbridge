@@ -83,6 +83,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # React dev server
         "http://localhost:5173",  # Vite dev server
+        "http://metadata.neighborhood:3000",  # Local domain alias
+        "https://cardigan.bymarkriechers.com",  # Cloudflare Tunnel
     ],
     allow_credentials=True,
     allow_methods=["*"],

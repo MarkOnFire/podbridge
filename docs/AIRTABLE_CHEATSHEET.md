@@ -1,3 +1,5 @@
+<!-- SYNC: This file is mirrored at claude-desktop-project/knowledge/AIRTABLE_CHEATSHEET.md -->
+<!-- for Claude Desktop project knowledge. Keep both copies in sync. -->
 # PBSWI AirTable Quick Reference
 
 **Base ID:** `appZ2HGwhiifQToB6`

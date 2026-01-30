@@ -7,6 +7,7 @@ import JobDetail from './pages/JobDetail'
 import Projects from './pages/Projects'
 import Settings from './pages/Settings'
 import System from './pages/System'
+import Help from './pages/Help'
 import { ToastProvider } from './components/ui/Toast'
 import { PreferencesProvider } from './context/PreferencesContext'
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="projects" element={<Projects />} />
             <Route path="settings" element={<Settings />} />
             <Route path="system" element={<System />} />
+            <Route path="help" element={<Help />} />
           </Route>
         </Routes>
       </ToastProvider>

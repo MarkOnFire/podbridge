@@ -138,6 +138,12 @@ export default function Layout() {
               >
                 System
               </NavLink>
+              <NavLink
+                to="/help"
+                className={navLinkClass}
+              >
+                Help
+              </NavLink>
               <button
                 ref={triggerRef}
                 onClick={() => setShowHelp(true)}

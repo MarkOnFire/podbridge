@@ -8,6 +8,14 @@
 echo "🏘️  Stopping The Metadata Neighborhood..."
 echo ""
 
+# Stop Cloudflare Tunnel
+echo -n "Tunnel:    "
+if pkill -f 'cloudflared tunnel' 2>/dev/null; then
+    echo "✅ Stopped"
+else
+    echo "ℹ️  Was not running"
+fi
+
 # Stop frontend (Vite)
 echo -n "Frontend:  "
 if pkill -f 'vite' 2>/dev/null || pkill -f 'node.*vite' 2>/dev/null; then

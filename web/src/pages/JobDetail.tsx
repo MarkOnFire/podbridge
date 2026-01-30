@@ -369,7 +369,7 @@ export default function JobDetail() {
               Pause
             </button>
           )}
-          {job.status === 'paused' && (
+          {job.status === 'paused' && !job.error_message?.includes('TRUNCATION') && (
             <button
               onClick={() => handleAction('resume')}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-sm"
@@ -377,12 +377,13 @@ export default function JobDetail() {
               Resume
             </button>
           )}
-          {job.status === 'failed' && (
+          {(job.status === 'failed' || (job.status === 'paused' && job.error_message?.includes('TRUNCATION'))) && (
             <button
               onClick={() => handleAction('retry')}
               className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-md text-sm"
+              title="Retries with a more capable model tier"
             >
-              Retry
+              Retry &amp; Escalate
             </button>
           )}
           {['pending', 'paused'].includes(job.status) && (
@@ -664,7 +665,7 @@ export default function JobDetail() {
                     disabled={isRetrying || retryingPhase !== null}
                     className="px-2 py-2 bg-gray-600 hover:bg-orange-600 rounded-r-md text-sm text-gray-300 hover:text-white transition-colors disabled:opacity-50"
                     aria-label={`Retry ${label}`}
-                    title={`Regenerate ${label}`}
+                    title={`Regenerate ${label} (escalates to next tier)`}
                   >
                     {isRetrying ? (
                       <span className="animate-spin">&#8635;</span>
@@ -689,8 +690,34 @@ export default function JobDetail() {
         <CopyEditorHandoff projectName={job.project_name} />
       )}
 
-      {/* Error Message */}
-      {job.error_message && (
+      {/* Truncation Warning Banner */}
+      {job.status === 'paused' && job.error_message?.includes('TRUNCATION') && (
+        <div role="alert" aria-live="assertive" className="bg-amber-900/20 border border-amber-500/30 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <span className="text-amber-400 text-xl flex-shrink-0 mt-0.5">&#9888;</span>
+            <div className="flex-1">
+              <h3 className="text-amber-300 font-medium mb-1">Transcript Truncation Detected</h3>
+              <p className="text-sm text-amber-200/80 mb-3">
+                The LLM stopped generating before reaching the end of the transcript.
+                The formatter output covers significantly less content than the source file.
+              </p>
+              <pre className="text-xs text-amber-300/70 whitespace-pre-wrap mb-3 bg-amber-950/30 rounded p-2">
+                {job.error_message}
+              </pre>
+              <button
+                onClick={() => handleAction('retry')}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-md text-sm font-medium transition-colors"
+                title="Retries with a more capable model tier"
+              >
+                Retry &amp; Escalate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message (non-truncation errors) */}
+      {job.error_message && !job.error_message.includes('TRUNCATION') && (
         <div role="alert" aria-live="assertive" className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
           <h3 className="text-red-400 font-medium mb-2">Error</h3>
           <pre className="text-sm text-red-300 whitespace-pre-wrap">

@@ -235,23 +235,27 @@ See [docs/WEBSOCKET_IMPLEMENTATION.md](docs/WEBSOCKET_IMPLEMENTATION.md) for det
 
 ```
 ai-editorial-assistant-v3/
-├── api/                    # FastAPI application
-│   ├── main.py             # App entry point
-│   ├── routers/            # API endpoints
-│   ├── models/             # Pydantic schemas
-│   └── services/           # Business logic
-├── web/                    # React dashboard
+├── api/                        # FastAPI application
+│   ├── main.py                 # App entry point
+│   ├── routers/                # API endpoints
+│   ├── models/                 # Pydantic schemas
+│   └── services/               # Business logic
+├── web/                        # React dashboard
 │   └── src/
-│       ├── components/     # UI components
-│       ├── pages/          # Route pages
-│       ├── hooks/          # Custom React hooks
-│       └── context/        # React contexts
-├── mcp_server/             # Claude Desktop MCP integration
-├── .claude/agents/         # LLM agent system prompts
-├── config/                 # Configuration files
-├── scripts/                # Utility scripts
-├── docs/                   # Documentation
-└── tests/                  # Test suite
+│       ├── components/         # UI components
+│       ├── pages/              # Route pages
+│       ├── hooks/              # Custom React hooks
+│       └── context/            # React contexts
+├── mcp_server/                 # Claude Desktop MCP integration
+├── claude-desktop-project/     # Claude Desktop project config
+│   ├── EDITOR_AGENT_INSTRUCTIONS.md  # Canonical editor prompt
+│   ├── knowledge/              # Project knowledge files
+│   └── templates/              # Output document templates
+├── .claude/agents/             # LLM agent system prompts
+├── config/                     # Configuration files
+├── scripts/                    # Utility scripts
+├── docs/                       # Documentation
+└── tests/                      # Test suite
 ```
 
 ### Running Tests
@@ -309,6 +313,7 @@ Edit `config/llm-config.json` to customize:
 | [WEBSOCKET_IMPLEMENTATION.md](docs/WEBSOCKET_IMPLEMENTATION.md) | Real-time updates architecture |
 | [DESIGN_3.5.md](planning/DESIGN_3.5.md) | Current design specification |
 | [ROADMAP_v3.1.md](docs/ROADMAP_v3.1.md) | Development roadmap |
+| [WEB_UI_GUIDE.md](docs/WEB_UI_GUIDE.md) | Web dashboard user guide |
 
 ---
 

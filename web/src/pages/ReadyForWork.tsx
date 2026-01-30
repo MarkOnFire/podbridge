@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../components/ui/Toast'
-import { formatRelativeTime } from '../utils/formatTime'
+import { formatRelativeTime, formatTimestamp } from '../utils/formatTime'
 
 interface AvailableFile {
   id: number
@@ -423,17 +423,17 @@ export default function ReadyForWork() {
                       ) : (
                         <span className="font-medium text-gray-300 truncate">{file.filename}</span>
                       )}
-                      <span className="text-xs text-gray-500" title={
-                        file.remote_modified_at
-                          ? `Server: ${new Date(file.remote_modified_at + 'Z').toLocaleString()}`
-                          : `Discovered: ${new Date(file.first_seen_at + 'Z').toLocaleString()}`
-                      }>
-                        {formatRelativeTime(
-                          (file.remote_modified_at || file.first_seen_at) + 'Z'
-                        )}
+                    </div>
+                    <div className="text-sm text-gray-400 mt-0.5">
+                      {formatTimestamp(
+                        file.remote_modified_at || file.first_seen_at
+                      )}
+                      <span className="text-gray-500 ml-2">
+                        ({formatRelativeTime(
+                          file.remote_modified_at || file.first_seen_at
+                        )})
                       </span>
                     </div>
-
                   </div>
                 </div>
 

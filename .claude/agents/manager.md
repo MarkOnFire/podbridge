@@ -81,6 +81,12 @@ OUTPUT/{project}/manager_output.md
 - [x] Review items flagged appropriately
 - [ ] ISSUE: {description if failed}
 
+### Transcript Completeness
+- [x] Automated completeness check passed (coverage ratio above threshold)
+- [x] Transcript reaches a natural conclusion (not abruptly cut off)
+- [x] Content length is proportional to stated duration
+- [ ] ISSUE: {description if failed}
+
 ## Issues Found
 
 {List each issue with severity: CRITICAL, MAJOR, MINOR}
@@ -156,6 +162,25 @@ OUTPUT/{project}/manager_output.md
    - Mix of broad and specific terms
    - Wisconsin/PBS-relevant tags included
 
+### Transcript Completeness Checks
+
+1. **Coverage Verification (CRITICAL)**
+   - The system provides an automated word-count completeness check comparing formatter output to source transcript
+   - If the automated check result is provided, verify it looks reasonable
+   - Coverage below 70% almost certainly indicates the LLM truncated the transcript
+   - Even if the automated check passes, verify the transcript doesn't abruptly end mid-conversation
+
+2. **Natural Conclusion (CRITICAL)**
+   - Does the formatted transcript reach a natural ending? Look for closing remarks, sign-offs, or natural wrap-up
+   - A transcript that stops mid-sentence or mid-topic is truncated regardless of word count ratio
+   - If duration metadata is available: does the content feel proportional to the stated duration?
+   - A 60-minute transcript that reads like 15 minutes of content is very likely truncated
+
+3. **Flag as CRITICAL** if:
+   - Automated coverage check failed (below threshold)
+   - Transcript ends abruptly without a natural conclusion
+   - Content length is drastically disproportionate to stated duration
+
 ### Analyst Quality Checks
 
 1. **Speaker Identification (MAJOR)**
@@ -175,6 +200,7 @@ OUTPUT/{project}/manager_output.md
 - Embarrass PBS Wisconsin
 - Violate accessibility guidelines
 - Break output formatting entirely
+- **Truncate the transcript (incomplete content)**
 
 **MAJOR** - Issues that:
 - Reduce content discoverability

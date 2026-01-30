@@ -440,6 +440,8 @@ class JobWorker:
                 "sst_context": sst_context,  # Add SST context to processing context
             }
 
+            truncation_paused = False
+
             for phase_name in self.PHASES:
                 # Check if phase already completed
                 existing_phase = next((p for p in phases if p["name"] == phase_name), None)
@@ -456,6 +458,20 @@ class JobWorker:
 
                 # Update current phase
                 await update_job_status(job_id, JobStatus.in_progress, current_phase=phase_name)
+
+                # Check if this phase has a forced tier from escalation retry
+                if existing_phase and (existing_phase.get("metadata") or {}).get("forced_tier") is not None:
+                    context["_force_tier"] = existing_phase["metadata"]["forced_tier"]
+                    logger.info(
+                        "Using forced tier from escalation retry",
+                        extra={
+                            "job_id": job_id,
+                            "phase": phase_name,
+                            "forced_tier": existing_phase["metadata"]["forced_tier"],
+                        }
+                    )
+                else:
+                    context.pop("_force_tier", None)
 
                 # Process phase
                 logger.info(
@@ -495,6 +511,79 @@ class JobWorker:
 
                 # Add output to context for next phase
                 context[f"{phase_name}_output"] = phase_result.get("output", "")
+
+                # === Completeness check after formatter phase ===
+                if phase_name == "formatter":
+                    from api.services.completeness import check_completeness
+
+                    completeness_config = self.llm.config.get("routing", {}).get("completeness", {})
+                    if completeness_config.get("enabled", True):
+                        formatter_output = phase_result.get("output", "")
+                        transcript_file = job.get("transcript_file", "")
+                        is_srt = transcript_file.lower().endswith(".srt")
+
+                        completeness = check_completeness(
+                            formatter_output=formatter_output,
+                            source_transcript=transcript_content,
+                            is_srt=is_srt,
+                            duration_minutes=job.get("duration_minutes"),
+                            threshold=completeness_config.get("coverage_threshold", 0.70),
+                            min_source_words=completeness_config.get("min_source_words", 500),
+                        )
+
+                        # Store result in context for Manager phase
+                        context["completeness_check"] = completeness.to_dict()
+
+                        if not completeness.is_complete and not completeness.skipped:
+                            logger.warning(
+                                "Transcript truncation detected",
+                                extra={
+                                    "job_id": job_id,
+                                    "coverage_ratio": completeness.coverage_ratio,
+                                    "source_words": completeness.source_word_count,
+                                    "output_words": completeness.output_word_count,
+                                }
+                            )
+
+                            await log_event(EventCreate(
+                                job_id=job_id,
+                                event_type=EventType.phase_failed,
+                                data=EventData(
+                                    phase="completeness_check",
+                                    extra=completeness.to_dict(),
+                                ),
+                            ))
+
+                            if completeness_config.get("pause_on_truncation", True):
+                                truncation_msg = (
+                                    f"TRUNCATION DETECTED: Formatter output covers only "
+                                    f"{completeness.coverage_ratio:.0%} of source transcript "
+                                    f"({completeness.output_word_count:,} / "
+                                    f"{completeness.source_word_count:,} words). "
+                                    f"Retry to escalate to a more capable model."
+                                )
+                                await update_job_status(
+                                    job_id,
+                                    JobStatus.paused,
+                                    error_message=truncation_msg,
+                                )
+                                truncation_paused = True
+                                break  # Exit phase loop cleanly (no exception)
+
+            # Handle truncation pause — exit before optional phases
+            if truncation_paused:
+                logger.info(
+                    "Job paused due to truncation detection",
+                    extra={"job_id": job_id, "project_name": project_name}
+                )
+                run_summary = await end_run_tracking()
+                if run_summary:
+                    await update_job_status(
+                        job_id,
+                        JobStatus.paused,
+                        actual_cost=run_summary["total_cost"],
+                    )
+                return
 
             # Process optional phases (timestamp) if conditions are met
             srt_path = self._find_srt_file(job)
@@ -1806,6 +1895,35 @@ Apply PBS style guidelines and improve readability while preserving speaker voic
             formatted = context.get("formatter_output", "")
             seo = context.get("seo_output", "")
             prompt = "Please perform a QA review of the following pipeline outputs.\n\n"
+
+            # Add completeness check results if available
+            completeness = context.get("completeness_check")
+            if completeness:
+                status = "PASS" if completeness["is_complete"] else "FAIL - TRUNCATION DETECTED"
+                prompt += f"""## Transcript Completeness Check (Automated)
+
+The system performed an automated word-count completeness check on the formatter output:
+- **Coverage Ratio:** {completeness['coverage_ratio']:.1%}
+- **Source Word Count:** {completeness['source_word_count']:,}
+- **Output Word Count:** {completeness['output_word_count']:,}
+- **Threshold:** {completeness['threshold']:.0%}
+- **Result:** {status}
+- **Detail:** {completeness['reason']}
+
+{"The automated check passed, but please independently verify the formatted transcript covers the full content and reaches a natural conclusion." if completeness['is_complete'] else "CRITICAL: The automated check detected possible truncation. Verify manually whether content is missing."}
+
+"""
+
+            # Add transcript metrics if available
+            metrics = context.get("transcript_metrics")
+            if metrics:
+                prompt += f"""## Transcript Metrics
+- **Estimated Duration:** {metrics.get('estimated_duration_minutes', 0):.1f} minutes
+- **Word Count:** {metrics.get('word_count', 0):,}
+- **Long-Form Content:** {"Yes" if metrics.get('is_long_form') else "No"}
+
+"""
+
             if sst_section:
                 prompt += sst_section
             prompt += f"""## Original Transcript (for reference):

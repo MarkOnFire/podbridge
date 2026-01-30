@@ -41,7 +41,7 @@ router = APIRouter()
 # Valid state transitions for job control operations
 PAUSEABLE_STATES = {JobStatus.pending, JobStatus.in_progress}
 RESUMABLE_STATES = {JobStatus.paused}
-RETRYABLE_STATES = {JobStatus.failed}
+RETRYABLE_STATES = {JobStatus.failed, JobStatus.paused}
 CANCELLABLE_STATES = {
     JobStatus.pending,
     JobStatus.in_progress,
@@ -163,10 +163,11 @@ async def resume_job(job_id: int):
 
 @router.post("/{job_id}/retry", response_model=Job)
 async def retry_job(job_id: int):
-    """Retry a failed job.
+    """Retry a failed or paused job with automatic tier escalation.
 
-    Resets job status to 'pending' and clears error message.
-    Only valid for failed jobs.
+    Resets job status to 'pending', clears error message, and escalates
+    to the next model tier. For truncation-paused jobs, resets the formatter
+    and downstream phases while preserving analyst output.
 
     Args:
         job_id: Job ID to retry
@@ -189,11 +190,54 @@ async def retry_job(job_id: int):
                    f"Only {', '.join(s.value for s in RETRYABLE_STATES)} jobs can be retried."
         )
 
-    # Reset to pending and clear error
+    # Determine escalation tier from previous max tier used
+    max_previous_tier = 0
+    phases = job.phases or []
+    for phase in phases:
+        if phase.tier is not None and phase.tier > max_previous_tier:
+            max_previous_tier = phase.tier
+    escalated_tier = min(max_previous_tier + 1, 2)  # Cap at big-brain (tier 2)
+
+    tier_labels = {0: "cheapskate", 1: "default", 2: "big-brain"}
+    logger.info(
+        "Retry with escalation",
+        extra={
+            "job_id": job_id,
+            "previous_max_tier": max_previous_tier,
+            "escalated_tier": escalated_tier,
+            "tier_label": tier_labels.get(escalated_tier),
+        }
+    )
+
+    # Determine which phases to reset based on failure type
+    is_truncation = job.error_message and "TRUNCATION" in job.error_message
+    phases_to_reset = {"formatter", "seo", "manager", "timestamp"} if is_truncation else None
+
+    # Reset phase statuses and set forced tier
+    updated_phases = []
+    for phase in phases:
+        phase_dict = phase.model_dump()
+        if phases_to_reset is None or phase.name in phases_to_reset:
+            # Reset this phase to pending with forced escalation tier
+            phase_dict["status"] = "pending"
+            phase_dict["completed_at"] = None
+            phase_dict["error_message"] = None
+            phase_dict["cost"] = 0
+            phase_dict["tokens"] = 0
+            phase_dict["model"] = None
+            phase_dict["tier"] = None
+            phase_dict["tier_label"] = None
+            phase_dict["tier_reason"] = None
+            phase_dict["attempts"] = None
+            phase_dict["metadata"] = {"forced_tier": escalated_tier}
+        updated_phases.append(phase_dict)
+
+    from api.models.job import JobPhase
     job_update = JobUpdate(
         status=JobStatus.pending,
-        error_message="",  # Clear error message
-        current_phase=None,  # Reset phase
+        error_message="",
+        current_phase=None,
+        phases=[JobPhase(**p) for p in updated_phases],
     )
     updated_job = await update_job(job_id, job_update)
 
@@ -433,19 +477,22 @@ async def retry_phase(
         default=None,
         ge=0,
         le=2,
-        description="Force specific tier: 0=cheapskate, 1=default, 2=big-brain"
+        description="Force specific tier: 0=cheapskate, 1=default, 2=big-brain. "
+                    "If not specified, auto-escalates from the tier previously used."
     )
 ):
-    """Retry a single phase for a job.
+    """Retry a single phase for a job with automatic escalation.
 
-    This allows regenerating one output (e.g., timestamp) without
-    re-running the entire pipeline. The phase runs in the background.
+    Re-runs one output (e.g., timestamp) without re-running the entire
+    pipeline. If no tier is specified, automatically escalates to the
+    next tier above what was previously used for this phase.
 
     Args:
         job_id: Job ID to retry a phase for
         phase_name: Phase name (analyst, formatter, seo, manager, timestamp)
                    OR output key (analysis, seo_metadata, timestamp_report, etc.)
-        tier: Optional tier override (0=cheapskate, 1=default, 2=big-brain)
+        tier: Optional tier override (0=cheapskate, 1=default, 2=big-brain).
+              If omitted, auto-escalates from previous tier.
 
     Returns:
         PhaseRetryResponse with status
@@ -470,21 +517,41 @@ async def retry_phase(
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
+    # Auto-escalate if no explicit tier provided
+    effective_tier = tier
+    if effective_tier is None:
+        previous_tier = 0
+        for phase in (job.phases or []):
+            if phase.name == phase_name and phase.tier is not None:
+                previous_tier = phase.tier
+                break
+        effective_tier = min(previous_tier + 1, 2)
+        logger.info(
+            "Auto-escalating phase retry",
+            extra={
+                "job_id": job_id,
+                "phase": phase_name,
+                "previous_tier": previous_tier,
+                "escalated_tier": effective_tier,
+            }
+        )
+
     # Run the phase retry in the background
     async def run_retry():
         from api.services.worker import JobWorker
         worker = JobWorker()
-        result = await worker.retry_single_phase(job_id, phase_name, force_tier=tier)
+        result = await worker.retry_single_phase(job_id, phase_name, force_tier=effective_tier)
         if not result.get("success"):
             logger.error(
                 "Phase retry failed",
-                extra={"job_id": job_id, "phase": phase_name, "tier": tier, "error": result.get("error")}
+                extra={"job_id": job_id, "phase": phase_name, "tier": effective_tier, "error": result.get("error")}
             )
 
     background_tasks.add_task(run_retry)
 
     tier_labels = {0: "cheapskate", 1: "default", 2: "big-brain"}
-    tier_msg = f" with tier={tier} ({tier_labels.get(tier, '?')})" if tier is not None else ""
+    escalation_note = " (auto-escalated)" if tier is None else ""
+    tier_msg = f" at tier {effective_tier} ({tier_labels.get(effective_tier, '?')}){escalation_note}"
     return PhaseRetryResponse(
         success=True,
         phase=phase_name,

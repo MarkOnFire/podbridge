@@ -42,26 +42,31 @@ pip install -r requirements.txt
 
 ```
 editorial-assistant-v3/
-├── api/                    # FastAPI application
-│   ├── main.py             # App entry point
-│   ├── routers/            # API endpoints
-│   ├── models/             # Pydantic schemas
-│   └── services/           # Business logic
-├── web/                    # React dashboard (Phase 3)
+├── api/                        # FastAPI application
+│   ├── main.py                 # App entry point
+│   ├── routers/                # API endpoints
+│   ├── models/                 # Pydantic schemas
+│   └── services/               # Business logic
+├── web/                        # React dashboard
 │   └── src/
+├── claude-desktop-project/     # Claude Desktop project config
+│   ├── EDITOR_AGENT_INSTRUCTIONS.md  # Canonical editor prompt
+│   ├── knowledge/              # Project knowledge files
+│   └── templates/              # Output document templates
 ├── .claude/
-│   ├── agents/             # LLM agent system prompts
-│   ├── templates/          # Output document templates
-│   └── commands/           # Slash command definitions
-├── config/                 # Configuration files
-├── transcripts/            # Input files (gitignored)
-├── OUTPUT/                 # Processed outputs (gitignored)
-├── tests/                  # Test suite
-├── docs/                   # Documentation
-├── feature_list.json       # Development task queue
-└── planning/               # Historical planning docs
-    ├── claude-progress.txt # Progress tracking
-    └── DESIGN_v3.0.md      # Full design specification
+│   ├── agents/                 # LLM agent system prompts
+│   ├── templates/              # Output document templates
+│   └── commands/               # Slash command definitions
+├── config/                     # Configuration files
+├── transcripts/                # Input files (gitignored)
+├── OUTPUT/                     # Processed outputs (gitignored)
+├── tests/                      # Test suite
+├── docs/                       # Documentation
+├── feature_list.json           # Development task queue
+└── planning/                   # Historical planning docs
+    ├── claude-progress.txt     # Progress tracking
+    ├── DESIGN_3.5.md           # Current design specification
+    └── DESIGN_4.0.md           # Future vision (planning only)
 ```
 
 ## Long-Running Development Harness
@@ -100,11 +105,9 @@ Detailed description...
 
 ## Design Reference
 
-The full v3.0 design specification is in `planning/DESIGN_v3.0.md`. Key sections:
-- Part 4: API Specification
-- Part 5: Web Dashboard Design
-- Part 9: Development Roadmap
-- Appendix C: Detailed Sprint Breakdown
+- **Current:** `planning/DESIGN_3.5.md` — v3.5 architecture (embedded chat, ingest pipeline, screengrabs)
+- **Future:** `planning/DESIGN_4.0.md` — v4.0 vision (Docker, plugin system, deferred features)
+- **Archived:** `planning/archive/DESIGN_v3.0.md` — original v3.0 design (historical)
 
 ## Current Sprint
 
