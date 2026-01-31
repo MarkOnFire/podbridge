@@ -10,8 +10,8 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
+
 import httpx
-from datetime import datetime
 
 # Load secrets from Keychain (the-lodge shared utility)
 sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
@@ -28,13 +28,22 @@ except ImportError:
         if key == "AIRTABLE_API_KEY":
             try:
                 import subprocess
+
                 user = os.environ.get("USER") or os.getlogin()
-                cmd = ["security", "find-generic-password", "-s", "developer.workspace.AIRTABLE_API_KEY", "-a", user, "-w"]
+                cmd = [
+                    "security",
+                    "find-generic-password",
+                    "-s",
+                    "developer.workspace.AIRTABLE_API_KEY",
+                    "-a",
+                    user,
+                    "-w",
+                ]
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
                 return result.stdout.strip()
             except Exception:
                 pass
-        
+
         return None
 
 
@@ -66,9 +75,7 @@ class AirtableClient:
         """
         self.api_key = api_key or get_secret("AIRTABLE_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "Airtable API key required. Add to Keychain or set AIRTABLE_API_KEY env var."
-            )
+            raise ValueError("Airtable API key required. Add to Keychain or set AIRTABLE_API_KEY env var.")
 
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -145,7 +152,7 @@ class AirtableClient:
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             for i in range(0, len(media_ids), batch_size):
-                batch = media_ids[i:i + batch_size]
+                batch = media_ids[i : i + batch_size]
 
                 # Build OR formula for this batch
                 conditions = [f"{{{self.MEDIA_ID_FIELD}}}='{mid}'" for mid in batch]
@@ -170,6 +177,7 @@ class AirtableClient:
                 except httpx.HTTPError as e:
                     # Log but don't fail the whole batch
                     import logging
+
                     logging.getLogger(__name__).warning(f"Batch SST lookup failed: {e}")
                     continue
 

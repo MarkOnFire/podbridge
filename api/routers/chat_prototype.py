@@ -5,13 +5,13 @@ This is a minimal implementation for UX validation before building full WebSocke
 """
 
 import logging
-from typing import List, Dict
+from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException
 
-from api.models.chat import ChatRequest, ChatResponse, ChatMessage
-from api.services.llm import get_llm_client
+from api.models.chat import ChatMessage, ChatRequest, ChatResponse
 from api.services.chat_context import build_chat_context
+from api.services.llm import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,7 @@ router = APIRouter()
 
 
 def _build_messages(
-    system_prompt: str,
-    conversation_history: List[ChatMessage],
-    user_message: str
+    system_prompt: str, conversation_history: List[ChatMessage], user_message: str
 ) -> List[Dict[str, str]]:
     """Build the messages array for the LLM chat call.
 
@@ -69,9 +67,7 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
 
         # Build messages array
         messages = _build_messages(
-            system_prompt=system_prompt,
-            conversation_history=request.conversation_history,
-            user_message=request.message
+            system_prompt=system_prompt, conversation_history=request.conversation_history, user_message=request.message
         )
 
         # Get LLM client and chat config
@@ -88,20 +84,13 @@ async def send_chat_message(request: ChatRequest) -> ChatResponse:
         )
 
         logger.info(
-            f"Chat response: {len(response.content)} chars, "
-            f"{response.total_tokens} tokens, ${response.cost:.4f}"
+            f"Chat response: {len(response.content)} chars, " f"{response.total_tokens} tokens, ${response.cost:.4f}"
         )
 
         return ChatResponse(
-            response=response.content,
-            tokens_used=response.total_tokens,
-            cost=response.cost,
-            model=response.model
+            response=response.content, tokens_used=response.total_tokens, cost=response.cost, model=response.model
         )
 
     except Exception as e:
         logger.error(f"Chat error: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Chat request failed: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Chat request failed: {str(e)}")

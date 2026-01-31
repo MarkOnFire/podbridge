@@ -3,14 +3,17 @@
 These models support the scheduled scanning of the PBS Wisconsin
 ingest server for transcript files and screengrabs matching QC-passed content.
 """
-from pydantic import BaseModel, Field
+
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class FileType(str, Enum):
     """Type of file discovered on ingest server."""
+
     transcript = "transcript"
     screengrab = "screengrab"
 
@@ -24,6 +27,7 @@ class FileStatus(str, Enum):
     - no_match: Screengrab Media ID not found in SST
     - ignored: User explicitly dismissed this file
     """
+
     new = "new"
     queued = "queued"
     attached = "attached"
@@ -35,8 +39,10 @@ class FileStatus(str, Enum):
 # Database Record Models
 # =============================================================================
 
+
 class AvailableFileBase(BaseModel):
     """Base fields for an available file from ingest server."""
+
     remote_url: str = Field(..., description="Full URL to the file on ingest server")
     filename: str = Field(..., description="Just the filename (e.g., '2WLI1215HD.srt')")
     directory_path: Optional[str] = Field(None, description="Parent directory on server")
@@ -48,11 +54,13 @@ class AvailableFileBase(BaseModel):
 
 class AvailableFileCreate(AvailableFileBase):
     """Schema for creating a new available file record."""
+
     pass
 
 
 class AvailableFile(AvailableFileBase):
     """Complete available file record from database."""
+
     id: int
     first_seen_at: datetime
     last_seen_at: datetime
@@ -68,6 +76,7 @@ class AvailableFile(AvailableFileBase):
 
 class ScreengrabAttachmentBase(BaseModel):
     """Base fields for screengrab attachment audit record."""
+
     sst_record_id: str = Field(..., description="Airtable SST record ID")
     media_id: str = Field(..., description="Media ID that was matched")
     filename: str = Field(..., description="Screengrab filename")
@@ -76,6 +85,7 @@ class ScreengrabAttachmentBase(BaseModel):
 
 class ScreengrabAttachmentCreate(ScreengrabAttachmentBase):
     """Schema for creating screengrab attachment audit record."""
+
     available_file_id: Optional[int] = None
     attachments_before: Optional[int] = None
     attachments_after: Optional[int] = None
@@ -85,6 +95,7 @@ class ScreengrabAttachmentCreate(ScreengrabAttachmentBase):
 
 class ScreengrabAttachment(ScreengrabAttachmentBase):
     """Complete screengrab attachment audit record."""
+
     id: int
     available_file_id: Optional[int] = None
     attached_at: datetime
@@ -101,8 +112,10 @@ class ScreengrabAttachment(ScreengrabAttachmentBase):
 # API Request/Response Models
 # =============================================================================
 
+
 class SSTRecordInfo(BaseModel):
     """Minimal SST record info for display with available files."""
+
     id: str = Field(..., description="Airtable record ID")
     title: Optional[str] = Field(None, description="Episode/content title")
     project: Optional[str] = Field(None, description="Project name")
@@ -110,14 +123,13 @@ class SSTRecordInfo(BaseModel):
 
 class AvailableFileWithSST(AvailableFile):
     """Available file with linked SST record info for API responses."""
-    sst_record: Optional[SSTRecordInfo] = Field(
-        None,
-        description="Linked SST record info (if Media ID matched)"
-    )
+
+    sst_record: Optional[SSTRecordInfo] = Field(None, description="Linked SST record info (if Media ID matched)")
 
 
 class AvailableFilesResponse(BaseModel):
     """Response for GET /api/ingest/available."""
+
     files: List[AvailableFileWithSST]
     total_new: int = Field(..., description="Count of files with status='new'")
     total_transcripts: int = Field(0, description="Count of new transcripts")
@@ -127,6 +139,7 @@ class AvailableFilesResponse(BaseModel):
 
 class QueueFileResponse(BaseModel):
     """Response for POST /api/ingest/queue/{file_id}."""
+
     success: bool
     job_id: Optional[int] = None
     message: str
@@ -134,11 +147,13 @@ class QueueFileResponse(BaseModel):
 
 class BulkQueueRequest(BaseModel):
     """Request for POST /api/ingest/queue/bulk."""
+
     file_ids: List[int] = Field(..., min_length=1, description="IDs of files to queue")
 
 
 class BulkQueueResponse(BaseModel):
     """Response for POST /api/ingest/queue/bulk."""
+
     success: bool
     queued_count: int
     failed_count: int
@@ -150,8 +165,10 @@ class BulkQueueResponse(BaseModel):
 # Scanner Models
 # =============================================================================
 
+
 class RemoteFile(BaseModel):
     """Parsed file info from directory listing."""
+
     filename: str
     url: str
     size_bytes: Optional[int] = None
@@ -161,6 +178,7 @@ class RemoteFile(BaseModel):
 
 class ScanResult(BaseModel):
     """Result of an ingest scan operation."""
+
     success: bool
     qc_passed_checked: int = Field(..., description="Number of QC-passed Media IDs checked")
     new_transcripts_found: int = Field(0, description="New transcript files discovered")
@@ -175,29 +193,25 @@ class ScanResult(BaseModel):
 # Configuration Models
 # =============================================================================
 
+
 class IngestConfig(BaseModel):
     """Ingest scanner configuration (stored in config table)."""
+
     enabled: bool = Field(True, description="Whether scheduled scanning is active")
     scan_interval_hours: int = Field(24, ge=1, le=168, description="Hours between scans")
     scan_time: str = Field("00:00", description="Time of day to run scan (HH:MM)")
     last_scan_at: Optional[datetime] = Field(None, description="When last scan completed")
     last_scan_success: Optional[bool] = Field(None, description="Whether last scan succeeded")
-    server_url: str = Field(
-        "https://mmingest.pbswi.wisc.edu/",
-        description="Base URL of ingest server"
-    )
+    server_url: str = Field("https://mmingest.pbswi.wisc.edu/", description="Base URL of ingest server")
     directories: List[str] = Field(
-        default_factory=lambda: ["/misc/", "/SCC2SRT/", "/wisconsinlife/"],
-        description="Directories to scan"
+        default_factory=lambda: ["/misc/", "/SCC2SRT/", "/wisconsinlife/"], description="Directories to scan"
     )
-    ignore_directories: List[str] = Field(
-        default_factory=lambda: ["/promos/"],
-        description="Directories to ignore"
-    )
+    ignore_directories: List[str] = Field(default_factory=lambda: ["/promos/"], description="Directories to ignore")
 
 
 class IngestConfigUpdate(BaseModel):
     """Schema for updating ingest configuration (PUT /api/ingest/config)."""
+
     enabled: Optional[bool] = None
     scan_interval_hours: Optional[int] = Field(None, ge=1, le=168)
     scan_time: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
@@ -205,6 +219,7 @@ class IngestConfigUpdate(BaseModel):
 
 class IngestConfigResponse(IngestConfig):
     """Response for GET /api/ingest/config."""
+
     next_scan_at: Optional[datetime] = Field(None, description="When next scan is scheduled")
 
 
@@ -212,8 +227,10 @@ class IngestConfigResponse(IngestConfig):
 # Screengrab-Specific Models
 # =============================================================================
 
+
 class AttachResult(BaseModel):
     """Result of attaching a single screengrab."""
+
     success: bool
     file_id: int
     media_id: str
@@ -225,6 +242,7 @@ class AttachResult(BaseModel):
 
 class BatchAttachResult(BaseModel):
     """Result of batch screengrab attachment."""
+
     success: bool
     attached_count: int
     failed_count: int

@@ -8,20 +8,21 @@ Provides endpoints for querying observability data:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
-
 from sqlalchemy import text
 
-from api.services.langfuse_client import get_langfuse_client
 from api.services.database import get_session
+from api.services.langfuse_client import get_langfuse_client
 
 router = APIRouter()
 
 
 class ModelStatsItem(BaseModel):
     """Statistics for a single model."""
+
     model_name: str = Field(..., description="Model identifier (e.g., 'anthropic/claude-3-5-sonnet')")
     request_count: int = Field(..., description="Number of requests to this model")
     total_cost: float = Field(..., description="Total cost in USD")
@@ -32,6 +33,7 @@ class ModelStatsItem(BaseModel):
 
 class ModelStatsResponse(BaseModel):
     """Response containing model usage statistics."""
+
     available: bool = Field(..., description="Whether Langfuse data is available")
     error: Optional[str] = Field(None, description="Error message if unavailable")
     models: List[ModelStatsItem] = Field(default_factory=list, description="Model usage statistics")
@@ -44,6 +46,7 @@ class ModelStatsResponse(BaseModel):
 
 class LangfuseStatusResponse(BaseModel):
     """Langfuse connection status."""
+
     available: bool = Field(..., description="Whether Langfuse is configured and reachable")
     error: Optional[str] = Field(None, description="Error message if unavailable")
     host: str = Field(..., description="Langfuse host URL")
@@ -101,14 +104,16 @@ async def get_model_stats(
     models = []
     for model in stats.models:
         cost_pct = (model.total_cost / stats.total_cost * 100) if stats.total_cost > 0 else 0
-        models.append(ModelStatsItem(
-            model_name=model.model_name,
-            request_count=model.request_count,
-            total_cost=model.total_cost,
-            total_tokens=model.total_tokens,
-            avg_latency_ms=model.avg_latency_ms,
-            cost_percentage=round(cost_pct, 1),
-        ))
+        models.append(
+            ModelStatsItem(
+                model_name=model.model_name,
+                request_count=model.request_count,
+                total_cost=model.total_cost,
+                total_tokens=model.total_tokens,
+                avg_latency_ms=model.avg_latency_ms,
+                cost_percentage=round(cost_pct, 1),
+            )
+        )
 
     return ModelStatsResponse(
         available=True,
@@ -125,8 +130,10 @@ async def get_model_stats(
 # Local Phase Analytics (from session_stats table)
 # ============================================================================
 
+
 class PhaseModelStats(BaseModel):
     """Statistics for a model within a phase."""
+
     model: str = Field(..., description="Model identifier")
     tier: Optional[int] = Field(None, description="Tier index (0=cheapskate, 1=default, 2=big-brain)")
     tier_label: Optional[str] = Field(None, description="Human-readable tier name")
@@ -139,6 +146,7 @@ class PhaseModelStats(BaseModel):
 
 class PhaseStats(BaseModel):
     """Aggregated statistics for an agent phase."""
+
     phase: str = Field(..., description="Phase name (analyst, formatter, seo, etc.)")
     total_completions: int = Field(0, description="Total successful completions")
     total_failures: int = Field(0, description="Total failed attempts")
@@ -151,6 +159,7 @@ class PhaseStats(BaseModel):
 
 class PhaseStatsResponse(BaseModel):
     """Response containing phase-level analytics."""
+
     phases: List[PhaseStats] = Field(default_factory=list)
     period_start: datetime
     period_end: datetime
@@ -181,7 +190,8 @@ async def get_phase_stats(
 
     async with get_session() as session:
         # Query completions grouped by phase, model, tier
-        completions_query = text("""
+        completions_query = text(
+            """
             SELECT
                 json_extract(data, '$.phase') as phase,
                 json_extract(data, '$.model') as model,
@@ -195,10 +205,12 @@ async def get_phase_stats(
               AND timestamp >= :period_start
             GROUP BY phase, model, tier
             ORDER BY phase, tier
-        """)
+        """
+        )
 
         # Query failures grouped by phase, tier
-        failures_query = text("""
+        failures_query = text(
+            """
             SELECT
                 json_extract(data, '$.phase') as phase,
                 json_extract(data, '$.extra.tier') as tier,
@@ -208,16 +220,13 @@ async def get_phase_stats(
             WHERE event_type = 'phase_failed'
               AND timestamp >= :period_start
             GROUP BY phase, tier
-        """)
-
-        completions_result = await session.execute(
-            completions_query, {"period_start": period_start.isoformat()}
+        """
         )
+
+        completions_result = await session.execute(completions_query, {"period_start": period_start.isoformat()})
         completions = completions_result.fetchall()
 
-        failures_result = await session.execute(
-            failures_query, {"period_start": period_start.isoformat()}
-        )
+        failures_result = await session.execute(failures_query, {"period_start": period_start.isoformat()})
         failures = failures_result.fetchall()
 
     # Build failure lookup: phase -> tier -> count
@@ -253,16 +262,18 @@ async def get_phase_stats(
         total_attempts = count + tier_failures
         success_rate = (count / total_attempts * 100) if total_attempts > 0 else 100.0
 
-        ps.models.append(PhaseModelStats(
-            model=model or "unknown",
-            tier=tier,
-            tier_label=tier_label,
-            completions=count,
-            failures=tier_failures,
-            total_cost=float(cost or 0),
-            total_tokens=int(tokens or 0),
-            success_rate=round(success_rate, 1),
-        ))
+        ps.models.append(
+            PhaseModelStats(
+                model=model or "unknown",
+                tier=tier,
+                tier_label=tier_label,
+                completions=count,
+                failures=tier_failures,
+                total_cost=float(cost or 0),
+                total_tokens=int(tokens or 0),
+                success_rate=round(success_rate, 1),
+            )
+        )
 
         ps.total_completions += count
         ps.total_cost += float(cost or 0)
@@ -288,9 +299,7 @@ async def get_phase_stats(
 
         # Calculate overall success rate
         total_attempts = ps.total_completions + ps.total_failures
-        ps.success_rate = round(
-            (ps.total_completions / total_attempts * 100) if total_attempts > 0 else 0, 1
-        )
+        ps.success_rate = round((ps.total_completions / total_attempts * 100) if total_attempts > 0 else 0, 1)
 
         # Calculate escalation rate (how many finished at tier > 0)
         base_tier_completions = sum(m.completions for m in ps.models if m.tier == 0 or m.tier is None)

@@ -80,6 +80,7 @@ export default function PhaseStatsWidget({ className = '' }: PhaseStatsWidgetPro
 
   useEffect(() => {
     fetchStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days])
 
   // Get color based on success rate

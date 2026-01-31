@@ -89,6 +89,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
       }, toast.duration)
       return () => clearTimeout(timer)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast.duration, toast.id])
 
   const handleDismiss = () => {

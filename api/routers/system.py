@@ -6,10 +6,10 @@ Provides status and restart controls for system components:
 - Transcript watcher
 """
 
-import subprocess
 import os
-import signal
+import subprocess
 from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -18,6 +18,7 @@ router = APIRouter()
 
 class ComponentStatus(BaseModel):
     """Status of a system component."""
+
     name: str
     running: bool
     pid: Optional[int] = None
@@ -25,6 +26,7 @@ class ComponentStatus(BaseModel):
 
 class SystemStatus(BaseModel):
     """Status of all system components."""
+
     api: ComponentStatus
     worker: ComponentStatus
     watcher: ComponentStatus
@@ -32,6 +34,7 @@ class SystemStatus(BaseModel):
 
 class RestartResponse(BaseModel):
     """Response from restart operation."""
+
     success: bool
     message: str
 
@@ -39,12 +42,7 @@ class RestartResponse(BaseModel):
 def _find_process(pattern: str) -> Optional[int]:
     """Find PID of process matching pattern."""
     try:
-        result = subprocess.run(
-            ["pgrep", "-f", pattern],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
         if result.returncode == 0 and result.stdout.strip():
             # Return first matching PID
             pids = result.stdout.strip().split("\n")
@@ -61,12 +59,7 @@ def _check_port_in_use(port: int) -> Optional[int]:
     especially when the server process is the one calling this function.
     """
     try:
-        result = subprocess.run(
-            ["lsof", "-t", "-i", f":{port}"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
+        result = subprocess.run(["lsof", "-t", "-i", f":{port}"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0 and result.stdout.strip():
             # Return first PID using the port
             pids = result.stdout.strip().split("\n")
@@ -79,11 +72,7 @@ def _check_port_in_use(port: int) -> Optional[int]:
 def _kill_process(pattern: str) -> bool:
     """Kill process matching pattern."""
     try:
-        result = subprocess.run(
-            ["pkill", "-f", pattern],
-            capture_output=True,
-            timeout=5
-        )
+        result = subprocess.run(["pkill", "-f", pattern], capture_output=True, timeout=5)
         return result.returncode == 0
     except Exception:
         return False
@@ -99,14 +88,7 @@ def _start_component(command: str, log_file: str) -> bool:
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
         with open(log_path, "a") as log:
-            subprocess.Popen(
-                command,
-                shell=True,
-                cwd=project_dir,
-                stdout=log,
-                stderr=log,
-                start_new_session=True
-            )
+            subprocess.Popen(command, shell=True, cwd=project_dir, stdout=log, stderr=log, start_new_session=True)
         return True
     except Exception:
         return False
@@ -122,21 +104,9 @@ async def get_system_status():
     watcher_pid = _find_process("watch_transcripts.py")
 
     return SystemStatus(
-        api=ComponentStatus(
-            name="API Server",
-            running=api_pid is not None,
-            pid=api_pid
-        ),
-        worker=ComponentStatus(
-            name="Worker",
-            running=worker_pid is not None,
-            pid=worker_pid
-        ),
-        watcher=ComponentStatus(
-            name="Transcript Watcher",
-            running=watcher_pid is not None,
-            pid=watcher_pid
-        )
+        api=ComponentStatus(name="API Server", running=api_pid is not None, pid=api_pid),
+        worker=ComponentStatus(name="Worker", running=worker_pid is not None, pid=worker_pid),
+        watcher=ComponentStatus(name="Transcript Watcher", running=watcher_pid is not None, pid=watcher_pid),
     )
 
 
@@ -148,10 +118,7 @@ async def restart_worker():
     _kill_process("run_worker.py")
 
     # Start new worker
-    success = _start_component(
-        "./venv/bin/python run_worker.py",
-        "worker.log"
-    )
+    success = _start_component("./venv/bin/python run_worker.py", "worker.log")
 
     if success:
         return RestartResponse(success=True, message="Worker restarted successfully")
@@ -167,10 +134,7 @@ async def restart_watcher():
     _kill_process("watch_transcripts.py")
 
     # Start new watcher
-    success = _start_component(
-        "./venv/bin/python watch_transcripts.py",
-        "watcher.log"
-    )
+    success = _start_component("./venv/bin/python watch_transcripts.py", "watcher.log")
 
     if success:
         return RestartResponse(success=True, message="Watcher restarted successfully")
@@ -205,10 +169,7 @@ async def start_worker():
     if _find_process("run_worker.py"):
         return RestartResponse(success=False, message="Worker is already running")
 
-    success = _start_component(
-        "./venv/bin/python run_worker.py",
-        "worker.log"
-    )
+    success = _start_component("./venv/bin/python run_worker.py", "worker.log")
 
     if success:
         return RestartResponse(success=True, message="Worker started")
@@ -223,10 +184,7 @@ async def start_watcher():
     if _find_process("watch_transcripts.py"):
         return RestartResponse(success=False, message="Watcher is already running")
 
-    success = _start_component(
-        "./venv/bin/python watch_transcripts.py",
-        "watcher.log"
-    )
+    success = _start_component("./venv/bin/python watch_transcripts.py", "watcher.log")
 
     if success:
         return RestartResponse(success=True, message="Watcher started")

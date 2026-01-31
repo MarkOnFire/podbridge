@@ -2,14 +2,15 @@
 
 Provides endpoints for viewing and updating LLM routing configuration.
 """
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+
 import json
 from pathlib import Path
+from typing import Dict, List, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from api.services.llm import get_llm_client
-
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -19,26 +20,31 @@ CONFIG_PATH = Path("config/llm-config.json")
 
 class PhaseBackendsUpdate(BaseModel):
     """Request body for updating phase-to-backend mappings."""
+
     phase_backends: Dict[str, str] = Field(
         ...,
         description="Mapping of phase names to backend names",
-        examples=[{
-            "analyst": "openrouter",
-            "formatter": "openrouter-cheapskate",
-            "seo": "openrouter-cheapskate",
-            "copy_editor": "openrouter"
-        }]
+        examples=[
+            {
+                "analyst": "openrouter",
+                "formatter": "openrouter-cheapskate",
+                "seo": "openrouter-cheapskate",
+                "copy_editor": "openrouter",
+            }
+        ],
     )
 
 
 class DurationThreshold(BaseModel):
     """A single duration threshold for tier selection."""
+
     max_minutes: Optional[int] = Field(None, description="Max minutes for this tier (null = unlimited)")
     tier: int = Field(..., ge=0, le=2, description="Tier index (0=cheapskate, 1=default, 2=big-brain)")
 
 
 class EscalationConfig(BaseModel):
     """Configuration for failure-based escalation."""
+
     enabled: bool = Field(True, description="Whether escalation is enabled")
     on_failure: bool = Field(True, description="Escalate on LLM failure")
     on_timeout: bool = Field(True, description="Escalate on timeout")
@@ -48,22 +54,19 @@ class EscalationConfig(BaseModel):
 
 class RoutingConfigUpdate(BaseModel):
     """Request body for updating routing configuration."""
+
     duration_thresholds: Optional[List[DurationThreshold]] = Field(
-        None,
-        description="Duration thresholds for tier selection"
+        None, description="Duration thresholds for tier selection"
     )
     phase_base_tiers: Optional[Dict[str, int]] = Field(
-        None,
-        description="Base tier for each phase (0=cheapskate, 1=default, 2=big-brain)"
+        None, description="Base tier for each phase (0=cheapskate, 1=default, 2=big-brain)"
     )
-    escalation: Optional[EscalationConfig] = Field(
-        None,
-        description="Escalation settings"
-    )
+    escalation: Optional[EscalationConfig] = Field(None, description="Escalation settings")
 
 
 class PhaseBackendsResponse(BaseModel):
     """Response with current phase-to-backend mappings."""
+
     phase_backends: Dict[str, str]
     available_backends: List[str]
     available_phases: List[str]
@@ -71,6 +74,7 @@ class PhaseBackendsResponse(BaseModel):
 
 class RoutingConfigResponse(BaseModel):
     """Response with current routing configuration."""
+
     tiers: List[str]
     tier_labels: List[str]
     duration_thresholds: List[DurationThreshold]
@@ -91,7 +95,7 @@ def _save_config(config: dict) -> None:
     try:
         # Ensure directory exists
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(CONFIG_PATH, 'w') as f:
+        with open(CONFIG_PATH, "w") as f:
             json.dump(config, f, indent=2)
     except (IOError, OSError) as e:
         raise HTTPException(status_code=500, detail=f"Failed to save config: {e}")
@@ -136,13 +140,11 @@ async def update_phase_backends(update: PhaseBackendsUpdate):
     for phase, backend in update.phase_backends.items():
         if phase not in valid_phases:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid phase: {phase}. Valid phases: {', '.join(valid_phases)}"
+                status_code=400, detail=f"Invalid phase: {phase}. Valid phases: {', '.join(valid_phases)}"
             )
         if backend not in available_backends:
             raise HTTPException(
-                status_code=400,
-                detail=f"Invalid backend: {backend}. Available: {', '.join(available_backends)}"
+                status_code=400, detail=f"Invalid backend: {backend}. Available: {', '.join(available_backends)}"
             )
 
     # Update config
@@ -171,7 +173,7 @@ async def get_routing_config():
     default_thresholds = [
         {"max_minutes": 15, "tier": 0},
         {"max_minutes": 30, "tier": 1},
-        {"max_minutes": None, "tier": 2}
+        {"max_minutes": None, "tier": 2},
     ]
     default_phase_tiers = {"analyst": 1, "formatter": 0, "seo": 0, "manager": 2, "copy_editor": 1, "chat": 1}
     default_escalation = {
@@ -179,15 +181,13 @@ async def get_routing_config():
         "on_failure": True,
         "on_timeout": True,
         "timeout_seconds": 120,
-        "max_retries_per_tier": 1
+        "max_retries_per_tier": 1,
     }
 
     return RoutingConfigResponse(
         tiers=routing.get("tiers", default_tiers),
         tier_labels=routing.get("tier_labels", default_labels),
-        duration_thresholds=[
-            DurationThreshold(**t) for t in routing.get("duration_thresholds", default_thresholds)
-        ],
+        duration_thresholds=[DurationThreshold(**t) for t in routing.get("duration_thresholds", default_thresholds)],
         phase_base_tiers=routing.get("phase_base_tiers", default_phase_tiers),
         escalation=EscalationConfig(**routing.get("escalation", default_escalation)),
     )
@@ -207,8 +207,7 @@ async def update_routing_config(update: RoutingConfigUpdate):
     # Apply updates (only non-None values)
     if update.duration_thresholds is not None:
         routing["duration_thresholds"] = [
-            {"max_minutes": t.max_minutes, "tier": t.tier}
-            for t in update.duration_thresholds
+            {"max_minutes": t.max_minutes, "tier": t.tier} for t in update.duration_thresholds
         ]
 
     if update.phase_base_tiers is not None:
@@ -216,14 +215,10 @@ async def update_routing_config(update: RoutingConfigUpdate):
         for phase, tier in update.phase_base_tiers.items():
             if phase not in valid_phases:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid phase: {phase}. Valid phases: {', '.join(valid_phases)}"
+                    status_code=400, detail=f"Invalid phase: {phase}. Valid phases: {', '.join(valid_phases)}"
                 )
             if tier < 0 or tier > 2:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid tier {tier} for {phase}. Must be 0, 1, or 2."
-                )
+                raise HTTPException(status_code=400, detail=f"Invalid tier {tier} for {phase}. Must be 0, 1, or 2.")
         routing["phase_base_tiers"] = update.phase_base_tiers
 
     if update.escalation is not None:
@@ -239,6 +234,7 @@ async def update_routing_config(update: RoutingConfigUpdate):
 
 class WorkerConfigResponse(BaseModel):
     """Response with current worker configuration."""
+
     max_concurrent_jobs: int = Field(..., ge=1, le=5)
     poll_interval_seconds: int = Field(..., ge=1)
     heartbeat_interval_seconds: int = Field(..., ge=10)
@@ -246,6 +242,7 @@ class WorkerConfigResponse(BaseModel):
 
 class WorkerConfigUpdate(BaseModel):
     """Request body for updating worker configuration."""
+
     max_concurrent_jobs: Optional[int] = Field(None, ge=1, le=5, description="Max jobs to process concurrently (1-5)")
     poll_interval_seconds: Optional[int] = Field(None, ge=1, le=60, description="Seconds between queue polls")
     heartbeat_interval_seconds: Optional[int] = Field(None, ge=10, le=300, description="Seconds between heartbeats")
@@ -275,11 +272,9 @@ async def update_worker_config(update: WorkerConfigUpdate):
     to be restarted to pick up changes.
     """
     config = _load_config()
-    worker = config.get("worker", {
-        "max_concurrent_jobs": 3,
-        "poll_interval_seconds": 5,
-        "heartbeat_interval_seconds": 60
-    })
+    worker = config.get(
+        "worker", {"max_concurrent_jobs": 3, "poll_interval_seconds": 5, "heartbeat_interval_seconds": 60}
+    )
 
     # Apply updates (only non-None values)
     if update.max_concurrent_jobs is not None:

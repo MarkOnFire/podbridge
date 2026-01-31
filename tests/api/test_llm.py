@@ -3,24 +3,24 @@
 Tests backend selection, tier calculation, cost tracking, safety guards,
 and error handling for LLM API interactions.
 """
-import os
-import pytest
+
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import httpx
+import pytest
 
 from api.services.llm import (
+    CostCapExceededError,
     LLMClient,
     LLMResponse,
-    RunCostTracker,
-    start_run_tracking,
-    get_run_tracker,
-    end_run_tracking,
-    calculate_cost,
-    CostCapExceededError,
     ModelNotAllowedError,
+    RunCostTracker,
     TokenCostTooHighError,
+    calculate_cost,
+    end_run_tracking,
+    get_run_tracker,
+    start_run_tracking,
 )
 
 
@@ -36,48 +36,39 @@ def mock_config(tmp_path):
                 "api_key_env": "OPENROUTER_API_KEY",
                 "model": "google/gemini-2.0-flash-exp",
                 "preset": "cheapskate",
-                "fallback_model": "google/gemini-2.5-flash"
+                "fallback_model": "google/gemini-2.5-flash",
             },
             "openrouter-cheapskate": {
                 "type": "openrouter",
                 "endpoint": "https://openrouter.ai/api/v1/chat/completions",
                 "api_key_env": "OPENROUTER_API_KEY",
-                "preset": "cheapskate"
+                "preset": "cheapskate",
             },
             "openrouter-big-brain": {
                 "type": "openrouter",
                 "endpoint": "https://openrouter.ai/api/v1/chat/completions",
                 "api_key_env": "OPENROUTER_API_KEY",
-                "preset": "big-brain"
-            }
+                "preset": "big-brain",
+            },
         },
         "routing": {
             "tiers": ["openrouter-cheapskate", "openrouter", "openrouter-big-brain"],
             "tier_labels": ["cheapskate", "default", "big-brain"],
-            "phase_base_tiers": {
-                "analyst": 0,
-                "formatter": 0,
-                "seo": 0,
-                "manager": 2
-            },
+            "phase_base_tiers": {"analyst": 0, "formatter": 0, "seo": 0, "manager": 2},
             "duration_thresholds": [
                 {"max_minutes": 15, "tier": 0},
                 {"max_minutes": 30, "tier": 1},
-                {"max_minutes": None, "tier": 2}
+                {"max_minutes": None, "tier": 2},
             ],
             "escalation": {
                 "enabled": True,
                 "on_failure": True,
                 "on_timeout": True,
                 "timeout_seconds": 120,
-                "max_retries_per_tier": 1
-            }
+                "max_retries_per_tier": 1,
+            },
         },
-        "safety": {
-            "run_cost_cap": 1.0,
-            "max_cost_per_1k_tokens": 0.05,
-            "model_allowlist": []
-        }
+        "safety": {"run_cost_cap": 1.0, "max_cost_per_1k_tokens": 0.05, "model_allowlist": []},
     }
 
     config_path = tmp_path / "test_llm_config.json"
@@ -161,11 +152,7 @@ class TestBackendSelection:
 
     def test_get_backend_for_phase_with_long_transcript(self, llm_client):
         """Test backend escalates for long transcripts."""
-        context = {
-            "transcript_metrics": {
-                "estimated_duration_minutes": 45
-            }
-        }
+        context = {"transcript_metrics": {"estimated_duration_minutes": 45}}
 
         backend = llm_client.get_backend_for_phase("analyst", context=context)
 
@@ -198,11 +185,7 @@ class TestTierCalculation:
 
     def test_get_tier_for_phase_escalates_with_duration(self, llm_client):
         """Test tier escalates based on duration."""
-        context = {
-            "transcript_metrics": {
-                "estimated_duration_minutes": 25
-            }
-        }
+        context = {"transcript_metrics": {"estimated_duration_minutes": 25}}
 
         tier, reason = llm_client.get_tier_for_phase_with_reason("analyst", context=context)
 
@@ -237,23 +220,13 @@ class TestCostCalculation:
 
     def test_calculate_cost_with_openrouter_cost(self):
         """Test that OpenRouter-reported cost is preferred."""
-        cost = calculate_cost(
-            model="gpt-4o",
-            input_tokens=1000,
-            output_tokens=500,
-            openrouter_cost=0.025
-        )
+        cost = calculate_cost(model="gpt-4o", input_tokens=1000, output_tokens=500, openrouter_cost=0.025)
 
         assert cost == 0.025
 
     def test_calculate_cost_from_pricing_table(self):
         """Test cost calculation from pricing table."""
-        cost = calculate_cost(
-            model="gpt-4o",
-            input_tokens=1000,
-            output_tokens=500,
-            openrouter_cost=None
-        )
+        cost = calculate_cost(model="gpt-4o", input_tokens=1000, output_tokens=500, openrouter_cost=None)
 
         # gpt-4o: $2.50/M input, $10/M output
         # (1000 / 1M * 2.50) + (500 / 1M * 10) = 0.0025 + 0.005 = 0.0075
@@ -261,12 +234,7 @@ class TestCostCalculation:
 
     def test_calculate_cost_unknown_model(self):
         """Test cost calculation for unknown model uses conservative estimate."""
-        cost = calculate_cost(
-            model="unknown-model",
-            input_tokens=1000,
-            output_tokens=500,
-            openrouter_cost=None
-        )
+        cost = calculate_cost(model="unknown-model", input_tokens=1000, output_tokens=500, openrouter_cost=None)
 
         # Conservative estimate: $1/M input, $3/M output
         # (1000 / 1M * 1) + (500 / 1M * 3) = 0.001 + 0.0015 = 0.0025
@@ -275,10 +243,7 @@ class TestCostCalculation:
     def test_calculate_cost_free_tier_model(self):
         """Test free tier models return zero cost."""
         cost = calculate_cost(
-            model="xiaomi/mimo-v2-flash:free",
-            input_tokens=1000,
-            output_tokens=500,
-            openrouter_cost=None
+            model="xiaomi/mimo-v2-flash:free", input_tokens=1000, output_tokens=500, openrouter_cost=None
         )
 
         assert cost == 0.0
@@ -308,7 +273,7 @@ class TestCostTracking:
             total_tokens=150,
             cost=0.001,
             duration_ms=1000,
-            backend="openai"
+            backend="openai",
         )
 
         tracker.add_call(response)
@@ -340,7 +305,7 @@ class TestCostTracking:
             total_tokens=150,
             cost=0.001,
             duration_ms=1000,
-            backend="openai"
+            backend="openai",
         )
         tracker.add_call(response)
 
@@ -439,19 +404,12 @@ class TestAPIInteractions:
         mock_response.json.return_value = {
             "choices": [{"message": {"content": "Test response"}}],
             "model": "google/gemini-2.0-flash-exp",
-            "usage": {
-                "prompt_tokens": 100,
-                "completion_tokens": 50,
-                "total_tokens": 150
-            }
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
         }
 
         with patch.object(httpx.AsyncClient, "post", return_value=mock_response):
             with patch("api.services.llm.log_event"):
-                response = await llm_client.chat(
-                    messages=[{"role": "user", "content": "Hello"}],
-                    backend="openrouter"
-                )
+                response = await llm_client.chat(messages=[{"role": "user", "content": "Hello"}], backend="openrouter")
 
         assert response.content == "Test response"
         assert response.model == "google/gemini-2.0-flash-exp"
@@ -470,15 +428,12 @@ class TestAPIInteractions:
         mock_response.json.return_value = {
             "choices": [{"message": {"content": "Test"}}],
             "model": "google/gemini-2.0-flash-exp",
-            "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         }
 
         with patch.object(httpx.AsyncClient, "post", return_value=mock_response) as mock_post:
             with patch("api.services.llm.log_event"):
-                response = await llm_client.chat(
-                    messages=[{"role": "user", "content": "Hello"}],
-                    backend="openrouter-cheapskate"
-                )
+                await llm_client.chat(messages=[{"role": "user", "content": "Hello"}], backend="openrouter-cheapskate")
 
         # Verify preset was used in request
         call_args = mock_post.call_args
@@ -494,10 +449,7 @@ class TestAPIInteractions:
         llm_client.model_allowlist = ["allowed-model"]
 
         with pytest.raises(ModelNotAllowedError):
-            await llm_client.chat(
-                messages=[{"role": "user", "content": "Hello"}],
-                model="disallowed-model"
-            )
+            await llm_client.chat(messages=[{"role": "user", "content": "Hello"}], model="disallowed-model")
 
     @pytest.mark.asyncio
     async def test_chat_http_error(self, llm_client, monkeypatch):
@@ -515,9 +467,7 @@ class TestAPIInteractions:
 
         with patch.object(httpx.AsyncClient, "post", return_value=mock_response):
             with pytest.raises(httpx.HTTPStatusError):
-                await llm_client.chat(
-                    messages=[{"role": "user", "content": "Hello"}]
-                )
+                await llm_client.chat(messages=[{"role": "user", "content": "Hello"}])
 
 
 class TestClientManagement:
@@ -542,7 +492,7 @@ class TestClientManagement:
     @pytest.mark.asyncio
     async def test_close_client(self, llm_client):
         """Test closing HTTP client."""
-        client = await llm_client.get_client()
+        await llm_client.get_client()
         await llm_client.close()
 
         assert llm_client._http_client is None

@@ -10,8 +10,9 @@ Run with: python tests/manual_test_airtable_link.py
 
 import asyncio
 import os
-from api.services.utils import extract_media_id
+
 from api.services.airtable import AirtableClient
+from api.services.utils import extract_media_id
 
 
 async def test_media_id_extraction():
@@ -52,10 +53,10 @@ async def test_airtable_lookup():
         record = await client.search_sst_by_media_id(test_media_id)
 
         if record:
-            print(f"  ✓ Found SST record!")
+            print("  ✓ Found SST record!")
             print(f"    Record ID: {record['id']}")
             print(f"    URL: {client.get_sst_url(record['id'])}")
-            if 'fields' in record:
+            if "fields" in record:
                 print(f"    Fields: {list(record['fields'].keys())}")
         else:
             print(f"  ℹ️  No SST record found for Media ID: {test_media_id}")

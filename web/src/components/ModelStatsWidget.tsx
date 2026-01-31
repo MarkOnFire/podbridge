@@ -54,6 +54,7 @@ export default function ModelStatsWidget({ className = '' }: ModelStatsWidgetPro
 
   useEffect(() => {
     fetchStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days])
 
   // Format model name for display (remove provider prefix for cleaner look)

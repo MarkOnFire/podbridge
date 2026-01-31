@@ -5,8 +5,10 @@ Broadcasts job status changes to all connected clients.
 """
 
 import logging
-from typing import Set, Dict, Any
+from typing import Any, Dict, Set
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from api.models.job import Job
 
 logger = logging.getLogger(__name__)

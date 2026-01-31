@@ -26,6 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
 try:
     from keychain_secrets import get_secret
+
     # Load known secrets into environment if not already set
     for key in ["OPENROUTER_API_KEY", "AIRTABLE_API_KEY"]:
         if key not in os.environ:
@@ -37,13 +38,15 @@ except ImportError:
 
 # Load remaining environment variables from .env file
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from api.services.worker import JobWorker, WorkerConfig
-from api.services.database import init_db, close_db
-from api.services.llm import get_llm_client, close_llm_client
 import json
 from pathlib import Path
+
+from api.services.database import close_db, init_db
+from api.services.llm import close_llm_client, get_llm_client
+from api.services.worker import JobWorker, WorkerConfig
 
 
 def load_worker_defaults() -> dict:
@@ -71,17 +74,16 @@ async def main(args):
     # Use None as sentinel to detect if CLI arg was provided
     config = WorkerConfig(
         poll_interval=(
-            args.poll_interval if args.poll_interval is not None
-            else defaults.get("poll_interval_seconds", 5)
+            args.poll_interval if args.poll_interval is not None else defaults.get("poll_interval_seconds", 5)
         ),
         heartbeat_interval=(
-            args.heartbeat_interval if args.heartbeat_interval is not None
+            args.heartbeat_interval
+            if args.heartbeat_interval is not None
             else defaults.get("heartbeat_interval_seconds", 60)
         ),
         max_retries=args.max_retries if args.max_retries is not None else 3,
         max_concurrent_jobs=(
-            args.concurrent if args.concurrent is not None
-            else defaults.get("max_concurrent_jobs", 3)
+            args.concurrent if args.concurrent is not None else defaults.get("max_concurrent_jobs", 3)
         ),
         worker_id=args.worker_id,
     )
@@ -118,9 +120,7 @@ async def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Run the Editorial Assistant job processing worker"
-    )
+    parser = argparse.ArgumentParser(description="Run the Editorial Assistant job processing worker")
     parser.add_argument(
         "--poll-interval",
         type=int,

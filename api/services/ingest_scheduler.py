@@ -3,9 +3,9 @@
 Manages scheduled scanning of the ingest server using APScheduler.
 Configures scan timing based on database config values.
 """
+
 import logging
 from typing import Optional
-from datetime import datetime
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -110,7 +110,7 @@ async def configure_scheduler():
     if job:
         # Get next run time - may be None if scheduler not started yet
         try:
-            next_run = getattr(job, 'next_run_time', None)
+            next_run = getattr(job, "next_run_time", None)
             if next_run:
                 logger.info(f"Ingest scan scheduled: daily at {config.scan_time} (next run: {next_run})")
             else:

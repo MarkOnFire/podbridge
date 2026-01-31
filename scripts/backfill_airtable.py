@@ -13,9 +13,9 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from api.services import database
 from api.services.airtable import AirtableClient
 from api.services.utils import extract_media_id
-from api.services import database
 
 
 async def backfill_airtable_links():
@@ -70,6 +70,7 @@ async def backfill_airtable_links():
 
                 # Update job with Airtable link
                 from api.models.job import JobUpdate
+
                 update = JobUpdate(
                     airtable_record_id=record_id,
                     airtable_url=airtable_url,
@@ -82,10 +83,11 @@ async def backfill_airtable_links():
             else:
                 # No match - just update media_id
                 from api.models.job import JobUpdate
+
                 update = JobUpdate(media_id=media_id)
                 await database.update_job(job_id, update)
 
-                print(f"  NOT FOUND in SST")
+                print("  NOT FOUND in SST")
                 not_found += 1
 
         except Exception as e:
@@ -93,7 +95,7 @@ async def backfill_airtable_links():
             errors += 1
 
     print(f"\n{'='*50}")
-    print(f"BACKFILL COMPLETE")
+    print("BACKFILL COMPLETE")
     print(f"  Linked:    {linked}")
     print(f"  Not found: {not_found}")
     print(f"  Errors:    {errors}")

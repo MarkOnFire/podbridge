@@ -10,7 +10,6 @@ Usage:
 
 import sqlite3
 import sys
-import re
 from pathlib import Path
 
 # Add project root to path
@@ -55,7 +54,7 @@ def find_transcript_file(media_id: str, project_path: str, transcript_file: str)
 
 def extract_text_from_srt(content: str) -> str:
     """Extract plain text from SRT subtitle format."""
-    lines = content.split('\n')
+    lines = content.split("\n")
     text_lines = []
 
     for line in lines:
@@ -65,11 +64,11 @@ def extract_text_from_srt(content: str) -> str:
             continue
         if line.isdigit():
             continue
-        if '-->' in line:
+        if "-->" in line:
             continue
         text_lines.append(line)
 
-    return ' '.join(text_lines)
+    return " ".join(text_lines)
 
 
 def backfill_metrics(dry_run: bool = False):
@@ -80,12 +79,14 @@ def backfill_metrics(dry_run: bool = False):
     cursor = conn.cursor()
 
     # Find jobs with missing metrics
-    cursor.execute("""
+    cursor.execute(
+        """
         SELECT id, media_id, project_path, transcript_file, duration_minutes, word_count
         FROM jobs
         WHERE duration_minutes IS NULL OR word_count IS NULL
         ORDER BY id
-    """)
+    """
+    )
 
     jobs = cursor.fetchall()
     print(f"Found {len(jobs)} jobs with missing metrics\n")
@@ -95,10 +96,10 @@ def backfill_metrics(dry_run: bool = False):
     not_found = []
 
     for job in jobs:
-        job_id = job['id']
-        media_id = job['media_id'] or f"job_{job_id}"
-        project_path = job['project_path']
-        transcript_file = job['transcript_file']
+        job_id = job["id"]
+        media_id = job["media_id"] or f"job_{job_id}"
+        project_path = job["project_path"]
+        transcript_file = job["transcript_file"]
 
         # Try to find transcript
         transcript_path = find_transcript_file(media_id, project_path, transcript_file)
@@ -112,28 +113,31 @@ def backfill_metrics(dry_run: bool = False):
         try:
             # Try UTF-8 first, fall back to latin-1 for older files
             try:
-                content = transcript_path.read_text(encoding='utf-8')
+                content = transcript_path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
-                content = transcript_path.read_text(encoding='latin-1')
+                content = transcript_path.read_text(encoding="latin-1")
 
             # Handle SRT format
-            if transcript_path.suffix.lower() == '.srt':
+            if transcript_path.suffix.lower() == ".srt":
                 content = extract_text_from_srt(content)
 
             # Calculate metrics
             metrics = calculate_transcript_metrics(content)
-            word_count = metrics['word_count']
-            duration_minutes = metrics['estimated_duration_minutes']
+            word_count = metrics["word_count"]
+            duration_minutes = metrics["estimated_duration_minutes"]
 
             print(f"Job {job_id:3d} ({media_id}): {word_count:,} words, {duration_minutes:.2f} min")
             print(f"         Source: {transcript_path.name}")
 
             if not dry_run:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     UPDATE jobs
                     SET word_count = ?, duration_minutes = ?
                     WHERE id = ?
-                """, (word_count, duration_minutes, job_id))
+                """,
+                    (word_count, duration_minutes, job_id),
+                )
 
             updated += 1
 

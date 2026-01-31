@@ -2,16 +2,18 @@
 
 Provides CRUD operations for the job queue.
 """
+
 import logging
 import os
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from api.models.job import Job, JobCreate, JobStatus, JobUpdate
 from api.services import database
 from api.services.airtable import AirtableClient
-from api.services.utils import extract_media_id, parse_srt, get_srt_duration
+from api.services.utils import extract_media_id, get_srt_duration, parse_srt
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +40,14 @@ def calculate_transcript_metrics_from_file(transcript_file: str) -> Tuple[Option
         return None, None
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         if not content.strip():
             return None, None
 
         # Check if it's an SRT file
-        if transcript_file.lower().endswith('.srt'):
+        if transcript_file.lower().endswith(".srt"):
             captions = parse_srt(content)
             if captions:
                 # Get duration from last caption's end time
@@ -53,7 +55,7 @@ def calculate_transcript_metrics_from_file(transcript_file: str) -> Tuple[Option
                 duration_minutes = round(duration_ms / 60000, 2)
 
                 # Count words in all captions
-                all_text = ' '.join(c.text for c in captions)
+                all_text = " ".join(c.text for c in captions)
                 word_count = len(all_text.split())
 
                 return duration_minutes, word_count
@@ -75,6 +77,7 @@ router = APIRouter()
 
 class DuplicateJobResponse(BaseModel):
     """Response when a duplicate job is detected."""
+
     message: str
     existing_job: Job
     action_required: str
@@ -82,6 +85,7 @@ class DuplicateJobResponse(BaseModel):
 
 class PaginatedJobsResponse(BaseModel):
     """Paginated response with jobs and metadata."""
+
     jobs: List[Job]
     total: int
     page: int
@@ -91,10 +95,7 @@ class PaginatedJobsResponse(BaseModel):
 
 @router.get("/", response_model=PaginatedJobsResponse)
 async def list_queue(
-    status: Optional[JobStatus] = Query(
-        default=None,
-        description="Filter by job status (null = all statuses)"
-    ),
+    status: Optional[JobStatus] = Query(default=None, description="Filter by job status (null = all statuses)"),
     page: int = Query(default=1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(default=50, ge=1, le=100, description="Jobs per page"),
     search: Optional[str] = Query(default=None, description="Search by filename or project path"),
@@ -137,15 +138,15 @@ async def list_queue(
     )
 
 
-@router.post("/", response_model=Job, status_code=201, responses={
-    409: {"model": DuplicateJobResponse, "description": "Transcript already processed or in queue"}
-})
+@router.post(
+    "/",
+    response_model=Job,
+    status_code=201,
+    responses={409: {"model": DuplicateJobResponse, "description": "Transcript already processed or in queue"}},
+)
 async def add_to_queue(
     job_create: JobCreate,
-    force: bool = Query(
-        default=False,
-        description="Force re-queue even if transcript was already processed"
-    ),
+    force: bool = Query(default=False, description="Force re-queue even if transcript was already processed"),
 ) -> Job:
     """Add a new job to the queue.
 
@@ -209,7 +210,7 @@ async def add_to_queue(
                     "existing_status": existing.status.value,
                     "action_required": action,
                     "hint": "Add ?force=true to bypass this check",
-                }
+                },
             )
 
     # Create the job first
@@ -274,6 +275,7 @@ async def add_to_queue(
 
 class BulkDeleteResponse(BaseModel):
     """Response for bulk delete operations."""
+
     deleted_count: int
     message: str
 
@@ -281,8 +283,7 @@ class BulkDeleteResponse(BaseModel):
 @router.delete("/bulk", response_model=BulkDeleteResponse)
 async def bulk_delete_jobs(
     statuses: List[JobStatus] = Query(
-        ...,
-        description="List of statuses to delete (e.g., completed, failed, cancelled)"
+        ..., description="List of statuses to delete (e.g., completed, failed, cancelled)"
     ),
 ) -> BulkDeleteResponse:
     """Bulk delete jobs by status.
@@ -303,16 +304,14 @@ async def bulk_delete_jobs(
 
     if not safe_statuses:
         return BulkDeleteResponse(
-            deleted_count=0,
-            message="No safe statuses to delete. Cannot bulk delete pending or in_progress jobs."
+            deleted_count=0, message="No safe statuses to delete. Cannot bulk delete pending or in_progress jobs."
         )
 
     deleted_count = await database.bulk_delete_jobs_by_status(safe_statuses)
 
     status_names = ", ".join(s.value for s in safe_statuses)
     return BulkDeleteResponse(
-        deleted_count=deleted_count,
-        message=f"Deleted {deleted_count} jobs with status: {status_names}"
+        deleted_count=deleted_count, message=f"Deleted {deleted_count} jobs with status: {status_names}"
     )
 
 
@@ -384,10 +383,7 @@ async def get_queue_stats() -> dict:
     cancelled_count = await database.count_jobs(status=JobStatus.cancelled)
     paused_count = await database.count_jobs(status=JobStatus.paused)
 
-    total = (
-        pending_count + in_progress_count + completed_count +
-        failed_count + cancelled_count + paused_count
-    )
+    total = pending_count + in_progress_count + completed_count + failed_count + cancelled_count + paused_count
 
     return {
         "pending": pending_count,

@@ -9,10 +9,9 @@ Options:
 """
 import sys
 import time
-import json
-import httpx
 from pathlib import Path
-from datetime import datetime
+
+import httpx
 
 TRANSCRIPTS_DIR = Path("transcripts")
 API_BASE = "http://localhost:8000"
@@ -25,11 +24,7 @@ def get_queued_files() -> set:
     try:
         # Get all jobs from API (paginated response)
         for status in ["pending", "in_progress", "completed", "failed", "paused", "cancelled"]:
-            response = httpx.get(
-                f"{API_BASE}/api/queue/",
-                params={"status": status, "page_size": 1000},
-                timeout=10
-            )
+            response = httpx.get(f"{API_BASE}/api/queue/", params={"status": status, "page_size": 1000}, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 # API returns paginated response: { jobs: [...], total: X, ... }
@@ -66,7 +61,7 @@ def queue_file(filename: str, force: bool = False) -> bool:
     # Clean up common suffixes
     for suffix in ["_ForClaude", "_forclaude", "_transcript"]:
         if project_name.endswith(suffix):
-            project_name = project_name[:-len(suffix)]
+            project_name = project_name[: -len(suffix)]
 
     try:
         # Build URL with force parameter if needed
@@ -80,7 +75,7 @@ def queue_file(filename: str, force: bool = False) -> bool:
                 "project_name": project_name,
                 "transcript_file": filename,
             },
-            timeout=10
+            timeout=10,
         )
         if response.status_code in [200, 201]:
             job = response.json()

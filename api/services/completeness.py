@@ -6,10 +6,10 @@ This catches the common failure mode where models silently stop generating
 mid-transcript and report success.
 """
 
-import re
 import logging
-from dataclasses import dataclass, asdict
-from typing import Optional, Dict, Any
+import re
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ MIN_SOURCE_WORDS_FOR_CHECK = 500
 @dataclass
 class CompletenessResult:
     """Result of a transcript completeness check."""
+
     is_complete: bool
     source_word_count: int
     output_word_count: int
@@ -67,18 +68,18 @@ def count_content_words(text: str) -> int:
     remove the Status footer, and count the remaining body words.
     """
     # Strip HTML comments (provenance headers, review notes)
-    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
     # Strip everything before (and including) the first --- separator.
     # This removes the metadata header block (Project, Program, etc.)
-    parts = re.split(r'^---+\s*$', text, maxsplit=1, flags=re.MULTILINE)
+    parts = re.split(r"^---+\s*$", text, maxsplit=1, flags=re.MULTILINE)
     if len(parts) > 1:
         text = parts[1]
     # Strip markdown bold/italic markers
-    text = re.sub(r'\*{1,3}', '', text)
+    text = re.sub(r"\*{1,3}", "", text)
     # Strip markdown headings markers (but keep the text)
-    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     # Strip the Status footer line (after bold markers are removed)
-    text = re.sub(r'^Status:\s+.*$', '', text, flags=re.MULTILINE)
+    text = re.sub(r"^Status:\s+.*$", "", text, flags=re.MULTILINE)
     return len(text.split())
 
 
@@ -91,12 +92,9 @@ def count_source_words(transcript_content: str, is_srt: bool = False) -> int:
     """
     if is_srt:
         # Remove SRT index numbers (standalone digits on their own line)
-        text = re.sub(r'^\d+\s*$', '', transcript_content, flags=re.MULTILINE)
+        text = re.sub(r"^\d+\s*$", "", transcript_content, flags=re.MULTILINE)
         # Remove SRT timecodes (00:01:23,456 --> 00:01:25,789)
-        text = re.sub(
-            r'\d{1,2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}',
-            '', text
-        )
+        text = re.sub(r"\d{1,2}:\d{2}:\d{2}[,.]\d{3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[,.]\d{3}", "", text)
         return len(text.split())
     return len(transcript_content.split())
 
@@ -129,9 +127,7 @@ def check_completeness(
         CompletenessResult with pass/fail and details
     """
     # Count dialogue words in source (stripping SRT formatting)
-    src_words = source_word_count if source_word_count is not None else count_source_words(
-        source_transcript, is_srt
-    )
+    src_words = source_word_count if source_word_count is not None else count_source_words(source_transcript, is_srt)
 
     # Skip check for very short transcripts
     if src_words < min_source_words:

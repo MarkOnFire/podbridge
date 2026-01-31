@@ -1,12 +1,15 @@
 """Job models for Editorial Assistant v3.0 API."""
-from pydantic import BaseModel, Field
+
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class JobStatus(str, Enum):
     """Valid job status values matching database CHECK constraint."""
+
     pending = "pending"
     in_progress = "in_progress"
     completed = "completed"
@@ -18,6 +21,7 @@ class JobStatus(str, Enum):
 
 class PhaseStatus(str, Enum):
     """Status for individual processing phases."""
+
     pending = "pending"
     in_progress = "in_progress"
     completed = "completed"
@@ -31,6 +35,7 @@ class JobPhase(BaseModel):
     Tracks completion status of each phase (analyst, formatter, etc.)
     to enable resuming from the last successful phase.
     """
+
     name: str = Field(..., description="Phase identifier (e.g., 'analyst', 'formatter')")
     status: PhaseStatus = Field(default=PhaseStatus.pending, description="Current phase status")
     started_at: Optional[datetime] = None
@@ -49,8 +54,7 @@ class JobPhase(BaseModel):
     # Retry tracking fields
     retry_count: int = Field(default=0, description="Times this phase has been manually retried")
     previous_runs: Optional[List[Dict[str, Any]]] = Field(
-        default=None,
-        description="History of previous runs [{tier, tier_label, model, cost, tokens, completed_at}]"
+        default=None, description="History of previous runs [{tier, tier_label, model, cost, tokens, completed_at}]"
     )
 
     def is_complete(self) -> bool:
@@ -68,6 +72,7 @@ class JobPhase(BaseModel):
 
 class JobBase(BaseModel):
     """Base job schema with common fields."""
+
     project_path: str = Field(..., description="Path to project directory")
     transcript_file: str = Field(..., description="Path to transcript file")
     priority: int = Field(default=0, description="Job priority (higher = sooner)")
@@ -76,6 +81,7 @@ class JobBase(BaseModel):
 
 class JobCreate(BaseModel):
     """Schema for creating a new job (POST /queue)."""
+
     project_name: str = Field(..., description="Name for this project (used for output folder)")
     transcript_file: str = Field(..., description="Path to transcript file (relative to transcripts/)")
     project_path: Optional[str] = Field(None, description="Output path (auto-generated if not provided)")
@@ -84,6 +90,7 @@ class JobCreate(BaseModel):
 
 class PhaseUpdate(BaseModel):
     """Schema for updating a specific phase within a job."""
+
     name: str = Field(..., description="Phase name to update")
     status: Optional[PhaseStatus] = None
     started_at: Optional[datetime] = None
@@ -97,6 +104,7 @@ class PhaseUpdate(BaseModel):
 
 class JobUpdate(BaseModel):
     """Schema for partial job updates (PATCH /jobs/{id})."""
+
     status: Optional[JobStatus] = None
     priority: Optional[int] = None
     current_phase: Optional[str] = None
@@ -117,6 +125,7 @@ class JobUpdate(BaseModel):
 
 class JobOutputs(BaseModel):
     """Output file references from job manifest."""
+
     analysis: Optional[str] = None
     formatted_transcript: Optional[str] = None
     seo_metadata: Optional[str] = None
@@ -128,6 +137,7 @@ class JobOutputs(BaseModel):
 
 class Job(BaseModel):
     """Complete job record including all database fields."""
+
     id: int
     project_path: str
     transcript_file: str
@@ -141,10 +151,7 @@ class Job(BaseModel):
     actual_cost: float
     agent_phases: List[str] = Field(default_factory=lambda: ["analyst", "formatter"])
     current_phase: Optional[str] = None
-    phases: List[JobPhase] = Field(
-        default_factory=list,
-        description="Detailed status of each processing phase"
-    )
+    phases: List[JobPhase] = Field(default_factory=list, description="Detailed status of each processing phase")
     retry_count: int
     max_retries: int
     error_message: Optional[str] = None
@@ -155,7 +162,9 @@ class Job(BaseModel):
     airtable_record_id: Optional[str] = Field(None, description="Airtable record ID (e.g., 'recXXXXXXXXXXXXXX')")
     airtable_url: Optional[str] = Field(None, description="Full URL to the Airtable record")
     media_id: Optional[str] = Field(None, description="Extracted media ID from filename (e.g., '2WLI1209HD')")
-    duration_minutes: Optional[float] = Field(None, description="Transcript duration in minutes (from SRT or estimated)")
+    duration_minutes: Optional[float] = Field(
+        None, description="Transcript duration in minutes (from SRT or estimated)"
+    )
     word_count: Optional[int] = Field(None, description="Transcript word count")
     outputs: Optional[JobOutputs] = Field(None, description="Output files from manifest")
 
@@ -190,6 +199,7 @@ class Job(BaseModel):
 
 class JobList(BaseModel):
     """Paginated job list response."""
+
     jobs: List[Job]
     total: int
     page: int = Field(default=1, ge=1)

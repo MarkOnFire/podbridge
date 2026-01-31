@@ -1,32 +1,33 @@
 """Tests for database service layer."""
-import pytest
-import pytest_asyncio
+
 import os
 import tempfile
 from datetime import datetime
 
+import pytest
+import pytest_asyncio
+
+from api.models.events import EventCreate, EventData, EventType
+from api.models.job import JobCreate, JobStatus, JobUpdate
 from api.services.database import (
-    init_db,
     close_db,
     create_job,
-    get_job,
-    list_jobs,
-    update_job,
     delete_job,
+    get_config,
+    get_events_for_job,
+    get_job,
     get_next_pending_job,
-    update_heartbeat,
     get_stale_jobs,
+    init_db,
+    list_config,
+    list_jobs,
+    log_event,
     reset_stuck_jobs,
     run_stuck_job_cleanup,
-    log_event,
-    get_events_for_job,
-    get_config,
-    set_config,
-    list_config,
     sanitize_path_component,
+    set_config,
+    update_job,
 )
-from api.models.job import JobCreate, JobUpdate, JobStatus
-from api.models.events import EventCreate, EventType, EventData
 
 
 @pytest_asyncio.fixture
@@ -45,7 +46,8 @@ async def test_db():
     # Run migrations to create schema
     # Note: In a real test, we'd run alembic migrations here
     # For now, we'll create tables manually using the metadata
-    from api.services.database import metadata, _engine
+    from api.services.database import _engine, metadata
+
     async with _engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
 
@@ -101,23 +103,29 @@ async def test_get_nonexistent_job(test_db):
 async def test_list_jobs(test_db):
     """Test listing jobs with filtering."""
     # Create multiple jobs
-    await create_job(JobCreate(
-        project_path="/projects/job1",
-        transcript_file="/transcripts/1.txt",
-        priority=1,
-    ))
+    await create_job(
+        JobCreate(
+            project_path="/projects/job1",
+            transcript_file="/transcripts/1.txt",
+            priority=1,
+        )
+    )
 
-    await create_job(JobCreate(
-        project_path="/projects/job2",
-        transcript_file="/transcripts/2.txt",
-        priority=10,
-    ))
+    await create_job(
+        JobCreate(
+            project_path="/projects/job2",
+            transcript_file="/transcripts/2.txt",
+            priority=10,
+        )
+    )
 
-    job3 = await create_job(JobCreate(
-        project_path="/projects/job3",
-        transcript_file="/transcripts/3.txt",
-        priority=5,
-    ))
+    job3 = await create_job(
+        JobCreate(
+            project_path="/projects/job3",
+            transcript_file="/transcripts/3.txt",
+            priority=5,
+        )
+    )
 
     # Update one job to in_progress
     await update_job(job3.id, JobUpdate(status=JobStatus.in_progress))
@@ -144,10 +152,12 @@ async def test_list_jobs(test_db):
 async def test_update_job(test_db):
     """Test updating job fields."""
     # Create job
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+        )
+    )
 
     # Update status to in_progress
     updated = await update_job(job.id, JobUpdate(status=JobStatus.in_progress))
@@ -155,18 +165,24 @@ async def test_update_job(test_db):
     assert updated.started_at is not None
 
     # Update priority and current phase
-    updated = await update_job(job.id, JobUpdate(
-        priority=10,
-        current_phase="analyst",
-    ))
+    updated = await update_job(
+        job.id,
+        JobUpdate(
+            priority=10,
+            current_phase="analyst",
+        ),
+    )
     assert updated.priority == 10
     assert updated.current_phase == "analyst"
 
     # Update with error
-    updated = await update_job(job.id, JobUpdate(
-        status=JobStatus.failed,
-        error_message="Test error",
-    ))
+    updated = await update_job(
+        job.id,
+        JobUpdate(
+            status=JobStatus.failed,
+            error_message="Test error",
+        ),
+    )
     assert updated.status == JobStatus.failed
     assert updated.error_message == "Test error"
     assert updated.error_timestamp is not None
@@ -177,10 +193,12 @@ async def test_update_job(test_db):
 async def test_delete_job(test_db):
     """Test deleting a job."""
     # Create job
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+        )
+    )
 
     # Delete job
     deleted = await delete_job(job.id)
@@ -199,23 +217,29 @@ async def test_delete_job(test_db):
 async def test_get_next_pending_job(test_db):
     """Test getting next pending job by priority."""
     # Create jobs with different priorities
-    job1 = await create_job(JobCreate(
-        project_path="/projects/job1",
-        transcript_file="/transcripts/1.txt",
-        priority=1,
-    ))
+    await create_job(
+        JobCreate(
+            project_path="/projects/job1",
+            transcript_file="/transcripts/1.txt",
+            priority=1,
+        )
+    )
 
-    job2 = await create_job(JobCreate(
-        project_path="/projects/job2",
-        transcript_file="/transcripts/2.txt",
-        priority=10,
-    ))
+    job2 = await create_job(
+        JobCreate(
+            project_path="/projects/job2",
+            transcript_file="/transcripts/2.txt",
+            priority=10,
+        )
+    )
 
-    job3 = await create_job(JobCreate(
-        project_path="/projects/job3",
-        transcript_file="/transcripts/3.txt",
-        priority=5,
-    ))
+    job3 = await create_job(
+        JobCreate(
+            project_path="/projects/job3",
+            transcript_file="/transcripts/3.txt",
+            priority=5,
+        )
+    )
 
     # Get next job - should be highest priority
     next_job = await get_next_pending_job()
@@ -236,10 +260,12 @@ async def test_get_next_pending_job(test_db):
 async def test_log_event(test_db):
     """Test logging session events."""
     # Create a job first
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+        )
+    )
 
     # Log event with data
     event_data = EventData(
@@ -249,11 +275,13 @@ async def test_log_event(test_db):
         model="gpt-4",
     )
 
-    event = await log_event(EventCreate(
-        job_id=job.id,
-        event_type=EventType.job_started,
-        data=event_data,
-    ))
+    event = await log_event(
+        EventCreate(
+            job_id=job.id,
+            event_type=EventType.job_started,
+            data=event_data,
+        )
+    )
 
     assert event.id is not None
     assert event.job_id == job.id
@@ -268,27 +296,35 @@ async def test_log_event(test_db):
 async def test_get_events_for_job(test_db):
     """Test retrieving events for a job."""
     # Create a job
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+        )
+    )
 
     # Log multiple events
-    await log_event(EventCreate(
-        job_id=job.id,
-        event_type=EventType.job_queued,
-    ))
+    await log_event(
+        EventCreate(
+            job_id=job.id,
+            event_type=EventType.job_queued,
+        )
+    )
 
-    await log_event(EventCreate(
-        job_id=job.id,
-        event_type=EventType.job_started,
-    ))
+    await log_event(
+        EventCreate(
+            job_id=job.id,
+            event_type=EventType.job_started,
+        )
+    )
 
-    await log_event(EventCreate(
-        job_id=job.id,
-        event_type=EventType.phase_started,
-        data=EventData(phase="analyst"),
-    ))
+    await log_event(
+        EventCreate(
+            job_id=job.id,
+            event_type=EventType.phase_started,
+            data=EventData(phase="analyst"),
+        )
+    )
 
     # Retrieve events
     events = await get_events_for_job(job.id)
@@ -350,11 +386,13 @@ async def test_thread_safety(test_db):
 
     # Create multiple jobs concurrently
     async def create_test_job(i):
-        return await create_job(JobCreate(
-            project_path=f"/projects/job{i}",
-            transcript_file=f"/transcripts/{i}.txt",
-            priority=i,
-        ))
+        return await create_job(
+            JobCreate(
+                project_path=f"/projects/job{i}",
+                transcript_file=f"/transcripts/{i}.txt",
+                priority=i,
+            )
+        )
 
     jobs = await asyncio.gather(*[create_test_job(i) for i in range(10)])
 
@@ -373,10 +411,12 @@ async def test_stuck_job_reset(test_db):
     from datetime import timedelta, timezone
 
     # Create a job and set it to in_progress
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+        )
+    )
 
     # Update to in_progress
     await update_job(job.id, JobUpdate(status=JobStatus.in_progress))
@@ -388,13 +428,10 @@ async def test_stuck_job_reset(test_db):
 
     # Manually set started_at to 15 minutes ago to simulate stuck job
     from api.services.database import get_session, jobs_table, update
+
     old_time = datetime.now(timezone.utc) - timedelta(minutes=15)
     async with get_session() as session:
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job.id)
-            .values(started_at=old_time, last_heartbeat=old_time)
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job.id).values(started_at=old_time, last_heartbeat=old_time)
         await session.execute(stmt)
 
     # Check that job is detected as stale
@@ -424,30 +461,25 @@ async def test_stuck_job_max_retries(test_db):
     from datetime import timedelta, timezone
 
     # Create a job
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+        )
+    )
 
     # Set retry_count to 2 (one less than max_retries of 3)
     from api.services.database import get_session, jobs_table, update
+
     async with get_session() as session:
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job.id)
-            .values(retry_count=2)
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job.id).values(retry_count=2)
         await session.execute(stmt)
 
     # Update to in_progress with old timestamp
     await update_job(job.id, JobUpdate(status=JobStatus.in_progress))
     old_time = datetime.now(timezone.utc) - timedelta(minutes=15)
     async with get_session() as session:
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job.id)
-            .values(started_at=old_time, last_heartbeat=old_time)
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job.id).values(started_at=old_time, last_heartbeat=old_time)
         await session.execute(stmt)
 
     # Reset stuck jobs - this should mark as failed
@@ -471,18 +503,24 @@ async def test_run_stuck_job_cleanup(test_db):
     from datetime import timedelta, timezone
 
     # Create multiple stuck jobs
-    job1 = await create_job(JobCreate(
-        project_path="/projects/job1",
-        transcript_file="/transcripts/1.txt",
-    ))
-    job2 = await create_job(JobCreate(
-        project_path="/projects/job2",
-        transcript_file="/transcripts/2.txt",
-    ))
-    job3 = await create_job(JobCreate(
-        project_path="/projects/job3",
-        transcript_file="/transcripts/3.txt",
-    ))
+    job1 = await create_job(
+        JobCreate(
+            project_path="/projects/job1",
+            transcript_file="/transcripts/1.txt",
+        )
+    )
+    job2 = await create_job(
+        JobCreate(
+            project_path="/projects/job2",
+            transcript_file="/transcripts/2.txt",
+        )
+    )
+    job3 = await create_job(
+        JobCreate(
+            project_path="/projects/job3",
+            transcript_file="/transcripts/3.txt",
+        )
+    )
 
     # Make job1 and job2 stuck (will be reset to pending)
     for job in [job1, job2]:
@@ -491,12 +529,9 @@ async def test_run_stuck_job_cleanup(test_db):
     # Make job3 stuck and set retry_count to 2 (will be marked failed)
     await update_job(job3.id, JobUpdate(status=JobStatus.in_progress))
     from api.services.database import get_session, jobs_table, update
+
     async with get_session() as session:
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job3.id)
-            .values(retry_count=2)
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job3.id).values(retry_count=2)
         await session.execute(stmt)
 
     # Set all to old timestamp
@@ -504,9 +539,7 @@ async def test_run_stuck_job_cleanup(test_db):
     async with get_session() as session:
         for job in [job1, job2, job3]:
             stmt = (
-                update(jobs_table)
-                .where(jobs_table.c.id == job.id)
-                .values(started_at=old_time, last_heartbeat=old_time)
+                update(jobs_table).where(jobs_table.c.id == job.id).values(started_at=old_time, last_heartbeat=old_time)
             )
             await session.execute(stmt)
 
@@ -563,7 +596,7 @@ def test_sanitize_path_component_invalid_chars():
 
 def test_sanitize_path_component_multiple_invalid():
     """Test sanitization with multiple invalid characters."""
-    result = sanitize_path_component('test/file\\name:v1*2?')
+    result = sanitize_path_component("test/file\\name:v1*2?")
     assert result == "test_file_name_v1_2_"
 
     # Complex real-world example

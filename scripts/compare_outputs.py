@@ -18,9 +18,8 @@ Usage:
 import argparse
 import re
 import sqlite3
-import sys
 from datetime import datetime
-from difflib import unified_diff, SequenceMatcher
+from difflib import SequenceMatcher, unified_diff
 from pathlib import Path
 
 
@@ -42,7 +41,7 @@ def get_project_path(job_id: int) -> Path | None:
 
 def parse_provenance(content: str) -> dict:
     """Extract provenance info from output header."""
-    match = re.match(r'<!-- model: ([^|]+) \| tier: ([^|]+) \| cost: \$([^|]+) \| tokens: (\d+) -->', content)
+    match = re.match(r"<!-- model: ([^|]+) \| tier: ([^|]+) \| cost: \$([^|]+) \| tokens: (\d+) -->", content)
     if match:
         return {
             "model": match.group(1).strip(),
@@ -85,7 +84,7 @@ def list_versions(job_id: int):
         # Previous versions
         prev_files = sorted(project_path.glob(f"{phase}_output.*.prev.md"), reverse=True)
         for pf in prev_files[:5]:  # Show last 5
-            timestamp = pf.stem.split('.')[1]
+            timestamp = pf.stem.split(".")[1]
             content = pf.read_text()
             prov = parse_provenance(content)
 
@@ -118,7 +117,7 @@ def compare_outputs(job_id: int, phase: str, v1: str = None, v2: str = "current"
             print(f"No previous versions found for {phase}")
             return
         file1 = prev_files[0]
-        v1 = file1.stem.split('.')[1]
+        v1 = file1.stem.split(".")[1]
     else:
         file1 = project_path / f"{phase}_output.{v1}.prev.md"
 

@@ -2,13 +2,15 @@
 
 Provides bulk transcript upload endpoint.
 """
+
 import logging
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from api.models.job import Job, JobCreate
+from api.models.job import JobCreate
 from api.services import database
 from api.services.airtable import AirtableClient
 from api.services.utils import extract_media_id
@@ -26,6 +28,7 @@ MAX_BATCH_SIZE = 20
 
 class UploadStatus(BaseModel):
     """Status for a single file upload."""
+
     filename: str
     success: bool
     job_id: Optional[int] = None
@@ -34,6 +37,7 @@ class UploadStatus(BaseModel):
 
 class UploadResponse(BaseModel):
     """Response for bulk upload."""
+
     uploaded: int
     failed: int
     files: List[UploadStatus]
@@ -70,10 +74,7 @@ async def upload_transcripts(
         raise HTTPException(status_code=400, detail="No files provided")
 
     if len(files) > MAX_BATCH_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Batch size exceeds maximum of {MAX_BATCH_SIZE} files"
-        )
+        raise HTTPException(status_code=400, detail=f"Batch size exceeds maximum of {MAX_BATCH_SIZE} files")
 
     # Ensure transcripts directory exists
     TRANSCRIPTS_DIR.mkdir(exist_ok=True)
@@ -87,11 +88,13 @@ async def upload_transcripts(
             # Validate file extension
             file_ext = Path(file.filename or "").suffix.lower()
             if file_ext not in ALLOWED_EXTENSIONS:
-                results.append(UploadStatus(
-                    filename=file.filename or "unknown",
-                    success=False,
-                    error=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
-                ))
+                results.append(
+                    UploadStatus(
+                        filename=file.filename or "unknown",
+                        success=False,
+                        error=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+                    )
+                )
                 failed_count += 1
                 continue
 
@@ -100,11 +103,13 @@ async def upload_transcripts(
 
             # Validate file size
             if len(content) > MAX_FILE_SIZE:
-                results.append(UploadStatus(
-                    filename=file.filename or "unknown",
-                    success=False,
-                    error=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024:.0f} MB"
-                ))
+                results.append(
+                    UploadStatus(
+                        filename=file.filename or "unknown",
+                        success=False,
+                        error=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024:.0f} MB",
+                    )
+                )
                 failed_count += 1
                 continue
 
@@ -118,7 +123,7 @@ async def upload_transcripts(
             # Clean up common suffixes
             for suffix in ["_ForClaude", "_forclaude", "_transcript"]:
                 if project_name.endswith(suffix):
-                    project_name = project_name[:-len(suffix)]
+                    project_name = project_name[: -len(suffix)]
 
             job_create = JobCreate(
                 project_name=project_name,
@@ -130,11 +135,13 @@ async def upload_transcripts(
             existing_jobs = await database.find_jobs_by_media_id(media_id)
             if existing_jobs:
                 existing = existing_jobs[0]
-                results.append(UploadStatus(
-                    filename=file.filename or "unknown",
-                    success=False,
-                    error=f"Already exists as job {existing.id} ({existing.status.value})"
-                ))
+                results.append(
+                    UploadStatus(
+                        filename=file.filename or "unknown",
+                        success=False,
+                        error=f"Already exists as job {existing.id} ({existing.status.value})",
+                    )
+                )
                 failed_count += 1
                 logger.warning(f"Skipping {file.filename}: duplicate media ID {media_id}")
                 continue
@@ -149,6 +156,7 @@ async def upload_transcripts(
 
                 if record:
                     from api.models.job import JobUpdate
+
                     record_id = record["id"]
                     airtable_url = airtable_client.get_sst_url(record_id)
                     update = JobUpdate(
@@ -160,31 +168,20 @@ async def upload_transcripts(
                     logger.info(f"Job {job.id}: Linked to SST record {record_id}")
                 else:
                     from api.models.job import JobUpdate
+
                     update = JobUpdate(media_id=media_id)
                     job = await database.update_job(job.id, update)
                     logger.warning(f"Job {job.id}: No SST record found for {media_id}")
             except Exception as e:
                 logger.warning(f"Job {job.id}: Airtable lookup failed - {e}")
 
-            results.append(UploadStatus(
-                filename=file.filename or "unknown",
-                success=True,
-                job_id=job.id
-            ))
+            results.append(UploadStatus(filename=file.filename or "unknown", success=True, job_id=job.id))
             uploaded_count += 1
             logger.info(f"Queued job {job.id} for {file.filename}")
 
         except Exception as e:
             logger.error(f"Failed to upload {file.filename}: {e}")
-            results.append(UploadStatus(
-                filename=file.filename or "unknown",
-                success=False,
-                error=str(e)
-            ))
+            results.append(UploadStatus(filename=file.filename or "unknown", success=False, error=str(e)))
             failed_count += 1
 
-    return UploadResponse(
-        uploaded=uploaded_count,
-        failed=failed_count,
-        files=results
-    )
+    return UploadResponse(uploaded=uploaded_count, failed=failed_count, files=results)

@@ -2,11 +2,11 @@
 
 Tests job detail, updates, and control operations (pause, resume, retry, cancel).
 """
+
 import pytest
 from fastapi.testclient import TestClient
-from api.main import app
-from api.models.job import JobStatus, JobCreate, JobUpdate
 
+from api.main import app
 
 client = TestClient(app)
 

@@ -1,9 +1,8 @@
 """Tests for watch_transcripts.py file watcher script."""
-import pytest
-from unittest.mock import patch, MagicMock, call
-from pathlib import Path
+
 import tempfile
-import os
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 # Import the functions to test
 from watch_transcripts import (
@@ -12,15 +11,13 @@ from watch_transcripts import (
     queue_file,
     run_once,
     watch_loop,
-    TRANSCRIPTS_DIR,
-    API_BASE,
 )
 
 
 class TestGetQueuedFiles:
     """Tests for get_queued_files function."""
 
-    @patch('watch_transcripts.httpx.get')
+    @patch("watch_transcripts.httpx.get")
     def test_get_queued_files_success(self, mock_get):
         """Test successful retrieval of queued files."""
         # Mock API responses for different statuses
@@ -43,9 +40,10 @@ class TestGetQueuedFiles:
         assert "file2.srt" in result
         assert len(result) == 2
 
-    @patch('watch_transcripts.httpx.get')
+    @patch("watch_transcripts.httpx.get")
     def test_get_queued_files_no_duplicates(self, mock_get):
         """Test that duplicate filenames across statuses are deduplicated."""
+
         # Mock API responses with duplicate filenames
         def mock_response_factory(*args, **kwargs):
             response = MagicMock()
@@ -66,7 +64,7 @@ class TestGetQueuedFiles:
         assert len(result) == 1
         assert "duplicate.txt" in result
 
-    @patch('watch_transcripts.httpx.get')
+    @patch("watch_transcripts.httpx.get")
     def test_get_queued_files_empty_response(self, mock_get):
         """Test handling of empty queue."""
         mock_response = MagicMock()
@@ -78,7 +76,7 @@ class TestGetQueuedFiles:
 
         assert len(result) == 0
 
-    @patch('watch_transcripts.httpx.get')
+    @patch("watch_transcripts.httpx.get")
     def test_get_queued_files_api_error(self, mock_get):
         """Test handling of API errors."""
         mock_get.side_effect = Exception("Connection error")
@@ -88,7 +86,7 @@ class TestGetQueuedFiles:
         # Should return empty set on error
         assert len(result) == 0
 
-    @patch('watch_transcripts.httpx.get')
+    @patch("watch_transcripts.httpx.get")
     def test_get_queued_files_404_response(self, mock_get):
         """Test handling of non-200 status codes."""
         mock_response = MagicMock()
@@ -104,7 +102,7 @@ class TestGetQueuedFiles:
 class TestGetTranscriptFiles:
     """Tests for get_transcript_files function."""
 
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_get_transcript_files_txt_and_srt(self, mock_dir):
         """Test detection of .txt and .srt files."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -125,7 +123,7 @@ class TestGetTranscriptFiles:
             assert "test2.srt" in result
             assert "test3.pdf" not in result
 
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_get_transcript_files_ignores_hidden(self, mock_dir):
         """Test that hidden files (starting with .) are ignored."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -144,7 +142,7 @@ class TestGetTranscriptFiles:
             assert "normal.txt" in result
             assert ".hidden.txt" not in result
 
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_get_transcript_files_empty_directory(self, mock_dir):
         """Test handling of empty directory."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -156,7 +154,7 @@ class TestGetTranscriptFiles:
 
             assert len(result) == 0
 
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_get_transcript_files_directory_not_exists(self, mock_dir):
         """Test handling when directory doesn't exist."""
         mock_dir.exists.return_value = False
@@ -165,7 +163,7 @@ class TestGetTranscriptFiles:
 
         assert len(result) == 0
 
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_get_transcript_files_sorted(self, mock_dir):
         """Test that results are sorted alphabetically."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -182,7 +180,7 @@ class TestGetTranscriptFiles:
 
             assert result == ["apple.txt", "middle.srt", "zebra.txt"]
 
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_get_transcript_files_ignores_subdirectories(self, mock_dir):
         """Test that subdirectories are ignored."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -206,7 +204,7 @@ class TestGetTranscriptFiles:
 class TestQueueFile:
     """Tests for queue_file function."""
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_success(self, mock_post):
         """Test successful file queueing."""
         mock_response = MagicMock()
@@ -222,7 +220,7 @@ class TestQueueFile:
         assert call_args[1]["json"]["transcript_file"] == "test_transcript.txt"
         assert call_args[1]["json"]["project_name"] == "test_transcript"
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_strips_forclaude_suffix(self, mock_post):
         """Test that _ForClaude suffix is stripped from project name."""
         mock_response = MagicMock()
@@ -235,7 +233,7 @@ class TestQueueFile:
         call_args = mock_post.call_args
         assert call_args[1]["json"]["project_name"] == "myproject"
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_strips_transcript_suffix(self, mock_post):
         """Test that _transcript suffix is stripped from project name."""
         mock_response = MagicMock()
@@ -248,24 +246,19 @@ class TestQueueFile:
         call_args = mock_post.call_args
         assert call_args[1]["json"]["project_name"] == "myproject"
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_duplicate_detected(self, mock_post):
         """Test handling of duplicate file (409 Conflict)."""
         mock_response = MagicMock()
         mock_response.status_code = 409
-        mock_response.json.return_value = {
-            "detail": {
-                "existing_job_id": 42,
-                "existing_status": "completed"
-            }
-        }
+        mock_response.json.return_value = {"detail": {"existing_job_id": 42, "existing_status": "completed"}}
         mock_post.return_value = mock_response
 
         result = queue_file("duplicate.txt")
 
         assert result is False
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_force_parameter(self, mock_post):
         """Test that force parameter adds query string."""
         mock_response = MagicMock()
@@ -278,7 +271,7 @@ class TestQueueFile:
         call_args = mock_post.call_args
         assert "?force=true" in call_args[0][0]
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_api_error(self, mock_post):
         """Test handling of API errors."""
         mock_post.side_effect = Exception("Connection refused")
@@ -287,7 +280,7 @@ class TestQueueFile:
 
         assert result is False
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_server_error(self, mock_post):
         """Test handling of non-success status codes."""
         mock_response = MagicMock()
@@ -298,7 +291,7 @@ class TestQueueFile:
 
         assert result is False
 
-    @patch('watch_transcripts.httpx.post')
+    @patch("watch_transcripts.httpx.post")
     def test_queue_file_200_also_success(self, mock_post):
         """Test that both 200 and 201 are considered success."""
         mock_response = MagicMock()
@@ -314,9 +307,9 @@ class TestQueueFile:
 class TestRunOnce:
     """Tests for run_once function."""
 
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_run_once_queues_new_files(self, mock_queued, mock_files, mock_queue):
         """Test that run_once queues only new files."""
         mock_queued.return_value = {"already_queued.txt"}
@@ -329,9 +322,9 @@ class TestRunOnce:
         mock_queue.assert_any_call("new_file.txt")
         mock_queue.assert_any_call("another_new.srt")
 
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_run_once_no_new_files(self, mock_queued, mock_files, mock_queue):
         """Test that run_once handles no new files gracefully."""
         mock_queued.return_value = {"file1.txt", "file2.txt"}
@@ -342,9 +335,9 @@ class TestRunOnce:
         # Should not queue anything
         mock_queue.assert_not_called()
 
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_run_once_empty_directory(self, mock_queued, mock_files, mock_queue):
         """Test run_once with empty directory."""
         mock_queued.return_value = set()
@@ -355,9 +348,9 @@ class TestRunOnce:
         # Should not queue anything
         mock_queue.assert_not_called()
 
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_run_once_all_new_files(self, mock_queued, mock_files, mock_queue):
         """Test run_once when all files are new."""
         mock_queued.return_value = set()
@@ -372,10 +365,10 @@ class TestRunOnce:
 class TestWatchLoop:
     """Tests for watch_loop function."""
 
-    @patch('watch_transcripts.time.sleep')
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.time.sleep")
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_watch_loop_detects_new_file(self, mock_queued, mock_files, mock_queue, mock_sleep):
         """Test that watch loop detects and queues new files."""
         # Setup initial state
@@ -384,41 +377,33 @@ class TestWatchLoop:
         # First call: initial files
         # Second call: new file appears
         # Third call: trigger KeyboardInterrupt
-        mock_files.side_effect = [
-            ["initial.txt"],
-            ["initial.txt", "new.txt"],
-            KeyboardInterrupt()
-        ]
+        mock_files.side_effect = [["initial.txt"], ["initial.txt", "new.txt"], KeyboardInterrupt()]
 
         watch_loop()
 
         # Should have queued the new file
         mock_queue.assert_called_once_with("new.txt")
 
-    @patch('watch_transcripts.time.sleep')
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.time.sleep")
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_watch_loop_ignores_existing_files(self, mock_queued, mock_files, mock_queue, mock_sleep):
         """Test that watch loop doesn't queue files seen initially."""
         mock_queued.return_value = set()
 
         # All calls return same files, then interrupt
-        mock_files.side_effect = [
-            ["file1.txt"],
-            ["file1.txt"],
-            KeyboardInterrupt()
-        ]
+        mock_files.side_effect = [["file1.txt"], ["file1.txt"], KeyboardInterrupt()]
 
         watch_loop()
 
         # Should not queue anything (file was seen initially)
         mock_queue.assert_not_called()
 
-    @patch('watch_transcripts.time.sleep')
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.time.sleep")
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_watch_loop_keyboard_interrupt(self, mock_queued, mock_files, mock_queue, mock_sleep):
         """Test that watch loop exits cleanly on Ctrl+C."""
         mock_queued.return_value = set()
@@ -427,10 +412,10 @@ class TestWatchLoop:
         # Should not raise exception
         watch_loop()
 
-    @patch('watch_transcripts.time.sleep')
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.time.sleep")
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_watch_loop_tracks_queued_files(self, mock_queued, mock_files, mock_queue, mock_sleep):
         """Test that watch loop includes already-queued files in seen set."""
         # Files already in queue
@@ -439,32 +424,24 @@ class TestWatchLoop:
         # First call: current files
         # Second call: queued file reappears (shouldn't queue again)
         # Third call: interrupt
-        mock_files.side_effect = [
-            ["queued.txt"],
-            ["queued.txt"],
-            KeyboardInterrupt()
-        ]
+        mock_files.side_effect = [["queued.txt"], ["queued.txt"], KeyboardInterrupt()]
 
         watch_loop()
 
         # Should not queue the already-queued file
         mock_queue.assert_not_called()
 
-    @patch('watch_transcripts.POLL_INTERVAL', 1)
-    @patch('watch_transcripts.time.sleep')
-    @patch('watch_transcripts.queue_file')
-    @patch('watch_transcripts.get_transcript_files')
-    @patch('watch_transcripts.get_queued_files')
+    @patch("watch_transcripts.POLL_INTERVAL", 1)
+    @patch("watch_transcripts.time.sleep")
+    @patch("watch_transcripts.queue_file")
+    @patch("watch_transcripts.get_transcript_files")
+    @patch("watch_transcripts.get_queued_files")
     def test_watch_loop_sleep_interval(self, mock_queued, mock_files, mock_queue, mock_sleep):
         """Test that watch loop sleeps between iterations."""
         mock_queued.return_value = set()
 
         # Run two iterations then stop
-        mock_files.side_effect = [
-            [],
-            [],
-            KeyboardInterrupt()
-        ]
+        mock_files.side_effect = [[], [], KeyboardInterrupt()]
 
         watch_loop()
 
@@ -476,9 +453,9 @@ class TestWatchLoop:
 class TestIntegration:
     """Integration-style tests."""
 
-    @patch('watch_transcripts.httpx.post')
-    @patch('watch_transcripts.httpx.get')
-    @patch('watch_transcripts.TRANSCRIPTS_DIR')
+    @patch("watch_transcripts.httpx.post")
+    @patch("watch_transcripts.httpx.get")
+    @patch("watch_transcripts.TRANSCRIPTS_DIR")
     def test_full_workflow_once_mode(self, mock_dir, mock_get, mock_post):
         """Test full workflow in --once mode."""
         # Setup filesystem
@@ -494,10 +471,7 @@ class TestIntegration:
             # get_queued_files() calls
             mock_get_response = MagicMock()
             mock_get_response.status_code = 200
-            mock_get_response.json.return_value = {
-                "jobs": [{"transcript_file": "already_queued.srt"}],
-                "total": 1
-            }
+            mock_get_response.json.return_value = {"jobs": [{"transcript_file": "already_queued.srt"}], "total": 1}
             mock_get.return_value = mock_get_response
 
             # queue_file() calls

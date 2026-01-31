@@ -2,10 +2,10 @@
 
 Tests for duplicate file sanitization, media ID extraction, and SRT parsing.
 """
-import pytest
+
 from api.services.utils import (
-    sanitize_duplicate_filename,
     extract_media_id,
+    sanitize_duplicate_filename,
 )
 
 

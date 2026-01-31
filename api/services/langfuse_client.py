@@ -14,10 +14,10 @@ Langfuse credentials are loaded from:
 import json
 import os
 import sys
-from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from api.services.logging import get_logger
 
@@ -45,6 +45,7 @@ def _get_langfuse_credential(key: str) -> Optional[str]:
 @dataclass
 class ModelStats:
     """Statistics for a single model."""
+
     model_name: str
     request_count: int
     total_cost: float
@@ -55,6 +56,7 @@ class ModelStats:
 @dataclass
 class ModelStatsResponse:
     """Response containing model usage statistics."""
+
     models: List[ModelStats]
     period_start: datetime
     period_end: datetime
@@ -93,6 +95,7 @@ class LangfuseClient:
 
         try:
             from langfuse import Langfuse
+
             self._client = Langfuse(
                 public_key=public_key,
                 secret_key=secret_key,
@@ -176,12 +179,14 @@ class LangfuseClient:
         try:
             # Build trace metadata
             trace_metadata = metadata or {}
-            trace_metadata.update({
-                "backend": backend,
-                "tier": tier,
-                "tier_label": tier_label,
-                "duration_ms": duration_ms,
-            })
+            trace_metadata.update(
+                {
+                    "backend": backend,
+                    "tier": tier,
+                    "tier_label": tier_label,
+                    "duration_ms": duration_ms,
+                }
+            )
 
             # Build tags list
             trace_tags = tags or []
@@ -225,11 +230,7 @@ class LangfuseClient:
             logger.warning(f"Failed to create Langfuse trace: {e}")
             return None
 
-    async def get_model_stats(
-        self,
-        days: int = 7,
-        limit: int = 20
-    ) -> Optional[ModelStatsResponse]:
+    async def get_model_stats(self, days: int = 7, limit: int = 20) -> Optional[ModelStatsResponse]:
         """
         Get model usage statistics from Langfuse.
 
@@ -275,20 +276,22 @@ class LangfuseClient:
             total_cost = 0.0
             total_requests = 0
 
-            if result and hasattr(result, 'data'):
+            if result and hasattr(result, "data"):
                 for row in result.data[:limit]:
                     model_name = row.get("providedModelName") or "unknown"
                     count = int(row.get("count_count", 0))
                     cost = float(row.get("sum_totalCost", 0) or 0)
                     tokens = int(row.get("sum_totalTokens", 0) or 0)
 
-                    models.append(ModelStats(
-                        model_name=model_name,
-                        request_count=count,
-                        total_cost=cost,
-                        total_tokens=tokens,
-                        avg_latency_ms=None,  # Not available in v2 aggregation
-                    ))
+                    models.append(
+                        ModelStats(
+                            model_name=model_name,
+                            request_count=count,
+                            total_cost=cost,
+                            total_tokens=tokens,
+                            avg_latency_ms=None,  # Not available in v2 aggregation
+                        )
+                    )
 
                     total_cost += cost
                     total_requests += count
@@ -328,9 +331,9 @@ class LangfuseClient:
             if trace:
                 # Sum up costs from all observations in the trace
                 total_cost = 0.0
-                if hasattr(trace, 'observations'):
+                if hasattr(trace, "observations"):
                     for obs in trace.observations:
-                        if hasattr(obs, 'calculated_total_cost') and obs.calculated_total_cost:
+                        if hasattr(obs, "calculated_total_cost") and obs.calculated_total_cost:
                             total_cost += float(obs.calculated_total_cost)
                 return total_cost
             return None

@@ -3,19 +3,20 @@
 Provides unified interface for LLM API calls with cost tracking,
 model selection, and event logging.
 """
-import os
-import json
-import time
-import httpx
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
-from dataclasses import dataclass, field
-from pathlib import Path
 
-from api.models.events import EventType, EventCreate, EventData
+import json
+import os
+import time
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import httpx
+
+from api.models.events import EventCreate, EventData, EventType
 from api.services.database import log_event
 from api.services.langfuse_client import get_langfuse_client
-
 
 # Cost cap and safety configuration - can be overridden via environment
 DEFAULT_RUN_COST_CAP = 1.0  # $1 per run max
@@ -28,16 +29,19 @@ DEFAULT_MODEL_ALLOWLIST: List[str] = []
 
 class CostCapExceededError(Exception):
     """Raised when a request would exceed the run cost cap."""
+
     pass
 
 
 class ModelNotAllowedError(Exception):
     """Raised when a model is not in the allowlist."""
+
     pass
 
 
 class TokenCostTooHighError(Exception):
     """Raised when a model's per-token cost exceeds the safety limit."""
+
     pass
 
 
@@ -73,6 +77,7 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
 @dataclass
 class LLMResponse:
     """Response from an LLM API call."""
+
     content: str
     model: str
     input_tokens: int
@@ -87,6 +92,7 @@ class LLMResponse:
 @dataclass
 class RunCostTracker:
     """Tracks cumulative costs for a processing run."""
+
     job_id: Optional[int] = None
     total_cost: float = 0.0
     total_input_tokens: int = 0
@@ -103,13 +109,15 @@ class RunCostTracker:
         self.total_output_tokens += response.output_tokens
         self.total_tokens += response.total_tokens
         self.call_count += 1
-        self.calls.append({
-            "model": response.model,
-            "backend": response.backend,
-            "tokens": response.total_tokens,
-            "cost": response.cost,
-            "duration_ms": response.duration_ms,
-        })
+        self.calls.append(
+            {
+                "model": response.model,
+                "backend": response.backend,
+                "tokens": response.total_tokens,
+                "cost": response.cost,
+                "duration_ms": response.duration_ms,
+            }
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Return summary dict for logging."""
@@ -156,19 +164,21 @@ async def end_run_tracking() -> Optional[Dict[str, Any]]:
     summary = tracker.to_dict()
 
     # Log worker:completed event
-    await log_event(EventCreate(
-        job_id=tracker.job_id,
-        event_type=EventType.job_completed,
-        data=EventData(
-            cost=tracker.total_cost,
-            tokens=tracker.total_tokens,
-            extra={
-                "input_tokens": tracker.total_input_tokens,
-                "output_tokens": tracker.total_output_tokens,
-                "call_count": tracker.call_count,
-            }
-        ),
-    ))
+    await log_event(
+        EventCreate(
+            job_id=tracker.job_id,
+            event_type=EventType.job_completed,
+            data=EventData(
+                cost=tracker.total_cost,
+                tokens=tracker.total_tokens,
+                extra={
+                    "input_tokens": tracker.total_input_tokens,
+                    "output_tokens": tracker.total_output_tokens,
+                    "call_count": tracker.call_count,
+                },
+            ),
+        )
+    )
 
     _current_run_tracker = None
     return summary
@@ -237,25 +247,24 @@ class LLMClient:
     def _load_safety_config(self) -> None:
         """Load cost cap and allowlist configuration from environment/config."""
         # Run cost cap (per-run maximum)
-        self.run_cost_cap = float(os.getenv(
-            "LLM_RUN_COST_CAP",
-            self.config.get("safety", {}).get("run_cost_cap", DEFAULT_RUN_COST_CAP)
-        ))
+        self.run_cost_cap = float(
+            os.getenv("LLM_RUN_COST_CAP", self.config.get("safety", {}).get("run_cost_cap", DEFAULT_RUN_COST_CAP))
+        )
 
         # Max cost per 1K tokens (safety against expensive models)
-        self.max_cost_per_1k_tokens = float(os.getenv(
-            "LLM_MAX_COST_PER_1K_TOKENS",
-            self.config.get("safety", {}).get("max_cost_per_1k_tokens", DEFAULT_MAX_COST_PER_1K_TOKENS)
-        ))
+        self.max_cost_per_1k_tokens = float(
+            os.getenv(
+                "LLM_MAX_COST_PER_1K_TOKENS",
+                self.config.get("safety", {}).get("max_cost_per_1k_tokens", DEFAULT_MAX_COST_PER_1K_TOKENS),
+            )
+        )
 
         # Model allowlist
         allowlist_env = os.getenv("LLM_MODEL_ALLOWLIST", "")
         if allowlist_env:
             self.model_allowlist = [m.strip() for m in allowlist_env.split(",") if m.strip()]
         else:
-            self.model_allowlist = self.config.get("safety", {}).get(
-                "model_allowlist", DEFAULT_MODEL_ALLOWLIST
-            )
+            self.model_allowlist = self.config.get("safety", {}).get("model_allowlist", DEFAULT_MODEL_ALLOWLIST)
 
         # Whether to enforce guards (can disable for testing)
         self.enforce_guards = os.getenv("LLM_ENFORCE_GUARDS", "true").lower() == "true"
@@ -278,8 +287,7 @@ class LLMClient:
                 return
 
         raise ModelNotAllowedError(
-            f"Model '{model}' is not in allowlist. "
-            f"Allowed: {', '.join(self.model_allowlist)}"
+            f"Model '{model}' is not in allowlist. " f"Allowed: {', '.join(self.model_allowlist)}"
         )
 
     def check_token_cost(self, model: str) -> None:
@@ -373,10 +381,7 @@ class LLMClient:
         return backends[backend_name]
 
     def get_backend_for_phase(
-        self,
-        phase: str,
-        context: Optional[Dict[str, Any]] = None,
-        tier_override: Optional[int] = None
+        self, phase: str, context: Optional[Dict[str, Any]] = None, tier_override: Optional[int] = None
     ) -> str:
         """Get the configured backend for a specific agent phase.
 
@@ -433,11 +438,7 @@ class LLMClient:
         phase_backends = self.config.get("phase_backends", {})
         return phase_backends.get(phase, self.config.get("primary_backend", "openrouter"))
 
-    def get_tier_for_phase(
-        self,
-        phase: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> int:
+    def get_tier_for_phase(self, phase: str, context: Optional[Dict[str, Any]] = None) -> int:
         """Get the calculated tier index for a phase based on context.
 
         Args:
@@ -450,11 +451,7 @@ class LLMClient:
         tier, _ = self.get_tier_for_phase_with_reason(phase, context)
         return tier
 
-    def get_tier_for_phase_with_reason(
-        self,
-        phase: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> tuple:
+    def get_tier_for_phase_with_reason(self, phase: str, context: Optional[Dict[str, Any]] = None) -> tuple:
         """Get the calculated tier index and reason for a phase.
 
         Args:
@@ -518,13 +515,16 @@ class LLMClient:
             Dict with escalation settings (enabled, on_failure, on_timeout, etc.)
         """
         routing_config = self.config.get("routing", {})
-        return routing_config.get("escalation", {
-            "enabled": True,
-            "on_failure": True,
-            "on_timeout": True,
-            "timeout_seconds": 120,
-            "max_retries_per_tier": 1
-        })
+        return routing_config.get(
+            "escalation",
+            {
+                "enabled": True,
+                "on_failure": True,
+                "on_timeout": True,
+                "timeout_seconds": 120,
+                "max_retries_per_tier": 1,
+            },
+        )
 
     def get_api_key(self, backend_config: Dict[str, Any]) -> Optional[str]:
         """Get API key for a backend from environment."""
@@ -590,21 +590,13 @@ class LLMClient:
         start_time = time.time()
 
         if backend_type == "openrouter":
-            response = await self._call_openrouter(
-                backend_config, model_id, messages, api_key, **kwargs
-            )
+            response = await self._call_openrouter(backend_config, model_id, messages, api_key, **kwargs)
         elif backend_type == "openai":
-            response = await self._call_openai(
-                backend_config, model_id, messages, api_key, **kwargs
-            )
+            response = await self._call_openai(backend_config, model_id, messages, api_key, **kwargs)
         elif backend_type == "anthropic":
-            response = await self._call_anthropic(
-                backend_config, model_id, messages, api_key, **kwargs
-            )
+            response = await self._call_anthropic(backend_config, model_id, messages, api_key, **kwargs)
         elif backend_type == "gemini":
-            response = await self._call_gemini(
-                backend_config, model_id, messages, api_key, **kwargs
-            )
+            response = await self._call_gemini(backend_config, model_id, messages, api_key, **kwargs)
         else:
             raise ValueError(f"Unsupported backend type: {backend_type}")
 
@@ -617,17 +609,19 @@ class LLMClient:
             _current_run_tracker.add_call(response)
 
         # Log cost_update event
-        await log_event(EventCreate(
-            job_id=job_id,
-            event_type=EventType.cost_update,
-            data=EventData(
-                cost=response.cost,
-                tokens=response.total_tokens,
-                model=response.model,
-                backend=backend_name,
-                duration_ms=duration_ms,
-            ),
-        ))
+        await log_event(
+            EventCreate(
+                job_id=job_id,
+                event_type=EventType.cost_update,
+                data=EventData(
+                    cost=response.cost,
+                    tokens=response.total_tokens,
+                    model=response.model,
+                    backend=backend_name,
+                    duration_ms=duration_ms,
+                ),
+            )
+        )
 
         # Send trace to Langfuse for observability
         langfuse = get_langfuse_client()
@@ -685,22 +679,11 @@ class LLMClient:
         if response.status_code >= 400:
             try:
                 error_body = response.json()
-                logger.error(
-                    "OpenRouter API error",
-                    extra={
-                        "status_code": response.status_code,
-                        "model": model,
-                        "error": error_body,
-                    }
-                )
+                print(f"[LLM] OpenRouter API error status={response.status_code} model={model} error={error_body}")
             except Exception:
-                logger.error(
-                    "OpenRouter API error (non-JSON response)",
-                    extra={
-                        "status_code": response.status_code,
-                        "model": model,
-                        "response_text": response.text[:500],
-                    }
+                print(
+                    f"[LLM] OpenRouter API error (non-JSON) status={response.status_code} "
+                    f"model={model} response={response.text[:500]}"
                 )
 
         response.raise_for_status()
@@ -873,10 +856,12 @@ class LLMClient:
         contents = []
         for msg in messages:
             role = "user" if msg["role"] in ("user", "system") else "model"
-            contents.append({
-                "role": role,
-                "parts": [{"text": msg["content"]}],
-            })
+            contents.append(
+                {
+                    "role": role,
+                    "parts": [{"text": msg["content"]}],
+                }
+            )
 
         payload = {
             "contents": contents,

@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
 try:
     from keychain_secrets import get_secret
+
     # Load known secrets into environment if not already set
     for key in ["OPENROUTER_API_KEY", "AIRTABLE_API_KEY", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"]:
         if key not in os.environ:
@@ -24,18 +25,19 @@ except ImportError:
 
 # Load remaining environment variables from .env file
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.services import database
-from api.services.llm import get_llm_client, close_llm_client
-from api.services.logging import setup_logging, get_logger
 from api.services.ingest_config import ensure_defaults as ensure_ingest_defaults
 from api.services.ingest_scheduler import start_scheduler, stop_scheduler
-
+from api.services.llm import close_llm_client, get_llm_client
+from api.services.logging import get_logger, setup_logging
 
 # Initialize logging for API
 setup_logging(log_file="api.log")
@@ -141,7 +143,8 @@ async def health():
 
 
 # Register routers
-from api.routers import jobs, queue, config, websocket, upload, system, ingest, langfuse, chat_prototype
+from api.routers import chat_prototype, config, ingest, jobs, langfuse, queue, system, upload, websocket
+
 app.include_router(queue.router, prefix="/api/queue", tags=["queue"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(config.router, prefix="/api", tags=["config"])

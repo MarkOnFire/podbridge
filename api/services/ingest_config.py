@@ -4,13 +4,14 @@ Manages ingest scanner settings stored in the database config table.
 Provides typed access to ingest configuration values and ensures defaults
 are set on application startup.
 """
+
 import json
 import logging
 from datetime import datetime
 from typing import Optional
 
-from api.services.database import get_config, set_config
 from api.models.ingest import IngestConfig, IngestConfigUpdate
+from api.services.database import get_config, set_config
 
 logger = logging.getLogger(__name__)
 
@@ -75,23 +76,11 @@ async def get_ingest_config() -> IngestConfig:
     ignore_dirs_item = await get_config(KEY_IGNORE_DIRECTORIES)
 
     # Parse values with defaults
-    enabled = (
-        enabled_item.get_typed_value()
-        if enabled_item
-        else DEFAULT_CONFIG.enabled
-    )
+    enabled = enabled_item.get_typed_value() if enabled_item else DEFAULT_CONFIG.enabled
 
-    scan_interval_hours = (
-        interval_item.get_typed_value()
-        if interval_item
-        else DEFAULT_CONFIG.scan_interval_hours
-    )
+    scan_interval_hours = interval_item.get_typed_value() if interval_item else DEFAULT_CONFIG.scan_interval_hours
 
-    scan_time = (
-        time_item.value
-        if time_item
-        else DEFAULT_CONFIG.scan_time
-    )
+    scan_time = time_item.value if time_item else DEFAULT_CONFIG.scan_time
 
     last_scan_at = None
     if last_scan_item and last_scan_item.value:
@@ -104,11 +93,7 @@ async def get_ingest_config() -> IngestConfig:
     if last_success_item:
         last_scan_success = last_success_item.get_typed_value()
 
-    server_url = (
-        server_url_item.value
-        if server_url_item
-        else DEFAULT_CONFIG.server_url
-    )
+    server_url = server_url_item.value if server_url_item else DEFAULT_CONFIG.server_url
 
     directories = DEFAULT_CONFIG.directories
     if directories_item:
@@ -152,7 +137,7 @@ async def update_ingest_config(updates: IngestConfigUpdate) -> IngestConfig:
             KEY_ENABLED,
             str(updates.enabled).lower(),
             value_type="bool",
-            description="Whether scheduled scanning is enabled"
+            description="Whether scheduled scanning is enabled",
         )
 
     if updates.scan_interval_hours is not None:
@@ -160,7 +145,7 @@ async def update_ingest_config(updates: IngestConfigUpdate) -> IngestConfig:
             KEY_SCAN_INTERVAL_HOURS,
             str(updates.scan_interval_hours),
             value_type="int",
-            description="Hours between scheduled scans"
+            description="Hours between scheduled scans",
         )
 
     if updates.scan_time is not None:
@@ -168,7 +153,7 @@ async def update_ingest_config(updates: IngestConfigUpdate) -> IngestConfig:
             KEY_SCAN_TIME,
             updates.scan_time,
             value_type="string",
-            description="Time of day to run scheduled scan (HH:MM)"
+            description="Time of day to run scheduled scan (HH:MM)",
         )
 
     return await get_ingest_config()
@@ -184,18 +169,10 @@ async def record_scan_result(success: bool) -> None:
     """
     now = datetime.utcnow()
 
-    await set_config(
-        KEY_LAST_SCAN_AT,
-        now.isoformat(),
-        value_type="string",
-        description="Timestamp of last scan"
-    )
+    await set_config(KEY_LAST_SCAN_AT, now.isoformat(), value_type="string", description="Timestamp of last scan")
 
     await set_config(
-        KEY_LAST_SCAN_SUCCESS,
-        str(success).lower(),
-        value_type="bool",
-        description="Whether last scan succeeded"
+        KEY_LAST_SCAN_SUCCESS, str(success).lower(), value_type="bool", description="Whether last scan succeeded"
     )
 
 
@@ -218,42 +195,42 @@ async def ensure_defaults() -> None:
         KEY_ENABLED,
         str(DEFAULT_CONFIG.enabled).lower(),
         value_type="bool",
-        description="Whether scheduled scanning is enabled"
+        description="Whether scheduled scanning is enabled",
     )
 
     await set_config(
         KEY_SCAN_INTERVAL_HOURS,
         str(DEFAULT_CONFIG.scan_interval_hours),
         value_type="int",
-        description="Hours between scheduled scans"
+        description="Hours between scheduled scans",
     )
 
     await set_config(
         KEY_SCAN_TIME,
         DEFAULT_CONFIG.scan_time,
         value_type="string",
-        description="Time of day to run scheduled scan (HH:MM format)"
+        description="Time of day to run scheduled scan (HH:MM format)",
     )
 
     await set_config(
         KEY_SERVER_URL,
         DEFAULT_CONFIG.server_url,
         value_type="string",
-        description="Base URL of the PBS Wisconsin ingest server"
+        description="Base URL of the PBS Wisconsin ingest server",
     )
 
     await set_config(
         KEY_DIRECTORIES,
         json.dumps(DEFAULT_CONFIG.directories),
         value_type="json",
-        description="Directories to scan on ingest server"
+        description="Directories to scan on ingest server",
     )
 
     await set_config(
         KEY_IGNORE_DIRECTORIES,
         json.dumps(DEFAULT_CONFIG.ignore_directories),
         value_type="json",
-        description="Directories to ignore when scanning"
+        description="Directories to ignore when scanning",
     )
 
     logger.info("Ingest configuration defaults initialized")
@@ -309,6 +286,7 @@ async def get_next_scan_time() -> Optional[datetime]:
     # If that time has passed today, schedule for tomorrow
     if next_scan <= now:
         from datetime import timedelta
+
         next_scan += timedelta(days=1)
 
     return next_scan

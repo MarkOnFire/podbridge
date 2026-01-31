@@ -1,0 +1,28 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_SHA: ${{ github.sha }}
+      DEPLOY_BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy placeholder
+        run: |
+          echo "========================================="
+          echo " Deploy would happen here"
+          echo " Commit: $DEPLOY_SHA"
+          echo " Branch: $DEPLOY_BRANCH"
+          echo "========================================="
+          echo ""
+          echo "Future steps:"
+          echo "  1. Build Docker image"
+          echo "  2. Push to container registry"
+          echo "  3. Deploy to production server"
+          echo "  4. Run health checks"

@@ -25,29 +25,26 @@ Screengrab endpoints:
 """
 
 import logging
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import text
 
-from api.services.ingest_scanner import IngestScanner, ScanResult, get_ingest_scanner
-from api.services.screengrab_attacher import (
-    ScreengrabAttacher,
-    AttachResult,
-    BatchAttachResult,
-    get_screengrab_attacher,
-)
+from api.models.ingest import IngestConfigResponse, IngestConfigUpdate
+from api.services.database import get_session
 from api.services.ingest_config import (
     get_ingest_config,
-    update_ingest_config,
-    record_scan_result,
     get_next_scan_time,
+    record_scan_result,
+    update_ingest_config,
 )
+from api.services.ingest_scanner import IngestScanner
 from api.services.ingest_scheduler import configure_scheduler
-from api.models.ingest import IngestConfig, IngestConfigUpdate, IngestConfigResponse
-from api.services.database import get_session
-from sqlalchemy import text
+from api.services.screengrab_attacher import (
+    get_screengrab_attacher,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +53,10 @@ router = APIRouter()
 
 # Response models
 
+
 class SSTRecordInfo(BaseModel):
     """Minimal SST record info for enriching available files."""
+
     id: str
     title: Optional[str] = None
     project: Optional[str] = None
@@ -65,6 +64,7 @@ class SSTRecordInfo(BaseModel):
 
 class AvailableFile(BaseModel):
     """A file available for queueing."""
+
     id: int
     filename: str
     media_id: Optional[str]
@@ -78,6 +78,7 @@ class AvailableFile(BaseModel):
 
 class AvailableFilesResponse(BaseModel):
     """Response listing available files."""
+
     files: List[AvailableFile]
     total_new: int
     last_scan_at: Optional[datetime] = None
@@ -85,6 +86,7 @@ class AvailableFilesResponse(BaseModel):
 
 class ScanResponse(BaseModel):
     """Response from scan endpoint."""
+
     success: bool
     qc_passed_checked: int
     new_files_found: int
@@ -97,6 +99,7 @@ class ScanResponse(BaseModel):
 
 class ScreengrabFile(BaseModel):
     """A screengrab file discovered on remote server."""
+
     id: int
     filename: str
     remote_url: str
@@ -109,6 +112,7 @@ class ScreengrabFile(BaseModel):
 
 class ScreengrabListResponse(BaseModel):
     """Response listing screengrabs."""
+
     screengrabs: List[ScreengrabFile]
     total_new: int
     total_attached: int
@@ -120,6 +124,7 @@ class ScreengrabListResponse(BaseModel):
 
 class AttachResponse(BaseModel):
     """Response from single attach operation."""
+
     success: bool
     media_id: str
     filename: str
@@ -132,6 +137,7 @@ class AttachResponse(BaseModel):
 
 class BatchAttachResponse(BaseModel):
     """Response from batch attach operation."""
+
     total_processed: int
     attached: int
     skipped_no_match: int
@@ -141,6 +147,7 @@ class BatchAttachResponse(BaseModel):
 
 class IngestStatusResponse(BaseModel):
     """Scanner status and configuration."""
+
     enabled: bool
     server_url: str
     files_by_status: dict
@@ -149,31 +156,19 @@ class IngestStatusResponse(BaseModel):
 
 # Endpoints
 
+
 @router.get("/available", response_model=AvailableFilesResponse)
 async def list_available_files(
-    status: Optional[str] = Query(
-        default="new",
-        description="Filter by status (new, queued, ignored)"
-    ),
+    status: Optional[str] = Query(default="new", description="Filter by status (new, queued, ignored)"),
     file_type: Optional[str] = Query(
-        default="transcript",
-        description="Filter by file type (transcript or screengrab)"
+        default="transcript", description="Filter by file type (transcript or screengrab)"
     ),
     limit: int = Query(default=50, le=200),
-    search: Optional[str] = Query(
-        default=None,
-        description="Search by filename or Media ID (case-insensitive)"
-    ),
+    search: Optional[str] = Query(default=None, description="Search by filename or Media ID (case-insensitive)"),
     days: Optional[int] = Query(
-        default=30,
-        ge=1,
-        le=365,
-        description="Filter by first_seen_at within N days (default: 30)"
+        default=30, ge=1, le=365, description="Filter by first_seen_at within N days (default: 30)"
     ),
-    exclude_with_jobs: bool = Query(
-        default=True,
-        description="Hide files that already have linked jobs"
-    ),
+    exclude_with_jobs: bool = Query(default=True, description="Hide files that already have linked jobs"),
 ) -> AvailableFilesResponse:
     """
     List files available for queueing.
@@ -248,11 +243,13 @@ async def list_available_files(
         ]
 
         # Get total count of new files
-        count_query = text("""
+        count_query = text(
+            """
             SELECT COUNT(*) as count
             FROM available_files
             WHERE status = 'new' AND file_type = :file_type
-        """)
+        """
+        )
         result = await session.execute(count_query, {"file_type": file_type or "transcript"})
         total_new = result.fetchone().count
 
@@ -269,12 +266,10 @@ async def list_available_files(
 @router.post("/scan", response_model=ScanResponse)
 async def trigger_scan(
     base_url: Optional[str] = Query(
-        default=None,
-        description="Base URL of ingest server (uses config default if not provided)"
+        default=None, description="Base URL of ingest server (uses config default if not provided)"
     ),
     directories: Optional[str] = Query(
-        default=None,
-        description="Comma-separated list of directories to scan (uses config default if not provided)"
+        default=None, description="Comma-separated list of directories to scan (uses config default if not provided)"
     ),
 ) -> ScanResponse:
     """
@@ -333,20 +328,24 @@ async def get_ingest_status() -> IngestStatusResponse:
 
     async with get_session() as session:
         # Count by status
-        status_query = text("""
+        status_query = text(
+            """
             SELECT status, COUNT(*) as count
             FROM available_files
             GROUP BY status
-        """)
+        """
+        )
         result = await session.execute(status_query)
         status_counts = {row.status: row.count for row in result.fetchall()}
 
         # Count by type
-        type_query = text("""
+        type_query = text(
+            """
             SELECT file_type, COUNT(*) as count
             FROM available_files
             GROUP BY file_type
-        """)
+        """
+        )
         result = await session.execute(type_query)
         type_counts = {row.file_type: row.count for row in result.fetchall()}
 
@@ -360,10 +359,7 @@ async def get_ingest_status() -> IngestStatusResponse:
 
 @router.get("/screengrabs", response_model=ScreengrabListResponse)
 async def list_screengrabs(
-    status: Optional[str] = Query(
-        default=None,
-        description="Filter by status: new, attached, no_match, ignored"
-    ),
+    status: Optional[str] = Query(default=None, description="Filter by status: new, attached, no_match, ignored"),
     limit: int = Query(default=50, le=200),
 ) -> ScreengrabListResponse:
     """
@@ -410,12 +406,14 @@ async def list_screengrabs(
         ]
 
         # Get totals
-        totals_query = text("""
+        totals_query = text(
+            """
             SELECT status, COUNT(*) as count
             FROM available_files
             WHERE file_type = 'screengrab'
             GROUP BY status
-        """)
+        """
+        )
         result = await session.execute(totals_query)
         totals = {row.status: row.count for row in result.fetchall()}
 
@@ -430,10 +428,7 @@ async def list_screengrabs(
 @router.get("/screengrabs/for-media-id/{media_id}", response_model=ScreengrabListResponse)
 async def get_screengrabs_for_media_id(
     media_id: str,
-    include_attached: bool = Query(
-        default=False,
-        description="Include already-attached screengrabs (default: false)"
-    ),
+    include_attached: bool = Query(default=False, description="Include already-attached screengrabs (default: false)"),
 ) -> ScreengrabListResponse:
     """
     Get screengrabs matching a specific Media ID.
@@ -497,12 +492,14 @@ async def get_screengrabs_for_media_id(
         ]
 
         # Get totals for this media_id
-        totals_query = text("""
+        totals_query = text(
+            """
             SELECT status, COUNT(*) as count
             FROM available_files
             WHERE file_type = 'screengrab' AND media_id = :media_id
             GROUP BY status
-        """)
+        """
+        )
         result = await session.execute(totals_query, {"media_id": media_id})
         totals = {row.status: row.count for row in result.fetchall()}
 
@@ -587,16 +584,21 @@ async def ignore_screengrab(file_id: int) -> dict:
         Success message
     """
     async with get_session() as session:
-        query = text("""
+        query = text(
+            """
             UPDATE available_files
             SET status = 'ignored',
                 status_changed_at = :now
             WHERE id = :file_id AND file_type = 'screengrab'
-        """)
-        result = await session.execute(query, {
-            "file_id": file_id,
-            "now": datetime.utcnow().isoformat(),
-        })
+        """
+        )
+        result = await session.execute(
+            query,
+            {
+                "file_id": file_id,
+                "now": datetime.utcnow().isoformat(),
+            },
+        )
 
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Screengrab not found")
@@ -616,22 +618,24 @@ async def unignore_screengrab(file_id: int) -> dict:
         Success message
     """
     async with get_session() as session:
-        query = text("""
+        query = text(
+            """
             UPDATE available_files
             SET status = 'new',
                 status_changed_at = :now
             WHERE id = :file_id AND file_type = 'screengrab' AND status = 'ignored'
-        """)
-        result = await session.execute(query, {
-            "file_id": file_id,
-            "now": datetime.utcnow().isoformat(),
-        })
+        """
+        )
+        result = await session.execute(
+            query,
+            {
+                "file_id": file_id,
+                "now": datetime.utcnow().isoformat(),
+            },
+        )
 
         if result.rowcount == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="Screengrab not found or not currently ignored"
-            )
+            raise HTTPException(status_code=404, detail="Screengrab not found or not currently ignored")
 
     return {"success": True, "message": f"Screengrab {file_id} restored to new"}
 
@@ -643,6 +647,7 @@ async def unignore_screengrab(file_id: int) -> dict:
 
 class QueueTranscriptResponse(BaseModel):
     """Response from queuing a transcript."""
+
     success: bool
     file_id: int
     media_id: Optional[str]
@@ -653,11 +658,13 @@ class QueueTranscriptResponse(BaseModel):
 
 class BulkQueueRequest(BaseModel):
     """Request to queue multiple transcripts."""
+
     file_ids: List[int]
 
 
 class BulkQueueResponse(BaseModel):
     """Response from bulk queue operation."""
+
     total_requested: int
     queued: int
     failed: int
@@ -678,8 +685,8 @@ async def queue_transcript(file_id: int) -> QueueTranscriptResponse:
     Returns:
         Queue result including local path and job ID
     """
-    from api.services.database import create_job
     from api.models.job import JobCreate
+    from api.services.database import create_job
 
     # Get scanner with config
     config = await get_ingest_config()
@@ -709,7 +716,7 @@ async def queue_transcript(file_id: int) -> QueueTranscriptResponse:
         # transcript_file should be relative to transcripts/ folder
         local_path = download_result["local_path"]
         if local_path.startswith("transcripts/"):
-            transcript_file = local_path[len("transcripts/"):]
+            transcript_file = local_path[len("transcripts/") :]
         else:
             transcript_file = filename
 
@@ -721,15 +728,20 @@ async def queue_transcript(file_id: int) -> QueueTranscriptResponse:
 
         # Update available_files with job_id
         async with get_session() as session:
-            update_query = text("""
+            update_query = text(
+                """
                 UPDATE available_files
                 SET job_id = :job_id
                 WHERE id = :file_id
-            """)
-            await session.execute(update_query, {
-                "job_id": job.id,
-                "file_id": file_id,
-            })
+            """
+            )
+            await session.execute(
+                update_query,
+                {
+                    "job_id": job.id,
+                    "file_id": file_id,
+                },
+            )
 
         logger.info(f"Queued transcript {file_id}: job {job.id}")
 
@@ -797,16 +809,21 @@ async def ignore_transcript(file_id: int) -> dict:
         Success message
     """
     async with get_session() as session:
-        query = text("""
+        query = text(
+            """
             UPDATE available_files
             SET status = 'ignored',
                 status_changed_at = :now
             WHERE id = :file_id AND file_type = 'transcript'
-        """)
-        result = await session.execute(query, {
-            "file_id": file_id,
-            "now": datetime.utcnow().isoformat(),
-        })
+        """
+        )
+        result = await session.execute(
+            query,
+            {
+                "file_id": file_id,
+                "now": datetime.utcnow().isoformat(),
+            },
+        )
 
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Transcript not found")
@@ -827,22 +844,24 @@ async def unignore_transcript(file_id: int) -> dict:
         Success message
     """
     async with get_session() as session:
-        query = text("""
+        query = text(
+            """
             UPDATE available_files
             SET status = 'new',
                 status_changed_at = :now
             WHERE id = :file_id AND file_type = 'transcript' AND status = 'ignored'
-        """)
-        result = await session.execute(query, {
-            "file_id": file_id,
-            "now": datetime.utcnow().isoformat(),
-        })
+        """
+        )
+        result = await session.execute(
+            query,
+            {
+                "file_id": file_id,
+                "now": datetime.utcnow().isoformat(),
+            },
+        )
 
         if result.rowcount == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="Transcript not found or not currently ignored"
-            )
+            raise HTTPException(status_code=404, detail="Transcript not found or not currently ignored")
 
     logger.info(f"Restored transcript {file_id} to new")
     return {"success": True, "message": f"Transcript {file_id} restored to new"}
@@ -897,19 +916,13 @@ async def update_config_endpoint(updates: IngestConfigUpdate) -> IngestConfigRes
     if updates.scan_time:
         parts = updates.scan_time.split(":")
         if len(parts) != 2:
-            raise HTTPException(
-                status_code=400,
-                detail="scan_time must be in HH:MM format"
-            )
+            raise HTTPException(status_code=400, detail="scan_time must be in HH:MM format")
         try:
             hour, minute = int(parts[0]), int(parts[1])
             if not (0 <= hour <= 23) or not (0 <= minute <= 59):
                 raise ValueError()
         except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail="scan_time must be a valid time (00:00 to 23:59)"
-            )
+            raise HTTPException(status_code=400, detail="scan_time must be a valid time (00:00 to 23:59)")
 
     config = await update_ingest_config(updates)
 
@@ -918,8 +931,10 @@ async def update_config_endpoint(updates: IngestConfigUpdate) -> IngestConfigRes
 
     next_scan = await get_next_scan_time()
 
-    logger.info(f"Ingest config updated: enabled={config.enabled}, "
-                f"interval={config.scan_interval_hours}h, time={config.scan_time}")
+    logger.info(
+        f"Ingest config updated: enabled={config.enabled}, "
+        f"interval={config.scan_interval_hours}h, time={config.scan_time}"
+    )
 
     return IngestConfigResponse(
         enabled=config.enabled,

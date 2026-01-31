@@ -4,14 +4,14 @@ CRITICAL: Tests verify that existing Airtable attachments are NEVER removed.
 The ScreengrabAttacher must APPEND new attachments, never replace existing ones.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timezone
 
 from api.services.screengrab_attacher import (
-    ScreengrabAttacher,
     AttachResult,
     BatchAttachResult,
+    ScreengrabAttacher,
 )
 
 
@@ -33,12 +33,14 @@ class TestAttachmentPreservation:
             "fields": {
                 "Media ID": "2WLI1209HD",
                 "Screen Grab": existing_attachments,
-            }
+            },
         }
 
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session, \
-             patch("httpx.AsyncClient") as mock_httpx:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+            patch("httpx.AsyncClient") as mock_httpx,
+        ):
 
             # Mock Airtable client for lookups
             mock_airtable = MagicMock()
@@ -102,12 +104,14 @@ class TestAttachmentPreservation:
             "fields": {
                 "Media ID": "2WLI1209HD",
                 "Screen Grab": None,  # Field is null
-            }
+            },
         }
 
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session, \
-             patch("httpx.AsyncClient") as mock_httpx:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+            patch("httpx.AsyncClient") as mock_httpx,
+        ):
 
             # Mock Airtable client
             mock_airtable = MagicMock()
@@ -162,12 +166,14 @@ class TestAttachmentPreservation:
             "fields": {
                 "Media ID": "2WLI1209HD",
                 "Screen Grab": [],  # Field is empty array
-            }
+            },
         }
 
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session, \
-             patch("httpx.AsyncClient") as mock_httpx:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+            patch("httpx.AsyncClient") as mock_httpx,
+        ):
 
             # Mock Airtable client
             mock_airtable = MagicMock()
@@ -230,11 +236,13 @@ class TestDuplicateDetection:
             "fields": {
                 "Media ID": "2WLI1209HD",
                 "Screen Grab": existing_attachments,
-            }
+            },
         }
 
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+        ):
 
             # Mock Airtable client
             mock_airtable = MagicMock()
@@ -273,11 +281,13 @@ class TestDuplicateDetection:
             "fields": {
                 "Media ID": "2WLI1209HD",
                 "Screen Grab": existing_attachments,
-            }
+            },
         }
 
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+        ):
 
             # Mock Airtable client
             mock_airtable = MagicMock()
@@ -311,8 +321,10 @@ class TestNoMatchHandling:
     @pytest.mark.asyncio
     async def test_returns_error_when_media_id_not_found(self):
         """Test that error is returned when Media ID not found in SST."""
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+        ):
 
             # Mock Airtable client to return None (not found)
             mock_airtable = MagicMock()
@@ -350,12 +362,14 @@ class TestAuditLogging:
             "fields": {
                 "Media ID": "2WLI1209HD",
                 "Screen Grab": [],
-            }
+            },
         }
 
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session, \
-             patch("httpx.AsyncClient") as mock_httpx:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+            patch("httpx.AsyncClient") as mock_httpx,
+        ):
 
             # Mock Airtable client
             mock_airtable = MagicMock()
@@ -400,8 +414,10 @@ class TestAuditLogging:
     @pytest.mark.asyncio
     async def test_audit_log_created_on_failure(self):
         """Test that audit log entry is created on failed attachment."""
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+        ):
 
             # Mock Airtable client to return None (not found)
             mock_airtable = MagicMock()
@@ -441,9 +457,11 @@ class TestBatchAttachment:
     @pytest.mark.asyncio
     async def test_attach_all_pending_processes_multiple_files(self):
         """Test that attach_all_pending processes all pending screengrabs."""
-        with patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class, \
-             patch("api.services.screengrab_attacher.get_session") as mock_session, \
-             patch("httpx.AsyncClient") as mock_httpx:
+        with (
+            patch("api.services.screengrab_attacher.AirtableClient") as mock_airtable_class,
+            patch("api.services.screengrab_attacher.get_session") as mock_session,
+            patch("httpx.AsyncClient") as mock_httpx,
+        ):
 
             # Mock database session - return 2 pending screengrabs
             mock_db = MagicMock()
@@ -467,10 +485,12 @@ class TestBatchAttachment:
 
             # Mock Airtable client
             mock_airtable = MagicMock()
-            mock_airtable.search_sst_by_media_id = AsyncMock(side_effect=[
-                {"id": "recXXX1", "fields": {"Media ID": "2WLI1209HD", "Screen Grab": []}},
-                {"id": "recXXX2", "fields": {"Media ID": "2WLI1210HD", "Screen Grab": []}},
-            ])
+            mock_airtable.search_sst_by_media_id = AsyncMock(
+                side_effect=[
+                    {"id": "recXXX1", "fields": {"Media ID": "2WLI1209HD", "Screen Grab": []}},
+                    {"id": "recXXX2", "fields": {"Media ID": "2WLI1210HD", "Screen Grab": []}},
+                ]
+            )
             mock_airtable_class.return_value = mock_airtable
 
             # Mock HTTP client

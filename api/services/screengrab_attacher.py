@@ -13,17 +13,15 @@ SAFETY GUARANTEES:
 - IDEMPOTENT: Re-running on same file won't duplicate attachments
 """
 
-import os
 import logging
-from datetime import datetime, timezone
-from typing import Optional, List
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import List, Optional
 
 import httpx
-from sqlalchemy import select, insert, update
 
 from api.services.airtable import AirtableClient, get_secret
-from api.services.database import get_session, metadata
+from api.services.database import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AttachResult:
     """Result of a single screengrab attachment operation."""
+
     success: bool
     media_id: str
     filename: str
@@ -44,6 +43,7 @@ class AttachResult:
 @dataclass
 class BatchAttachResult:
     """Result of batch attachment operation."""
+
     total_processed: int
     attached: int
     skipped_no_match: int
@@ -69,9 +69,7 @@ class ScreengrabAttacher:
         """Initialize with Airtable API key."""
         self.api_key = api_key or get_secret("AIRTABLE_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "Airtable API key required. Add to Keychain or set AIRTABLE_API_KEY env var."
-            )
+            raise ValueError("Airtable API key required. Add to Keychain or set AIRTABLE_API_KEY env var.")
 
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -141,10 +139,12 @@ class ScreengrabAttacher:
                 new_attachments.append({"id": att["id"]})
 
             # Add new attachment by URL
-            new_attachments.append({
-                "url": image_url,
-                "filename": filename,
-            })
+            new_attachments.append(
+                {
+                    "url": image_url,
+                    "filename": filename,
+                }
+            )
 
             # Step 5: Update SST record (CONTROLLED WRITE)
             await self._update_screengrab_field(record_id, new_attachments)
@@ -178,11 +178,13 @@ class ScreengrabAttacher:
 
         async with get_session() as session:
             # Fetch file record
-            query = text("""
+            query = text(
+                """
                 SELECT id, remote_url, filename, media_id, status
                 FROM available_files
                 WHERE id = :file_id AND file_type = 'screengrab'
-            """)
+            """
+            )
             result = await session.execute(query, {"file_id": file_id})
             row = result.fetchone()
 
@@ -191,7 +193,7 @@ class ScreengrabAttacher:
                     success=False,
                     media_id="unknown",
                     filename="unknown",
-                    error_message=f"Available file {file_id} not found or not a screengrab"
+                    error_message=f"Available file {file_id} not found or not a screengrab",
                 )
 
             if not row.media_id:
@@ -199,7 +201,7 @@ class ScreengrabAttacher:
                     success=False,
                     media_id="unknown",
                     filename=row.filename,
-                    error_message="No Media ID extracted from filename"
+                    error_message="No Media ID extracted from filename",
                 )
 
         # Perform attachment
@@ -234,14 +236,16 @@ class ScreengrabAttacher:
 
         async with get_session() as session:
             # Fetch all 'new' screengrabs with media IDs
-            query = text("""
+            query = text(
+                """
                 SELECT id, remote_url, filename, media_id
                 FROM available_files
                 WHERE file_type = 'screengrab'
                   AND status = 'new'
                   AND media_id IS NOT NULL
                 ORDER BY first_seen_at ASC
-            """)
+            """
+            )
             result = await session.execute(query)
             rows = result.fetchall()
 
@@ -263,9 +267,7 @@ class ScreengrabAttacher:
             elif "No SST record found" in (attach_result.error_message or ""):
                 batch_result.skipped_no_match += 1
             else:
-                batch_result.errors.append(
-                    f"{row.filename}: {attach_result.error_message}"
-                )
+                batch_result.errors.append(f"{row.filename}: {attach_result.error_message}")
 
             # Update available_files status
             await self._update_available_file_status(row.id, attach_result)
@@ -295,11 +297,7 @@ class ScreengrabAttacher:
         """
         url = f"{self.API_BASE_URL}/{self.BASE_ID}/{self.SST_TABLE_ID}/{record_id}"
 
-        payload = {
-            "fields": {
-                self.SCREEN_GRAB_FIELD: attachments
-            }
-        }
+        payload = {"fields": {self.SCREEN_GRAB_FIELD: attachments}}
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.patch(url, headers=self.headers, json=payload)
@@ -322,27 +320,32 @@ class ScreengrabAttacher:
         from sqlalchemy import text
 
         async with get_session() as session:
-            query = text("""
+            query = text(
+                """
                 INSERT INTO screengrab_attachments
                 (available_file_id, sst_record_id, media_id, filename, remote_url,
                  attached_at, attachments_before, attachments_after, success, error_message)
                 VALUES
                 (:available_file_id, :sst_record_id, :media_id, :filename, :remote_url,
                  :attached_at, :attachments_before, :attachments_after, :success, :error_message)
-            """)
+            """
+            )
 
-            await session.execute(query, {
-                "available_file_id": available_file_id,
-                "sst_record_id": result.sst_record_id or "",
-                "media_id": result.media_id,
-                "filename": result.filename,
-                "remote_url": remote_url,
-                "attached_at": datetime.now(timezone.utc).isoformat(),
-                "attachments_before": result.attachments_before,
-                "attachments_after": result.attachments_after,
-                "success": result.success,
-                "error_message": result.error_message,
-            })
+            await session.execute(
+                query,
+                {
+                    "available_file_id": available_file_id,
+                    "sst_record_id": result.sst_record_id or "",
+                    "media_id": result.media_id,
+                    "filename": result.filename,
+                    "remote_url": remote_url,
+                    "attached_at": datetime.now(timezone.utc).isoformat(),
+                    "attachments_before": result.attachments_before,
+                    "attachments_after": result.attachments_after,
+                    "success": result.success,
+                    "error_message": result.error_message,
+                },
+            )
 
     async def _update_available_file_status(
         self,
@@ -361,22 +364,27 @@ class ScreengrabAttacher:
             new_status = "new"  # Keep as new for retry on transient errors
 
         async with get_session() as session:
-            query = text("""
+            query = text(
+                """
                 UPDATE available_files
                 SET status = :status,
                     status_changed_at = :changed_at,
                     airtable_record_id = :record_id,
                     attached_at = :attached_at
                 WHERE id = :file_id
-            """)
+            """
+            )
 
-            await session.execute(query, {
-                "status": new_status,
-                "changed_at": datetime.now(timezone.utc).isoformat(),
-                "record_id": result.sst_record_id,
-                "attached_at": datetime.now(timezone.utc).isoformat() if result.success else None,
-                "file_id": file_id,
-            })
+            await session.execute(
+                query,
+                {
+                    "status": new_status,
+                    "changed_at": datetime.now(timezone.utc).isoformat(),
+                    "record_id": result.sst_record_id,
+                    "attached_at": datetime.now(timezone.utc).isoformat() if result.success else None,
+                    "file_id": file_id,
+                },
+            )
 
 
 # Factory function

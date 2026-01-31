@@ -34,12 +34,13 @@ from typing import Any, Optional
 import httpx
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, Prompt, PromptMessage, PromptArgument
+from mcp.types import Prompt, PromptArgument, PromptMessage, TextContent, Tool
 
 # Load secrets from Keychain into environment (falls back to env vars)
 sys.path.insert(0, str(Path.home() / "Developer/the-lodge/scripts"))
 try:
     from keychain_secrets import get_secret
+
     for key in ["AIRTABLE_API_KEY"]:
         if key not in os.environ:
             value = get_secret(key)
@@ -52,6 +53,7 @@ except ImportError:
 if "AIRTABLE_API_KEY" not in os.environ:
     try:
         import subprocess
+
         user = os.getenv("USER") or os.getlogin()
         # Try to find the key with the specific service name used in .env.example
         cmd = ["security", "find-generic-password", "-s", "developer.workspace.AIRTABLE_API_KEY", "-a", user, "-w"]
@@ -64,10 +66,8 @@ if "AIRTABLE_API_KEY" not in os.environ:
 
 # Configuration
 API_BASE_URL = os.getenv("EDITORIAL_API_URL", "http://localhost:8000")
-OUTPUT_DIR = Path(os.getenv("EDITORIAL_OUTPUT_DIR",
-    Path(__file__).parent.parent / "OUTPUT"))
-TRANSCRIPTS_DIR = Path(os.getenv("EDITORIAL_TRANSCRIPTS_DIR",
-    Path(__file__).parent.parent / "transcripts"))
+OUTPUT_DIR = Path(os.getenv("EDITORIAL_OUTPUT_DIR", Path(__file__).parent.parent / "OUTPUT"))
+TRANSCRIPTS_DIR = Path(os.getenv("EDITORIAL_TRANSCRIPTS_DIR", Path(__file__).parent.parent / "transcripts"))
 
 # Artifact display labels - maps technical filenames to user-friendly names
 ARTIFACT_LABELS = {
@@ -82,9 +82,11 @@ ARTIFACT_LABELS = {
     "manifest.json": "Job Manifest",
 }
 
+
 def get_artifact_label(filename: str) -> str:
     """Get a friendly label for a filename, or return the filename if unknown."""
     return ARTIFACT_LABELS.get(filename, filename)
+
 
 # Airtable configuration (READ-ONLY)
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
@@ -99,6 +101,7 @@ server = Server("cardigan")
 # =============================================================================
 # Helper Functions
 # =============================================================================
+
 
 def get_project_path(project_name: str) -> Path:
     """Get the OUTPUT path for a project."""
@@ -248,10 +251,7 @@ async def fetch_job_from_api(project_name: str) -> dict | None:
     try:
         async with httpx.AsyncClient() as client:
             # Try to find job by project name
-            response = await client.get(
-                f"{API_BASE_URL}/api/queue",
-                params={"limit": 100}
-            )
+            response = await client.get(f"{API_BASE_URL}/api/queue", params={"limit": 100})
             if response.status_code == 200:
                 data = response.json()
                 jobs = data.get("jobs", [])
@@ -320,6 +320,7 @@ async def search_sst_by_media_id(media_id: str) -> Optional[dict]:
 
     # Use Airtable's filterByFormula to search by Media ID
     import urllib.parse
+
     formula = f"{{Media ID}}='{media_id}'"
     encoded_formula = urllib.parse.quote(formula)
     url = f"{AIRTABLE_API_BASE}/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_ID}?filterByFormula={encoded_formula}"
@@ -372,6 +373,7 @@ def _extract_sst_fields(record: dict) -> dict:
 # MCP Tool Definitions
 # =============================================================================
 
+
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     """List available tools for the copy editor."""
@@ -385,10 +387,10 @@ async def list_tools() -> list[Tool]:
                     "status_filter": {
                         "type": "string",
                         "enum": ["all", "ready_for_editing", "revision_in_progress", "processing"],
-                        "description": "Filter by project status. Default: all"
+                        "description": "Filter by project status. Default: all",
                     }
-                }
-            }
+                },
+            },
         ),
         Tool(
             name="load_project_for_editing",
@@ -396,27 +398,19 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "The project ID (e.g., '2WLI1209HD')"
-                    }
+                    "project_name": {"type": "string", "description": "The project ID (e.g., '2WLI1209HD')"}
                 },
-                "required": ["project_name"]
-            }
+                "required": ["project_name"],
+            },
         ),
         Tool(
             name="get_formatted_transcript",
             description="Load the AP Style formatted transcript for fact-checking. Use this to verify quotes, speaker names, and facts.",
             inputSchema={
                 "type": "object",
-                "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "The project ID"
-                    }
-                },
-                "required": ["project_name"]
-            }
+                "properties": {"project_name": {"type": "string", "description": "The project ID"}},
+                "required": ["project_name"],
+            },
         ),
         Tool(
             name="save_revision",
@@ -424,17 +418,11 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "The project ID"
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "The revision document content (Markdown)"
-                    }
+                    "project_name": {"type": "string", "description": "The project ID"},
+                    "content": {"type": "string", "description": "The revision document content (Markdown)"},
                 },
-                "required": ["project_name", "content"]
-            }
+                "required": ["project_name", "content"],
+            },
         ),
         Tool(
             name="save_keyword_report",
@@ -442,31 +430,20 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "The project ID"
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "The keyword report content (Markdown)"
-                    }
+                    "project_name": {"type": "string", "description": "The project ID"},
+                    "content": {"type": "string", "description": "The keyword report content (Markdown)"},
                 },
-                "required": ["project_name", "content"]
-            }
+                "required": ["project_name", "content"],
+            },
         ),
         Tool(
             name="get_project_summary",
             description="Quick status check for a specific project without loading full context.",
             inputSchema={
                 "type": "object",
-                "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "The project ID"
-                    }
-                },
-                "required": ["project_name"]
-            }
+                "properties": {"project_name": {"type": "string", "description": "The project ID"}},
+                "required": ["project_name"],
+            },
         ),
         Tool(
             name="read_project_file",
@@ -474,17 +451,11 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "project_name": {
-                        "type": "string",
-                        "description": "The project ID"
-                    },
-                    "filename": {
-                        "type": "string",
-                        "description": "The filename to read (e.g., 'analyst_output.md')"
-                    }
+                    "project_name": {"type": "string", "description": "The project ID"},
+                    "filename": {"type": "string", "description": "The filename to read (e.g., 'analyst_output.md')"},
                 },
-                "required": ["project_name", "filename"]
-            }
+                "required": ["project_name", "filename"],
+            },
         ),
         Tool(
             name="search_projects",
@@ -494,27 +465,31 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Text to search for in project names (case-insensitive partial match)"
+                        "description": "Text to search for in project names (case-insensitive partial match)",
                     },
                     "status": {
                         "type": "string",
-                        "enum": ["all", "ready_for_editing", "revision_in_progress", "processing", "failed", "incomplete"],
-                        "description": "Filter by project status. Default: all"
+                        "enum": [
+                            "all",
+                            "ready_for_editing",
+                            "revision_in_progress",
+                            "processing",
+                            "failed",
+                            "incomplete",
+                        ],
+                        "description": "Filter by project status. Default: all",
                     },
                     "completed_after": {
                         "type": "string",
-                        "description": "Filter projects completed after this date (YYYY-MM-DD format)"
+                        "description": "Filter projects completed after this date (YYYY-MM-DD format)",
                     },
                     "completed_before": {
                         "type": "string",
-                        "description": "Filter projects completed before this date (YYYY-MM-DD format)"
+                        "description": "Filter projects completed before this date (YYYY-MM-DD format)",
                     },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return. Default: 20"
-                    }
-                }
-            }
+                    "limit": {"type": "integer", "description": "Maximum number of results to return. Default: 20"},
+                },
+            },
         ),
         Tool(
             name="get_sst_metadata",
@@ -524,11 +499,11 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "media_id": {
                         "type": "string",
-                        "description": "The Media ID / project name (e.g., '2WLIEuchreWorldChampSM')"
+                        "description": "The Media ID / project name (e.g., '2WLIEuchreWorldChampSM')",
                     }
                 },
-                "required": ["media_id"]
-            }
+                "required": ["media_id"],
+            },
         ),
     ]
 
@@ -537,6 +512,7 @@ async def list_tools() -> list[Tool]:
 # MCP Prompt Definitions
 # =============================================================================
 
+
 @server.list_prompts()
 async def list_prompts() -> list[Prompt]:
     """List available prompts for copy editing workflows."""
@@ -544,62 +520,36 @@ async def list_prompts() -> list[Prompt]:
         Prompt(
             name="hello_neighbor",
             description="Meet Cardigan, your friendly editorial neighbor. A warm introduction to what's available.",
-            arguments=[]
+            arguments=[],
         ),
         Prompt(
             name="start_edit_session",
             description="Start an editing session for a project. Loads context and guides you through the copy editing workflow.",
             arguments=[
                 PromptArgument(
-                    name="project_name",
-                    description="The project ID to edit (e.g., '2WLI1209HD')",
-                    required=True
+                    name="project_name", description="The project ID to edit (e.g., '2WLI1209HD')", required=True
                 )
-            ]
+            ],
         ),
         Prompt(
             name="review_brainstorming",
             description="Review the AI-generated brainstorming (titles, descriptions, keywords) for a project and refine the copy.",
-            arguments=[
-                PromptArgument(
-                    name="project_name",
-                    description="The project ID",
-                    required=True
-                )
-            ]
+            arguments=[PromptArgument(name="project_name", description="The project ID", required=True)],
         ),
         Prompt(
             name="analyze_seo",
             description="Analyze SEO metadata and suggest improvements for search visibility.",
-            arguments=[
-                PromptArgument(
-                    name="project_name",
-                    description="The project ID",
-                    required=True
-                )
-            ]
+            arguments=[PromptArgument(name="project_name", description="The project ID", required=True)],
         ),
         Prompt(
             name="fact_check",
             description="Verify facts, quotes, and speaker names against the formatted transcript.",
-            arguments=[
-                PromptArgument(
-                    name="project_name",
-                    description="The project ID",
-                    required=True
-                )
-            ]
+            arguments=[PromptArgument(name="project_name", description="The project ID", required=True)],
         ),
         Prompt(
             name="save_my_work",
             description="Save the current revision document to the project folder. Use this when you've finalized copy edits.",
-            arguments=[
-                PromptArgument(
-                    name="project_name",
-                    description="The project ID",
-                    required=True
-                )
-            ]
+            arguments=[PromptArgument(name="project_name", description="The project ID", required=True)],
         ),
     ]
 
@@ -611,11 +561,12 @@ async def get_prompt(name: str, arguments: dict[str, str] | None) -> list[Prompt
     project_name = args.get("project_name", "")
 
     if name == "hello_neighbor":
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text="""Hello, Cardigan! I'd like to do some editing today.
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text="""Hello, Cardigan! I'd like to do some editing today.
 
 Please:
 1. Introduce yourself warmly (you speak like Mister Rogers — gentle, patient, genuinely delighted to help)
@@ -630,16 +581,18 @@ IMPORTANT TOOL USAGE GUIDELINES:
 - When you need to save a revision, you MUST actually call the `save_revision` tool. Do not just describe or announce saving.
 - Always verify tool calls completed successfully by checking the response before telling the user it's done.
 - If you want to show the user a document, present it directly in the chat - don't rely on external artifacts.
-- Never claim to have saved, created, or modified a file unless the tool call returned a success confirmation."""
+- Never claim to have saved, created, or modified a file unless the tool call returned a success confirmation.""",
+                ),
             )
-        )]
+        ]
 
     elif name == "start_edit_session":
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text=f"""I'd like to start an editing session for project **{project_name}**.
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=f"""I'd like to start an editing session for project **{project_name}**.
 
 Please:
 1. Load the project context using `load_project_for_editing("{project_name}")`
@@ -649,16 +602,18 @@ Please:
    - Title refinement
    - Description editing
    - Keyword optimization
-   - Full copy review"""
+   - Full copy review""",
+                ),
             )
-        )]
+        ]
 
     elif name == "review_brainstorming":
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text=f"""I want to review the AI-generated brainstorming for project **{project_name}**.
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=f"""I want to review the AI-generated brainstorming for project **{project_name}**.
 
 Please:
 1. Load the project using `load_project_for_editing("{project_name}")`
@@ -667,16 +622,18 @@ Please:
    - Why it works (strengths)
    - What could be improved
 3. Compare against the SST metadata (if available)
-4. Recommend which suggestions to use, modify, or discard"""
+4. Recommend which suggestions to use, modify, or discard""",
+                ),
             )
-        )]
+        ]
 
     elif name == "analyze_seo":
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text=f"""I need an SEO analysis for project **{project_name}**.
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=f"""I need an SEO analysis for project **{project_name}**.
 
 Please:
 1. Load the project using `load_project_for_editing("{project_name}")`
@@ -687,16 +644,18 @@ Please:
    - Keyword coverage and density
    - Tag relevance
 4. Suggest specific improvements with before/after examples
-5. Save your analysis using `save_keyword_report` if needed"""
+5. Save your analysis using `save_keyword_report` if needed""",
+                ),
             )
-        )]
+        ]
 
     elif name == "fact_check":
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text=f"""I need to fact-check content for project **{project_name}**.
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=f"""I need to fact-check content for project **{project_name}**.
 
 Please:
 1. Load the formatted transcript using `get_formatted_transcript("{project_name}")`
@@ -706,16 +665,18 @@ Please:
    - Quoted text matches the transcript exactly
    - Proper nouns (organizations, places, titles) are accurate
    - Any facts or statistics mentioned
-4. Flag any discrepancies or items that need verification"""
+4. Flag any discrepancies or items that need verification""",
+                ),
             )
-        )]
+        ]
 
     elif name == "save_my_work":
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text=f"""Please save our work on project **{project_name}**.
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(
+                    type="text",
+                    text=f"""Please save our work on project **{project_name}**.
 
 CRITICAL: You must ACTUALLY call the save_revision tool. Do not just describe saving.
 
@@ -729,23 +690,19 @@ Steps:
 5. Only AFTER receiving "✅ Saved revision as copy_revision_vX.md" should you tell me it's saved
 6. Show me the confirmation message from the tool
 
-If the tool call fails or returns an error, tell me immediately - do not claim success."""
+If the tool call fails or returns an error, tell me immediately - do not claim success.""",
+                ),
             )
-        )]
+        ]
 
     else:
-        return [PromptMessage(
-            role="user",
-            content=TextContent(
-                type="text",
-                text=f"Unknown prompt: {name}"
-            )
-        )]
+        return [PromptMessage(role="user", content=TextContent(type="text", text=f"Unknown prompt: {name}"))]
 
 
 # =============================================================================
 # MCP Tool Implementations
 # =============================================================================
+
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
@@ -807,13 +764,15 @@ async def handle_list_processed_projects(arguments: dict) -> list[TextContent]:
             except Exception:
                 pass
 
-        projects.append({
-            "project_name": project_path.name,
-            "status": status,
-            "completed_at": completed_at,
-            "deliverables": deliverables,
-            "job_id": manifest.get("job_id")
-        })
+        projects.append(
+            {
+                "project_name": project_path.name,
+                "status": status,
+                "completed_at": completed_at,
+                "deliverables": deliverables,
+                "job_id": manifest.get("job_id"),
+            }
+        )
 
     if not projects:
         return [TextContent(type="text", text="No processed projects found.")]
@@ -826,7 +785,7 @@ async def handle_list_processed_projects(arguments: dict) -> list[TextContent]:
             "revision_in_progress": "📝",
             "processing": "⏳",
             "failed": "❌",
-            "incomplete": "⚠️"
+            "incomplete": "⚠️",
         }.get(p["status"], "❓")
 
         lines.append(f"{status_emoji} **{p['project_name']}**")
@@ -847,33 +806,47 @@ async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
 
     project_path = get_project_path(project_name)
     if not project_path.exists():
-        return [TextContent(type="text", text="\n".join([
-            f"# Project: {project_name}",
-            "",
-            f"No OUTPUT folder exists for '{project_name}'. This project has not been processed through the transcript pipeline.",
-            "",
-            "## How to proceed",
-            "",
-            f"1. **Fetch Airtable context** — Use `get_sst_metadata` with media_id `{project_name}`",
-            f"2. **Save your work** — `save_revision` and `save_keyword_report` will create the project folder automatically",
-            f"3. **Or submit for processing** — Add a transcript to the ingest queue via the web dashboard",
-        ]))]
+        return [
+            TextContent(
+                type="text",
+                text="\n".join(
+                    [
+                        f"# Project: {project_name}",
+                        "",
+                        f"No OUTPUT folder exists for '{project_name}'. This project has not been processed through the transcript pipeline.",
+                        "",
+                        "## How to proceed",
+                        "",
+                        f"1. **Fetch Airtable context** — Use `get_sst_metadata` with media_id `{project_name}`",
+                        "2. **Save your work** — `save_revision` and `save_keyword_report` will create the project folder automatically",
+                        "3. **Or submit for processing** — Add a transcript to the ingest queue via the web dashboard",
+                    ]
+                ),
+            )
+        ]
 
     manifest = load_manifest(project_name)
     if not manifest:
         # Folder exists but no manifest — list what's there so the editor isn't stuck
         existing_files = sorted(f.name for f in project_path.iterdir() if f.is_file())
         file_list = [f"- {name}" for name in existing_files] if existing_files else ["- _(empty folder)_"]
-        return [TextContent(type="text", text="\n".join([
-            f"# Project: {project_name}",
-            "",
-            "Project folder exists but has no manifest.json. This may be a partially created project.",
-            "",
-            "## Files found",
-            *file_list,
-            "",
-            "Use `save_revision` or `save_keyword_report` to create a manifest and save your work.",
-        ]))]
+        return [
+            TextContent(
+                type="text",
+                text="\n".join(
+                    [
+                        f"# Project: {project_name}",
+                        "",
+                        "Project folder exists but has no manifest.json. This may be a partially created project.",
+                        "",
+                        "## Files found",
+                        *file_list,
+                        "",
+                        "Use `save_revision` or `save_keyword_report` to create a manifest and save your work.",
+                    ]
+                ),
+            )
+        ]
 
     outputs = manifest.get("outputs", {})
     result_parts = []
@@ -933,24 +906,30 @@ async def handle_load_project_for_editing(arguments: dict) -> list[TextContent]:
             result_parts.append("")
         elif not AIRTABLE_API_KEY:
             result_parts.append("---\n## SST Metadata\n")
-            result_parts.append("*SST linked but AIRTABLE_API_KEY not configured. Set env var to enable SST context.*\n")
+            result_parts.append(
+                "*SST linked but AIRTABLE_API_KEY not configured. Set env var to enable SST context.*\n"
+            )
             result_parts.append("")
         else:
             result_parts.append("---\n## SST Metadata\n")
-            result_parts.append(f"*⚠️ SST record linked ({airtable_record_id}) but fetch returned no data. Record may not exist or have no relevant fields.*\n")
+            result_parts.append(
+                f"*⚠️ SST record linked ({airtable_record_id}) but fetch returned no data. Record may not exist or have no relevant fields.*\n"
+            )
             result_parts.append("")
     else:
         # No Airtable link in manifest - prompt agent to search directly
         result_parts.append("---\n## SST Metadata\n")
-        result_parts.append(f"*⚠️ NO AIRTABLE LINK IN MANIFEST — Try searching Airtable by Media ID:*\n")
+        result_parts.append("*⚠️ NO AIRTABLE LINK IN MANIFEST — Try searching Airtable by Media ID:*\n")
         result_parts.append("```")
         result_parts.append("mcp__airtable__search_records(")
-        result_parts.append(f'  baseId="appZ2HGwhiifQToB6",')
-        result_parts.append(f'  tableId="tblTKFOwTvK7xw1H5",')
+        result_parts.append('  baseId="appZ2HGwhiifQToB6",')
+        result_parts.append('  tableId="tblTKFOwTvK7xw1H5",')
         result_parts.append(f'  searchTerm="{project_name}"')
         result_parts.append(")")
         result_parts.append("```")
-        result_parts.append("*If search finds a record, use that SST data. If no results, work from transcript only.*\n")
+        result_parts.append(
+            "*If search finds a record, use that SST data. If no results, work from transcript only.*\n"
+        )
         result_parts.append("")
 
     # Load brainstorming (analyst output)
@@ -1004,10 +983,12 @@ async def handle_get_formatted_transcript(arguments: dict) -> list[TextContent]:
             transcript_path = search_dir / transcript_name
             if transcript_path.exists():
                 content = transcript_path.read_text()
-                return [TextContent(
-                    type="text",
-                    text=f"# Raw Transcript: {project_name}\n\n**Note**: Formatted transcript not available. Using raw transcript.\n\n{content}"
-                )]
+                return [
+                    TextContent(
+                        type="text",
+                        text=f"# Raw Transcript: {project_name}\n\n**Note**: Formatted transcript not available. Using raw transcript.\n\n{content}",
+                    )
+                ]
 
     return [TextContent(type="text", text=f"Error: No transcript found for '{project_name}'")]
 
@@ -1035,18 +1016,16 @@ async def handle_save_revision(arguments: dict) -> list[TextContent]:
     if manifest:
         if "revisions" not in manifest:
             manifest["revisions"] = []
-        manifest["revisions"].append({
-            "version": version,
-            "filename": filename,
-            "saved_at": datetime.now().isoformat()
-        })
+        manifest["revisions"].append({"version": version, "filename": filename, "saved_at": datetime.now().isoformat()})
         save_manifest(project_name, manifest)
 
     created_note = f"\n📁 New project folder created for '{project_name}'" if was_created else ""
-    return [TextContent(
-        type="text",
-        text=f"✅ Saved revision as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}{created_note}"
-    )]
+    return [
+        TextContent(
+            type="text",
+            text=f"✅ Saved revision as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}{created_note}",
+        )
+    ]
 
 
 async def handle_save_keyword_report(arguments: dict) -> list[TextContent]:
@@ -1072,18 +1051,18 @@ async def handle_save_keyword_report(arguments: dict) -> list[TextContent]:
     if manifest:
         if "keyword_reports" not in manifest:
             manifest["keyword_reports"] = []
-        manifest["keyword_reports"].append({
-            "version": version,
-            "filename": filename,
-            "saved_at": datetime.now().isoformat()
-        })
+        manifest["keyword_reports"].append(
+            {"version": version, "filename": filename, "saved_at": datetime.now().isoformat()}
+        )
         save_manifest(project_name, manifest)
 
     created_note = f"\n📁 New project folder created for '{project_name}'" if was_created else ""
-    return [TextContent(
-        type="text",
-        text=f"✅ Saved keyword report as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}{created_note}"
-    )]
+    return [
+        TextContent(
+            type="text",
+            text=f"✅ Saved keyword report as `{filename}` in OUTPUT/{project_name}/\n\nVersion: v{version}\nPath: {filepath}{created_note}",
+        )
+    ]
 
 
 async def handle_get_project_summary(arguments: dict) -> list[TextContent]:
@@ -1170,12 +1149,22 @@ async def handle_search_projects(arguments: dict) -> list[TextContent]:
         try:
             after_date = datetime.fromisoformat(completed_after)
         except ValueError:
-            return [TextContent(type="text", text=f"Error: Invalid date format for completed_after: {completed_after}. Use YYYY-MM-DD.")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error: Invalid date format for completed_after: {completed_after}. Use YYYY-MM-DD.",
+                )
+            ]
     if completed_before:
         try:
             before_date = datetime.fromisoformat(completed_before)
         except ValueError:
-            return [TextContent(type="text", text=f"Error: Invalid date format for completed_before: {completed_before}. Use YYYY-MM-DD.")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error: Invalid date format for completed_before: {completed_before}. Use YYYY-MM-DD.",
+                )
+            ]
 
     results = []
 
@@ -1217,13 +1206,15 @@ async def handle_search_projects(arguments: dict) -> list[TextContent]:
 
         # Collect result
         deliverables = get_available_deliverables(project_path, manifest)
-        results.append({
-            "project_name": project_name,
-            "status": status,
-            "completed_at": completed_at.strftime("%Y-%m-%d %H:%M") if completed_at else "N/A",
-            "deliverables": deliverables,
-            "job_id": manifest.get("job_id")
-        })
+        results.append(
+            {
+                "project_name": project_name,
+                "status": status,
+                "completed_at": completed_at.strftime("%Y-%m-%d %H:%M") if completed_at else "N/A",
+                "deliverables": deliverables,
+                "job_id": manifest.get("job_id"),
+            }
+        )
 
         if len(results) >= limit:
             break
@@ -1249,7 +1240,7 @@ async def handle_search_projects(arguments: dict) -> list[TextContent]:
             "revision_in_progress": "📝",
             "processing": "⏳",
             "failed": "❌",
-            "incomplete": "⚠️"
+            "incomplete": "⚠️",
         }.get(p["status"], "❓")
 
         lines.append(f"{status_emoji} **{p['project_name']}**")
@@ -1273,7 +1264,12 @@ async def handle_get_sst_metadata(arguments: dict) -> list[TextContent]:
     sst_data = await search_sst_by_media_id(media_id)
 
     if not sst_data:
-        return [TextContent(type="text", text=f"No SST record found for Media ID: {media_id}\n\nThis project may not have an Airtable entry yet.")]
+        return [
+            TextContent(
+                type="text",
+                text=f"No SST record found for Media ID: {media_id}\n\nThis project may not have an Airtable entry yet.",
+            )
+        ]
 
     # Format the response
     lines = [f"# SST Metadata for {media_id}\n"]
@@ -1331,14 +1327,11 @@ async def handle_get_sst_metadata(arguments: dict) -> list[TextContent]:
 # Main Entry Point
 # =============================================================================
 
+
 async def main():
     """Run the MCP server."""
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options()
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 if __name__ == "__main__":

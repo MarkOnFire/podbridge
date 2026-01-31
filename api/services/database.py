@@ -3,41 +3,41 @@
 Provides async database operations using SQLAlchemy 2.0+ with aiosqlite.
 Thread-safe connection pool and CRUD operations for jobs, events, and config.
 """
+
 import glob
 import json
 import os
-from datetime import datetime, timezone
-from typing import Optional, List
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import List, Optional
 
 from sqlalchemy import (
-    select,
-    update,
-    delete,
-    func,
-    and_,
-    desc,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
     MetaData,
     Table,
-    Column,
-    Integer,
     Text,
-    Float,
-    DateTime,
-    ForeignKey,
+    and_,
+    delete,
+    desc,
+    func,
+    select,
+    update,
 )
 from sqlalchemy.ext.asyncio import (
-    create_async_engine,
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
+    create_async_engine,
 )
 
-from api.models.job import Job, JobCreate, JobUpdate, JobStatus, JobPhase, PhaseStatus, JobOutputs
-from api.models.events import SessionEvent, EventCreate, EventData, EventType
+from api.models.chat import ChatMessage, ChatSession, ChatSessionStatus
 from api.models.config import ConfigItem, ConfigValueType
-from api.models.chat import ChatSession, ChatMessage, ChatSessionStatus
-
+from api.models.events import EventCreate, EventData, EventType, SessionEvent
+from api.models.job import Job, JobCreate, JobOutputs, JobPhase, JobStatus, JobUpdate, PhaseStatus
 
 # Global engine and session factory
 _engine: Optional[AsyncEngine] = None
@@ -232,12 +232,7 @@ def sanitize_path_component(name: str) -> str:
         return "unnamed"
 
     # Replace invalid characters with underscore
-    # Invalid chars: / \ : * ? " < > |
-    invalid_chars = r'/\:*?"<>|'
-    sanitized = "".join(
-        c if c.isalnum() or c in "-_. " else "_"
-        for c in name
-    )
+    sanitized = "".join(c if c.isalnum() or c in "-_. " else "_" for c in name)
 
     # Replace multiple consecutive underscores with single underscore
     while "__" in sanitized:
@@ -275,10 +270,7 @@ async def create_job(job: JobCreate) -> Job:
     async with get_session() as session:
         # Initialize phases - automated pipeline phases (manager is QA, copy_editor is interactive)
         default_phases = ["analyst", "formatter", "seo", "manager"]
-        initial_phases = [
-            JobPhase(name=name, status=PhaseStatus.pending).model_dump()
-            for name in default_phases
-        ]
+        initial_phases = [JobPhase(name=name, status=PhaseStatus.pending).model_dump() for name in default_phases]
 
         # Derive project_path from project_name if not provided
         project_path = job.project_path
@@ -319,6 +311,7 @@ async def create_job(job: JobCreate) -> Job:
         # Broadcast job creation to WebSocket clients
         try:
             from api.routers.websocket import broadcast_job_update
+
             await broadcast_job_update(job, event_type="job_created")
         except Exception:
             # Don't fail job creation if broadcast fails
@@ -364,9 +357,7 @@ async def find_jobs_by_transcript(
         List of Job records matching the transcript file
     """
     async with get_session() as session:
-        stmt = select(jobs_table).where(
-            jobs_table.c.transcript_file == transcript_file
-        )
+        stmt = select(jobs_table).where(jobs_table.c.transcript_file == transcript_file)
 
         if exclude_cancelled:
             stmt = stmt.where(jobs_table.c.status != JobStatus.cancelled.value)
@@ -397,9 +388,7 @@ async def find_jobs_by_media_id(
         List of Job records matching the media ID
     """
     async with get_session() as session:
-        stmt = select(jobs_table).where(
-            jobs_table.c.media_id == media_id
-        )
+        stmt = select(jobs_table).where(jobs_table.c.media_id == media_id)
 
         if exclude_cancelled:
             stmt = stmt.where(jobs_table.c.status != JobStatus.cancelled.value)
@@ -443,8 +432,7 @@ async def list_jobs(
         if search:
             search_pattern = f"%{search}%"
             stmt = stmt.where(
-                (jobs_table.c.transcript_file.ilike(search_pattern)) |
-                (jobs_table.c.project_path.ilike(search_pattern))
+                (jobs_table.c.transcript_file.ilike(search_pattern)) | (jobs_table.c.project_path.ilike(search_pattern))
             )
 
         # Order by queued_at (newest or oldest first)
@@ -484,8 +472,7 @@ async def count_jobs(
         if search:
             search_pattern = f"%{search}%"
             stmt = stmt.where(
-                (jobs_table.c.transcript_file.ilike(search_pattern)) |
-                (jobs_table.c.project_path.ilike(search_pattern))
+                (jobs_table.c.transcript_file.ilike(search_pattern)) | (jobs_table.c.project_path.ilike(search_pattern))
             )
 
         result = await session.execute(stmt)
@@ -559,7 +546,7 @@ async def update_job(job_id: int, job_update: JobUpdate) -> Optional[Job]:
         # Handle phases update (replaces all phases)
         if job_update.phases is not None:
             # Use mode='json' to serialize datetime objects to ISO strings
-            phases_json = json.dumps([p.model_dump(mode='json') for p in job_update.phases])
+            phases_json = json.dumps([p.model_dump(mode="json") for p in job_update.phases])
             update_values["phases"] = phases_json
 
         # Handle single phase update
@@ -601,11 +588,7 @@ async def update_job(job_id: int, job_update: JobUpdate) -> Optional[Job]:
             return _row_to_job(row) if row else None
 
         # Execute update
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job_id)
-            .values(**update_values)
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job_id).values(**update_values)
         result = await session.execute(stmt)
 
         if result.rowcount == 0:
@@ -708,11 +691,7 @@ async def update_job_status(
     # Handle project_path separately (not in JobUpdate model)
     if project_path is not None and job is not None:
         async with get_session() as session:
-            stmt = (
-                update(jobs_table)
-                .where(jobs_table.c.id == job_id)
-                .values(project_path=project_path)
-            )
+            stmt = update(jobs_table).where(jobs_table.c.id == job_id).values(project_path=project_path)
             await session.execute(stmt)
 
     return job
@@ -730,11 +709,7 @@ async def update_job_phase(job_id: int, phases: list) -> Optional[Job]:
     """
     async with get_session() as session:
         phases_json = json.dumps(phases)
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job_id)
-            .values(phases=phases_json)
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job_id).values(phases=phases_json)
         result = await session.execute(stmt)
 
         if result.rowcount == 0:
@@ -793,7 +768,8 @@ async def claim_next_job(worker_id: Optional[str] = None) -> Optional[Job]:
 
         # SQLite-compatible atomic claim using UPDATE with subquery
         # This finds the next job and claims it in a single statement
-        claim_sql = text("""
+        claim_sql = text(
+            """
             UPDATE jobs
             SET status = :new_status,
                 started_at = :started_at,
@@ -805,7 +781,8 @@ async def claim_next_job(worker_id: Optional[str] = None) -> Optional[Job]:
                 LIMIT 1
             )
             RETURNING *
-        """)
+        """
+        )
 
         result = await session.execute(
             claim_sql,
@@ -814,7 +791,7 @@ async def claim_next_job(worker_id: Optional[str] = None) -> Optional[Job]:
                 "pending_status": JobStatus.pending.value,
                 "started_at": now.isoformat(),
                 "heartbeat": now.isoformat(),
-            }
+            },
         )
 
         row = result.fetchone()
@@ -838,11 +815,7 @@ async def update_heartbeat(job_id: int) -> bool:
         True if updated, False if job not found
     """
     async with get_session() as session:
-        stmt = (
-            update(jobs_table)
-            .where(jobs_table.c.id == job_id)
-            .values(last_heartbeat=datetime.now(timezone.utc))
-        )
+        stmt = update(jobs_table).where(jobs_table.c.id == job_id).values(last_heartbeat=datetime.now(timezone.utc))
         result = await session.execute(stmt)
         return result.rowcount > 0
 
@@ -861,6 +834,7 @@ async def get_stale_jobs(threshold_minutes: int = 10) -> List[Job]:
     async with get_session() as session:
         # Calculate cutoff time
         from datetime import timedelta
+
         cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
         # Find in_progress jobs with stale or null heartbeat
@@ -869,7 +843,7 @@ async def get_stale_jobs(threshold_minutes: int = 10) -> List[Job]:
             .where(
                 and_(
                     jobs_table.c.status == JobStatus.in_progress.value,
-                    func.coalesce(jobs_table.c.last_heartbeat, datetime.min.replace(tzinfo=timezone.utc)) < cutoff_time
+                    func.coalesce(jobs_table.c.last_heartbeat, datetime.min.replace(tzinfo=timezone.utc)) < cutoff_time,
                 )
             )
             .order_by(jobs_table.c.id)
@@ -899,13 +873,10 @@ async def reset_stuck_jobs(threshold_minutes: int = 10) -> List[Job]:
         threshold_time = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
 
         # Find stuck jobs - in_progress with old heartbeat or no heartbeat
-        stmt = (
-            select(jobs_table)
-            .where(
-                and_(
-                    jobs_table.c.status == JobStatus.in_progress.value,
-                    func.coalesce(jobs_table.c.last_heartbeat, jobs_table.c.started_at) < threshold_time
-                )
+        stmt = select(jobs_table).where(
+            and_(
+                jobs_table.c.status == JobStatus.in_progress.value,
+                func.coalesce(jobs_table.c.last_heartbeat, jobs_table.c.started_at) < threshold_time,
             )
         )
         result = await session.execute(stmt)
@@ -970,11 +941,7 @@ async def reset_stuck_jobs(threshold_minutes: int = 10) -> List[Job]:
                 await session.execute(stmt_event)
 
             # Update job
-            stmt_update = (
-                update(jobs_table)
-                .where(jobs_table.c.id == job_id)
-                .values(**update_values)
-            )
+            stmt_update = update(jobs_table).where(jobs_table.c.id == job_id).values(**update_values)
             await session.execute(stmt_update)
 
             # Fetch updated job
@@ -1125,11 +1092,7 @@ async def set_config(
             if description is not None:
                 update_values["description"] = description
 
-            stmt = (
-                update(config_table)
-                .where(config_table.c.key == key)
-                .values(**update_values)
-            )
+            stmt = update(config_table).where(config_table.c.key == key).values(**update_values)
             await session.execute(stmt)
         else:
             # Insert new
@@ -1181,7 +1144,7 @@ def _row_to_job(row) -> Job:
 
     # Parse phases JSON (with fallback for existing rows without phases)
     phases = []
-    if hasattr(row, 'phases') and row.phases:
+    if hasattr(row, "phases") and row.phases:
         phases_data = json.loads(row.phases)
         phases = [JobPhase(**p) for p in phases_data]
     else:
@@ -1189,14 +1152,14 @@ def _row_to_job(row) -> Job:
         phases = [JobPhase(name=name, status=PhaseStatus.pending) for name in agent_phases]
 
     # Derive project_name from project_path
-    project_name = os.path.basename(row.project_path.rstrip('/'))
+    project_name = os.path.basename(row.project_path.rstrip("/"))
 
     # Load outputs from manifest.json if it exists, but only include files that actually exist
     outputs = None
     manifest_path = os.path.join(row.project_path, "manifest.json")
     if os.path.exists(manifest_path):
         try:
-            with open(manifest_path, 'r') as f:
+            with open(manifest_path, "r") as f:
                 manifest = json.load(f)
                 if "outputs" in manifest:
                     # Filter to only include outputs where the file actually exists
@@ -1209,7 +1172,9 @@ def _row_to_job(row) -> Job:
                                 filtered_outputs[key] = filename
 
                     # Check for revision files (created by copy editor in Claude Desktop)
-                    revision_files = sorted(glob.glob(os.path.join(row.project_path, "copy_revision_v*.md")), reverse=True)
+                    revision_files = sorted(
+                        glob.glob(os.path.join(row.project_path, "copy_revision_v*.md")), reverse=True
+                    )
                     if revision_files:
                         # Use latest revision as copy_edited
                         latest_revision = os.path.basename(revision_files[0])
@@ -1247,11 +1212,11 @@ def _row_to_job(row) -> Job:
         manifest_path=row.manifest_path,
         logs_path=row.logs_path,
         last_heartbeat=row.last_heartbeat,
-        airtable_record_id=getattr(row, 'airtable_record_id', None),
-        airtable_url=getattr(row, 'airtable_url', None),
-        media_id=getattr(row, 'media_id', None),
-        duration_minutes=getattr(row, 'duration_minutes', None),
-        word_count=getattr(row, 'word_count', None),
+        airtable_record_id=getattr(row, "airtable_record_id", None),
+        airtable_url=getattr(row, "airtable_url", None),
+        media_id=getattr(row, "media_id", None),
+        duration_minutes=getattr(row, "duration_minutes", None),
+        word_count=getattr(row, "word_count", None),
         outputs=outputs,
     )
 
@@ -1415,11 +1380,7 @@ async def update_session_stats(
             update_values["model"] = model
 
         # Update
-        stmt = (
-            update(chat_sessions_table)
-            .where(chat_sessions_table.c.id == session_id)
-            .values(**update_values)
-        )
+        stmt = update(chat_sessions_table).where(chat_sessions_table.c.id == session_id).values(**update_values)
         await session.execute(stmt)
 
         # Fetch and return updated session
@@ -1549,9 +1510,7 @@ async def clear_session_messages(session_id: str) -> int:
         Number of messages deleted
     """
     async with get_session() as session:
-        stmt = delete(chat_messages_table).where(
-            chat_messages_table.c.session_id == session_id
-        )
+        stmt = delete(chat_messages_table).where(chat_messages_table.c.session_id == session_id)
         result = await session.execute(stmt)
 
         # Also update session stats
@@ -1582,9 +1541,7 @@ async def get_session_message_count(session_id: str) -> int:
     """
     async with get_session() as session:
         stmt = (
-            select(func.count())
-            .select_from(chat_messages_table)
-            .where(chat_messages_table.c.session_id == session_id)
+            select(func.count()).select_from(chat_messages_table).where(chat_messages_table.c.session_id == session_id)
         )
         result = await session.execute(stmt)
         return result.scalar() or 0

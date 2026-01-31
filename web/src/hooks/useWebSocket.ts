@@ -8,7 +8,7 @@ interface Job {
   priority: number
   queued_at: string
   current_phase: string | null
-  [key: string]: any // Allow other job fields
+  [key: string]: unknown // Allow other job fields
 }
 
 interface QueueStats {

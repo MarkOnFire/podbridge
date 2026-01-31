@@ -4,9 +4,9 @@ Tests all ingest router endpoints including configuration, scanning,
 transcript queueing, and screengrab attachment.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from fastapi.testclient import TestClient
 
 from api.main import app
@@ -19,8 +19,10 @@ class TestIngestConfigEndpoints:
 
     def test_get_config_returns_settings(self):
         """Test GET /api/ingest/config returns current configuration."""
-        with patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_get, \
-             patch("api.routers.ingest.get_next_scan_time", new_callable=AsyncMock) as mock_next:
+        with (
+            patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_get,
+            patch("api.routers.ingest.get_next_scan_time", new_callable=AsyncMock) as mock_next,
+        ):
 
             mock_config = MagicMock()
             mock_config.enabled = True
@@ -46,9 +48,11 @@ class TestIngestConfigEndpoints:
 
     def test_put_config_updates_settings(self):
         """Test PUT /api/ingest/config updates configuration."""
-        with patch("api.routers.ingest.update_ingest_config", new_callable=AsyncMock) as mock_update, \
-             patch("api.routers.ingest.get_next_scan_time", new_callable=AsyncMock) as mock_next, \
-             patch("api.routers.ingest.configure_scheduler", new_callable=AsyncMock):
+        with (
+            patch("api.routers.ingest.update_ingest_config", new_callable=AsyncMock) as mock_update,
+            patch("api.routers.ingest.get_next_scan_time", new_callable=AsyncMock) as mock_next,
+            patch("api.routers.ingest.configure_scheduler", new_callable=AsyncMock),
+        ):
 
             mock_config = MagicMock()
             mock_config.enabled = False
@@ -80,12 +84,12 @@ class TestIngestConfigEndpoints:
     def test_put_config_validates_scan_time(self):
         """Test PUT /api/ingest/config rejects invalid time formats."""
         invalid_times = [
-            "9:00",      # Single digit hour
-            "09:0",      # Single digit minute
-            "25:00",     # Hour out of range
-            "09:60",     # Minute out of range
-            "09-00",     # Wrong separator
-            "invalid",   # Not a time
+            "9:00",  # Single digit hour
+            "09:0",  # Single digit minute
+            "25:00",  # Hour out of range
+            "09:60",  # Minute out of range
+            "09-00",  # Wrong separator
+            "invalid",  # Not a time
         ]
 
         for invalid_time in invalid_times:
@@ -98,9 +102,11 @@ class TestIngestConfigEndpoints:
         """Test PUT /api/ingest/config validates interval range."""
         # Note: The actual validation is in the Pydantic model
         # This test documents expected behavior
-        with patch("api.routers.ingest.update_ingest_config", new_callable=AsyncMock) as mock_update, \
-             patch("api.routers.ingest.get_next_scan_time", new_callable=AsyncMock) as mock_next, \
-             patch("api.routers.ingest.configure_scheduler", new_callable=AsyncMock):
+        with (
+            patch("api.routers.ingest.update_ingest_config", new_callable=AsyncMock) as mock_update,
+            patch("api.routers.ingest.get_next_scan_time", new_callable=AsyncMock) as mock_next,
+            patch("api.routers.ingest.configure_scheduler", new_callable=AsyncMock),
+        ):
 
             mock_config = MagicMock()
             mock_config.enabled = True
@@ -126,9 +132,11 @@ class TestScanEndpoint:
 
     def test_scan_returns_results(self):
         """Test POST /api/ingest/scan returns scan results."""
-        with patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config, \
-             patch("api.routers.ingest.IngestScanner") as mock_scanner_class, \
-             patch("api.routers.ingest.record_scan_result", new_callable=AsyncMock):
+        with (
+            patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config,
+            patch("api.routers.ingest.IngestScanner") as mock_scanner_class,
+            patch("api.routers.ingest.record_scan_result", new_callable=AsyncMock),
+        ):
 
             mock_config.return_value = MagicMock(
                 server_url="https://example.com",
@@ -162,9 +170,11 @@ class TestScanEndpoint:
 
     def test_scan_handles_errors(self):
         """Test POST /api/ingest/scan returns error on failure."""
-        with patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config, \
-             patch("api.routers.ingest.IngestScanner") as mock_scanner_class, \
-             patch("api.routers.ingest.record_scan_result", new_callable=AsyncMock):
+        with (
+            patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config,
+            patch("api.routers.ingest.IngestScanner") as mock_scanner_class,
+            patch("api.routers.ingest.record_scan_result", new_callable=AsyncMock),
+        ):
 
             mock_config.return_value = MagicMock(
                 server_url="https://example.com",
@@ -185,9 +195,11 @@ class TestAvailableFilesEndpoint:
 
     def test_list_available_returns_files(self):
         """Test GET /api/ingest/available returns file list."""
-        with patch("api.routers.ingest.get_session") as mock_session, \
-             patch("api.services.airtable.AirtableClient") as mock_airtable_class, \
-             patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config:
+        with (
+            patch("api.routers.ingest.get_session") as mock_session,
+            patch("api.services.airtable.AirtableClient") as mock_airtable_class,
+            patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config,
+        ):
 
             # Mock database session
             mock_db = MagicMock()
@@ -221,10 +233,12 @@ class TestAvailableFilesEndpoint:
 
             # Mock Airtable
             mock_airtable = MagicMock()
-            mock_airtable.search_sst_by_media_id = AsyncMock(return_value={
-                "id": "recXXX",
-                "fields": {"Title": "Test Title", "Project": "Test Project"},
-            })
+            mock_airtable.search_sst_by_media_id = AsyncMock(
+                return_value={
+                    "id": "recXXX",
+                    "fields": {"Title": "Test Title", "Project": "Test Project"},
+                }
+            )
             mock_airtable_class.return_value = mock_airtable
 
             # Mock config
@@ -239,9 +253,11 @@ class TestAvailableFilesEndpoint:
 
     def test_list_available_filters_by_status(self):
         """Test GET /api/ingest/available respects status filter."""
-        with patch("api.routers.ingest.get_session") as mock_session, \
-             patch("api.services.airtable.AirtableClient") as mock_airtable_class, \
-             patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config:
+        with (
+            patch("api.routers.ingest.get_session") as mock_session,
+            patch("api.services.airtable.AirtableClient") as mock_airtable_class,
+            patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config,
+        ):
 
             # Mock database with no results
             mock_db = MagicMock()
@@ -281,10 +297,12 @@ class TestTranscriptEndpoints:
 
     def test_queue_transcript_success(self):
         """Test POST /api/ingest/transcripts/{id}/queue successfully queues transcript."""
-        with patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config, \
-             patch("api.routers.ingest.IngestScanner") as mock_scanner_class, \
-             patch("api.services.database.create_job", new_callable=AsyncMock) as mock_create_job, \
-             patch("api.routers.ingest.get_session") as mock_session:
+        with (
+            patch("api.routers.ingest.get_ingest_config", new_callable=AsyncMock) as mock_config,
+            patch("api.routers.ingest.IngestScanner") as mock_scanner_class,
+            patch("api.services.database.create_job", new_callable=AsyncMock) as mock_create_job,
+            patch("api.routers.ingest.get_session") as mock_session,
+        ):
 
             # Mock config
             mock_config.return_value = MagicMock(
@@ -294,12 +312,14 @@ class TestTranscriptEndpoints:
 
             # Mock scanner download
             mock_scanner = MagicMock()
-            mock_scanner.download_file = AsyncMock(return_value={
-                "success": True,
-                "media_id": "2WLI1209HD",
-                "filename": "2WLI1209HD.srt",
-                "local_path": "transcripts/2WLI1209HD.srt",
-            })
+            mock_scanner.download_file = AsyncMock(
+                return_value={
+                    "success": True,
+                    "media_id": "2WLI1209HD",
+                    "filename": "2WLI1209HD.srt",
+                    "local_path": "transcripts/2WLI1209HD.srt",
+                }
+            )
             mock_scanner_class.return_value = mock_scanner
 
             # Mock job creation

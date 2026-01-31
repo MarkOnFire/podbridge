@@ -6,15 +6,13 @@ Provides functionality to:
 - Generate cost statistics for model right-sizing decisions
 - Export cost data for viability assessment
 """
-import json
+
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from api.models.chat import (
-    ChatSession,
-    ChatMessage,
-    SessionStatsResponse,
     CostComparisonResponse,
+    SessionStatsResponse,
 )
 from api.services import database
 
@@ -102,14 +100,16 @@ async def get_cost_comparison(job_id: int) -> Optional[CostComparisonResponse]:
     sessions = await database.list_sessions_for_job(job_id, include_cleared=False)
     chat_sessions = []
     for session in sessions:
-        chat_sessions.append({
-            "id": session.id,
-            "cost": session.total_cost,
-            "tokens": session.total_tokens,
-            "messages": session.message_count,
-            "model": session.model,
-            "created_at": session.created_at.isoformat() if session.created_at else None,
-        })
+        chat_sessions.append(
+            {
+                "id": session.id,
+                "cost": session.total_cost,
+                "tokens": session.total_tokens,
+                "messages": session.message_count,
+                "model": session.model,
+                "created_at": session.created_at.isoformat() if session.created_at else None,
+            }
+        )
 
     # Calculate totals
     automated_total = sum(p.get("cost", 0) for p in automated_phases.values())
@@ -150,10 +150,9 @@ async def get_model_cost_breakdown(
 
     # Get all recent sessions
     async with database.get_session() as session:
-        from sqlalchemy import select, and_
-        stmt = select(database.chat_sessions_table).where(
-            database.chat_sessions_table.c.created_at >= cutoff_date
-        )
+        from sqlalchemy import select
+
+        stmt = select(database.chat_sessions_table).where(database.chat_sessions_table.c.created_at >= cutoff_date)
 
         if job_ids:
             stmt = stmt.where(database.chat_sessions_table.c.job_id.in_(job_ids))
@@ -196,7 +195,9 @@ async def get_model_cost_breakdown(
             "session_count": len(stats["sessions"]),
             "avg_cost_per_response": round(stats["total_cost"] / response_count, 6) if response_count > 0 else 0,
             "avg_tokens_per_response": round(stats["total_tokens"] / response_count, 1) if response_count > 0 else 0,
-            "cost_per_1k_tokens": round((stats["total_cost"] / stats["total_tokens"]) * 1000, 4) if stats["total_tokens"] > 0 else 0,
+            "cost_per_1k_tokens": (
+                round((stats["total_cost"] / stats["total_tokens"]) * 1000, 4) if stats["total_tokens"] > 0 else 0
+            ),
         }
 
     return {
@@ -273,7 +274,8 @@ async def get_cost_summary_for_period(
 
     # Query all sessions in period
     async with database.get_session() as session:
-        from sqlalchemy import select, and_
+        from sqlalchemy import and_, select
+
         stmt = select(database.chat_sessions_table).where(
             and_(
                 database.chat_sessions_table.c.created_at >= start_date,

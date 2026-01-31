@@ -3,30 +3,31 @@
 Provides endpoints for job detail retrieval, updates, and control operations.
 """
 
+import logging
 import os
 import re
-import logging
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-from api.models.job import Job, JobUpdate, JobStatus
 from api.models.events import SessionEvent
+from api.models.job import Job, JobStatus, JobUpdate
+from api.services.airtable import AirtableClient
 from api.services.database import (
+    get_events_for_job,
     get_job,
     update_job,
-    get_events_for_job,
 )
-from api.services.airtable import AirtableClient
 
 logger = logging.getLogger(__name__)
 
 
 class SSTMetadata(BaseModel):
     """SST (Single Source of Truth) metadata from Airtable."""
+
     media_id: Optional[str] = None
     release_title: Optional[str] = None
     short_description: Optional[str] = None
@@ -118,7 +119,7 @@ async def pause_job(job_id: int):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot pause job in status '{job.status}'. "
-                   f"Only {', '.join(s.value for s in PAUSEABLE_STATES)} jobs can be paused."
+            f"Only {', '.join(s.value for s in PAUSEABLE_STATES)} jobs can be paused.",
         )
 
     job_update = JobUpdate(status=JobStatus.paused)
@@ -152,7 +153,7 @@ async def resume_job(job_id: int):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot resume job in status '{job.status}'. "
-                   f"Only {', '.join(s.value for s in RESUMABLE_STATES)} jobs can be resumed."
+            f"Only {', '.join(s.value for s in RESUMABLE_STATES)} jobs can be resumed.",
         )
 
     job_update = JobUpdate(status=JobStatus.pending)
@@ -187,7 +188,7 @@ async def retry_job(job_id: int):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot retry job in status '{job.status}'. "
-                   f"Only {', '.join(s.value for s in RETRYABLE_STATES)} jobs can be retried."
+            f"Only {', '.join(s.value for s in RETRYABLE_STATES)} jobs can be retried.",
         )
 
     # Determine escalation tier from previous max tier used
@@ -206,7 +207,7 @@ async def retry_job(job_id: int):
             "previous_max_tier": max_previous_tier,
             "escalated_tier": escalated_tier,
             "tier_label": tier_labels.get(escalated_tier),
-        }
+        },
     )
 
     # Determine which phases to reset based on failure type
@@ -248,6 +249,7 @@ async def retry_job(job_id: int):
         updated_phases.append(phase_dict)
 
     from api.models.job import JobPhase
+
     job_update = JobUpdate(
         status=JobStatus.pending,
         error_message="",
@@ -284,7 +286,7 @@ async def cancel_job(job_id: int):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot cancel job in status '{job.status}'. "
-                   f"Only {', '.join(s.value for s in CANCELLABLE_STATES)} jobs can be cancelled."
+            f"Only {', '.join(s.value for s in CANCELLABLE_STATES)} jobs can be cancelled.",
         )
 
     job_update = JobUpdate(status=JobStatus.cancelled)
@@ -356,21 +358,17 @@ async def get_job_output(job_id: int, filename: str):
     }
 
     # Also allow versioned revision and keyword report files
-    is_revision_file = bool(re.match(r'^copy_revision_v\d+\.md$', filename))
-    is_keyword_report = bool(re.match(r'^keyword_report_v\d+\.md$', filename))
+    is_revision_file = bool(re.match(r"^copy_revision_v\d+\.md$", filename))
+    is_keyword_report = bool(re.match(r"^keyword_report_v\d+\.md$", filename))
 
     if filename not in allowed_files and not is_revision_file and not is_keyword_report:
         raise HTTPException(
-            status_code=400,
-            detail=f"Invalid filename. Allowed files: {', '.join(sorted(allowed_files))}"
+            status_code=400, detail=f"Invalid filename. Allowed files: {', '.join(sorted(allowed_files))}"
         )
 
     # Build path to output file
     if not job.project_path:
-        raise HTTPException(
-            status_code=404,
-            detail="Job has no output directory configured"
-        )
+        raise HTTPException(status_code=404, detail="Job has no output directory configured")
 
     # Security: Resolve paths and validate within OUTPUT directory
     output_dir = Path(os.getenv("OUTPUT_DIR", "OUTPUT")).resolve()
@@ -378,16 +376,10 @@ async def get_job_output(job_id: int, filename: str):
 
     # Prevent path traversal attacks
     if not file_path.is_relative_to(output_dir):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid project path - outside output directory"
-        )
+        raise HTTPException(status_code=400, detail="Invalid project path - outside output directory")
 
     if not file_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Output file '{filename}' not found for job {job_id}"
-        )
+        raise HTTPException(status_code=404, detail=f"Output file '{filename}' not found for job {job_id}")
 
     # Read and return file contents
     content = file_path.read_text(encoding="utf-8")
@@ -423,20 +415,14 @@ async def get_sst_metadata(job_id: int):
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
     if not job.airtable_record_id:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Job {job_id} has no linked Airtable record"
-        )
+        raise HTTPException(status_code=404, detail=f"Job {job_id} has no linked Airtable record")
 
     try:
         client = AirtableClient()
         record = await client.get_sst_record(job.airtable_record_id)
 
         if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Airtable record {job.airtable_record_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"Airtable record {job.airtable_record_id} not found")
 
         fields = record.get("fields", {})
 
@@ -452,20 +438,15 @@ async def get_sst_metadata(job_id: int):
     except ValueError as e:
         # Airtable API key not configured
         logger.warning(f"Airtable not configured: {e}")
-        raise HTTPException(
-            status_code=503,
-            detail="Airtable integration not configured"
-        )
+        raise HTTPException(status_code=503, detail="Airtable integration not configured")
     except Exception as e:
         logger.error(f"Failed to fetch SST metadata: {e}")
-        raise HTTPException(
-            status_code=502,
-            detail="Failed to fetch metadata from Airtable"
-        )
+        raise HTTPException(status_code=502, detail="Failed to fetch metadata from Airtable")
 
 
 class PhaseRetryResponse(BaseModel):
     """Response for phase retry request."""
+
     success: bool
     phase: Optional[str] = None
     message: str
@@ -493,8 +474,8 @@ async def retry_phase(
         ge=0,
         le=2,
         description="Force specific tier: 0=cheapskate, 1=default, 2=big-brain. "
-                    "If not specified, auto-escalates from the tier previously used."
-    )
+        "If not specified, auto-escalates from the tier previously used.",
+    ),
 ):
     """Retry a single phase for a job with automatic escalation.
 
@@ -523,8 +504,7 @@ async def retry_phase(
     valid_phases = {"analyst", "formatter", "seo", "manager", "timestamp"}
     if phase_name not in valid_phases:
         raise HTTPException(
-            status_code=400,
-            detail=f"Invalid phase: {phase_name}. Valid phases: {', '.join(sorted(valid_phases))}"
+            status_code=400, detail=f"Invalid phase: {phase_name}. Valid phases: {', '.join(sorted(valid_phases))}"
         )
 
     # Verify job exists
@@ -536,7 +516,7 @@ async def retry_phase(
     effective_tier = tier
     if effective_tier is None:
         previous_tier = 0
-        for phase in (job.phases or []):
+        for phase in job.phases or []:
             if phase.name == phase_name and phase.tier is not None:
                 previous_tier = phase.tier
                 break
@@ -548,18 +528,19 @@ async def retry_phase(
                 "phase": phase_name,
                 "previous_tier": previous_tier,
                 "escalated_tier": effective_tier,
-            }
+            },
         )
 
     # Run the phase retry in the background
     async def run_retry():
         from api.services.worker import JobWorker
+
         worker = JobWorker()
         result = await worker.retry_single_phase(job_id, phase_name, force_tier=effective_tier)
         if not result.get("success"):
             logger.error(
                 "Phase retry failed",
-                extra={"job_id": job_id, "phase": phase_name, "tier": effective_tier, "error": result.get("error")}
+                extra={"job_id": job_id, "phase": phase_name, "tier": effective_tier, "error": result.get("error")},
             )
 
     background_tasks.add_task(run_retry)

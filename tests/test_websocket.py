@@ -1,7 +1,7 @@
 """Tests for WebSocket endpoint."""
 
-import pytest
 from fastapi.testclient import TestClient
+
 from api.main import app
 from api.models.job import Job, JobStatus
 
@@ -23,12 +23,12 @@ def test_websocket_connection():
 
 def test_websocket_broadcast_job_update():
     """Test that job updates can be broadcast to WebSocket clients."""
-    from api.routers.websocket import manager
-    from api.models.job import Job, JobStatus
     from datetime import datetime, timezone
 
-    # Create a mock job
-    job = Job(
+    from api.routers.websocket import manager
+
+    # Create a mock job (used for type reference, broadcast is tested below)
+    Job(
         id=1,
         project_path="/path/to/project",
         transcript_file="test.txt",

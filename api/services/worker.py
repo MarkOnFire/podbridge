@@ -2,32 +2,32 @@
 
 Polls the queue for pending jobs and processes them through agent phases.
 """
+
 import asyncio
 import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
-from api.models.job import JobStatus, JobPhase, PhaseStatus
+from api.models.events import EventCreate, EventData, EventType
+from api.models.job import JobStatus
+from api.services.airtable import get_airtable_client
 from api.services.database import (
     claim_next_job,
-    update_job_status,
-    update_job_phase,
-    update_job_heartbeat,
     log_event,
+    update_job_heartbeat,
+    update_job_phase,
+    update_job_status,
 )
 from api.services.llm import (
+    LLMResponse,
+    end_run_tracking,
     get_llm_client,
     start_run_tracking,
-    end_run_tracking,
-    LLMResponse,
 )
+from api.services.logging import get_logger, setup_logging
 from api.services.utils import calculate_transcript_metrics
-from api.models.events import EventType, EventCreate, EventData
-from api.services.logging import setup_logging, get_logger
-from api.services.airtable import get_airtable_client
-
 
 # Initialize logging for worker
 setup_logging(log_file="worker.log")
@@ -109,7 +109,7 @@ class JobWorker:
                 "worker_id": worker_id,
                 "poll_interval": self.config.poll_interval,
                 "max_concurrent": max_concurrent,
-            }
+            },
         )
 
         # Track active job tasks and their job_ids for cleanup on failure
@@ -135,18 +135,22 @@ class JobWorker:
                         if job_id is not None:
                             try:
                                 await update_job_status(job_id, JobStatus.failed)
-                                await log_event(EventCreate(
-                                    job_id=job_id,
-                                    event_type=EventType.job_failed,
-                                    data=EventData(extra={
-                                        "error": f"Unhandled task exception: {str(e)}",
-                                        "worker_id": worker_id,
-                                    }),
-                                ))
+                                await log_event(
+                                    EventCreate(
+                                        job_id=job_id,
+                                        event_type=EventType.job_failed,
+                                        data=EventData(
+                                            extra={
+                                                "error": f"Unhandled task exception: {str(e)}",
+                                                "worker_id": worker_id,
+                                            }
+                                        ),
+                                    )
+                                )
                             except Exception as cleanup_error:
                                 logger.error(
                                     "Failed to mark job as failed during cleanup",
-                                    extra={"job_id": job_id, "error": str(cleanup_error)}
+                                    extra={"job_id": job_id, "error": str(cleanup_error)},
                                 )
                 active_tasks -= done_tasks
 
@@ -155,7 +159,7 @@ class JobWorker:
                     job = await claim_next_job(worker_id=worker_id)
                     if job:
                         # Convert Job model to dict for processing
-                        job_dict = job.model_dump() if hasattr(job, 'model_dump') else dict(job)
+                        job_dict = job.model_dump() if hasattr(job, "model_dump") else dict(job)
                         # Start processing as a task
                         task = asyncio.create_task(self.process_job(job_dict))
                         active_tasks.add(task)
@@ -167,7 +171,7 @@ class JobWorker:
                                 "job_id": job.id,
                                 "active_jobs": len(active_tasks),
                                 "max_concurrent": max_concurrent,
-                            }
+                            },
                         )
                     else:
                         # No more pending jobs
@@ -188,7 +192,7 @@ class JobWorker:
         if active_tasks:
             logger.info(
                 "Waiting for active jobs to complete on shutdown",
-                extra={"worker_id": worker_id, "active_jobs": len(active_tasks)}
+                extra={"worker_id": worker_id, "active_jobs": len(active_tasks)},
             )
             await asyncio.gather(*active_tasks, return_exceptions=True)
 
@@ -226,7 +230,7 @@ class JobWorker:
         if not job:
             return {"success": False, "error": f"Job {job_id} not found"}
 
-        job_dict = job.model_dump() if hasattr(job, 'model_dump') else dict(job)
+        job_dict = job.model_dump() if hasattr(job, "model_dump") else dict(job)
 
         # Get project path
         project_path = Path(job_dict.get("project_path", ""))
@@ -281,15 +285,12 @@ class JobWorker:
                     "phase": phase_name,
                     "tier": force_tier,
                     "tier_label": tier_labels.get(force_tier, "unknown"),
-                }
+                },
             )
 
         # Run the phase
         try:
-            logger.info(
-                "Retrying single phase",
-                extra={"job_id": job_id, "phase": phase_name}
-            )
+            logger.info("Retrying single phase", extra={"job_id": job_id, "phase": phase_name})
 
             phase_result = await self._run_phase(
                 job_id=job_id,
@@ -307,7 +308,7 @@ class JobWorker:
             for p in phases:
                 for key in ["started_at", "completed_at"]:
                     if key in p and p[key] is not None:
-                        if hasattr(p[key], 'isoformat'):
+                        if hasattr(p[key], "isoformat"):
                             p[key] = p[key].isoformat()
 
             # Find and update the phase, archiving the previous run
@@ -343,17 +344,20 @@ class JobWorker:
 
             if not phase_updated and phase_result.get("status") == "completed":
                 # Add the phase if it didn't exist
-                phases.append({
-                    "name": phase_name,
-                    "status": "completed",
-                    "cost": phase_result.get("cost", 0),
-                    "tokens": phase_result.get("tokens", 0),
-                    "model": phase_result.get("model"),
-                    "completed_at": datetime.now(timezone.utc).isoformat(),
-                })
+                phases.append(
+                    {
+                        "name": phase_name,
+                        "status": "completed",
+                        "cost": phase_result.get("cost", 0),
+                        "tokens": phase_result.get("tokens", 0),
+                        "model": phase_result.get("model"),
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
 
             # Save updated phases
             from api.models.job import JobUpdate
+
             await update_job(job_id, JobUpdate(phases=phases))
 
             return {
@@ -364,9 +368,7 @@ class JobWorker:
 
         except Exception as e:
             logger.error(
-                "Phase retry failed",
-                extra={"job_id": job_id, "phase": phase_name, "error": str(e)},
-                exc_info=True
+                "Phase retry failed", extra={"job_id": job_id, "phase": phase_name, "error": str(e)}, exc_info=True
             )
             return {"success": False, "error": str(e)}
 
@@ -376,10 +378,7 @@ class JobWorker:
         self._current_job_id = job_id
         project_name = job.get("project_name", "Unknown")
 
-        logger.info(
-            "Processing job",
-            extra={"job_id": job_id, "project_name": project_name}
-        )
+        logger.info("Processing job", extra={"job_id": job_id, "project_name": project_name})
 
         # Start cost tracking for this run
         tracker = start_run_tracking(job_id)
@@ -391,11 +390,13 @@ class JobWorker:
             # Status already set to in_progress by claim_next_job()
 
             # Log job started event
-            await log_event(EventCreate(
-                job_id=job_id,
-                event_type=EventType.job_started,
-                data=EventData(extra={"project_name": job.get("project_name")}),
-            ))
+            await log_event(
+                EventCreate(
+                    job_id=job_id,
+                    event_type=EventType.job_started,
+                    data=EventData(extra={"project_name": job.get("project_name")}),
+                )
+            )
 
             # Set up project directory
             project_path = self._setup_project_dir(job)
@@ -409,7 +410,7 @@ class JobWorker:
             if self._all_phases_complete(phases, project_path):
                 logger.info(
                     "All phases already complete, marking job done",
-                    extra={"job_id": job_id, "project_name": project_name}
+                    extra={"job_id": job_id, "project_name": project_name},
                 )
                 await update_job_status(
                     job_id,
@@ -425,8 +426,7 @@ class JobWorker:
             routing_config = self.llm.config.get("routing", {})
             threshold_minutes = routing_config.get("long_form_threshold_minutes", 15)
             transcript_metrics = calculate_transcript_metrics(
-                transcript_content,
-                long_form_threshold_minutes=threshold_minutes
+                transcript_content, long_form_threshold_minutes=threshold_minutes
             )
             logger.info(
                 "Transcript metrics calculated",
@@ -435,15 +435,14 @@ class JobWorker:
                     "word_count": transcript_metrics["word_count"],
                     "estimated_duration_minutes": transcript_metrics["estimated_duration_minutes"],
                     "is_long_form": transcript_metrics["is_long_form"],
-                }
+                },
             )
 
             # Fetch SST context if linked (Task 6.2.1)
             sst_context = await self._fetch_sst_context(job)
             if sst_context:
                 logger.info(
-                    "SST context loaded",
-                    extra={"job_id": job_id, "sst_title": sst_context.get("title", "Unknown")}
+                    "SST context loaded", extra={"job_id": job_id, "sst_title": sst_context.get("title", "Unknown")}
                 )
 
             # Get existing phases or initialize
@@ -465,10 +464,7 @@ class JobWorker:
                 # Check if phase already completed
                 existing_phase = next((p for p in phases if p["name"] == phase_name), None)
                 if existing_phase and existing_phase.get("status") == "completed":
-                    logger.debug(
-                        "Skipping completed phase",
-                        extra={"job_id": job_id, "phase": phase_name}
-                    )
+                    logger.debug("Skipping completed phase", extra={"job_id": job_id, "phase": phase_name})
                     # Load previous output for context
                     output_file = project_path / f"{phase_name}_output.md"
                     if output_file.exists():
@@ -487,16 +483,13 @@ class JobWorker:
                             "job_id": job_id,
                             "phase": phase_name,
                             "forced_tier": existing_phase["metadata"]["forced_tier"],
-                        }
+                        },
                     )
                 else:
                     context.pop("_force_tier", None)
 
                 # Process phase
-                logger.info(
-                    "Running phase",
-                    extra={"job_id": job_id, "phase": phase_name}
-                )
+                logger.info("Running phase", extra={"job_id": job_id, "phase": phase_name})
                 phase_result = await self._run_phase(job_id, phase_name, context, project_path)
 
                 # Update phases list with model/tier info
@@ -561,17 +554,19 @@ class JobWorker:
                                     "coverage_ratio": completeness.coverage_ratio,
                                     "source_words": completeness.source_word_count,
                                     "output_words": completeness.output_word_count,
-                                }
+                                },
                             )
 
-                            await log_event(EventCreate(
-                                job_id=job_id,
-                                event_type=EventType.phase_failed,
-                                data=EventData(
-                                    phase="completeness_check",
-                                    extra=completeness.to_dict(),
-                                ),
-                            ))
+                            await log_event(
+                                EventCreate(
+                                    job_id=job_id,
+                                    event_type=EventType.phase_failed,
+                                    data=EventData(
+                                        phase="completeness_check",
+                                        extra=completeness.to_dict(),
+                                    ),
+                                )
+                            )
 
                             if completeness_config.get("pause_on_truncation", True):
                                 truncation_msg = (
@@ -592,8 +587,7 @@ class JobWorker:
             # Handle truncation pause — exit before optional phases
             if truncation_paused:
                 logger.info(
-                    "Job paused due to truncation detection",
-                    extra={"job_id": job_id, "project_name": project_name}
+                    "Job paused due to truncation detection", extra={"job_id": job_id, "project_name": project_name}
                 )
                 run_summary = await end_run_tracking()
                 if run_summary:
@@ -615,22 +609,18 @@ class JobWorker:
                     # Add SRT content to context
                     if srt_path:
                         try:
-                            context["srt_content"] = srt_path.read_text(encoding='utf-8', errors='replace')
+                            context["srt_content"] = srt_path.read_text(encoding="utf-8", errors="replace")
                             context["srt_path"] = str(srt_path)
                         except Exception as e:
                             logger.warning(
-                                "Failed to read SRT file for timestamp phase",
-                                extra={"job_id": job_id, "error": str(e)}
+                                "Failed to read SRT file for timestamp phase", extra={"job_id": job_id, "error": str(e)}
                             )
 
                     # Update current phase
                     await update_job_status(job_id, JobStatus.in_progress, current_phase=phase_name)
 
                     # Process phase
-                    logger.info(
-                        "Running optional phase",
-                        extra={"job_id": job_id, "phase": phase_name}
-                    )
+                    logger.info("Running optional phase", extra={"job_id": job_id, "phase": phase_name})
                     phase_result = await self._run_phase(job_id, phase_name, context, project_path)
 
                     # Update phases list
@@ -655,11 +645,7 @@ class JobWorker:
                     if not phase_result["success"]:
                         logger.warning(
                             "Optional phase failed (non-fatal)",
-                            extra={
-                                "job_id": job_id,
-                                "phase": phase_name,
-                                "error": phase_result.get("error")
-                            }
+                            extra={"job_id": job_id, "phase": phase_name, "error": phase_result.get("error")},
                         )
 
                     # Add output to context
@@ -681,8 +667,7 @@ class JobWorker:
                 self._archive_transcript(job)
             except Exception as archive_err:
                 logger.warning(
-                    "Failed to archive transcript (non-fatal)",
-                    extra={"job_id": job_id, "error": str(archive_err)}
+                    "Failed to archive transcript (non-fatal)", extra={"job_id": job_id, "error": str(archive_err)}
                 )
 
             logger.info(
@@ -691,7 +676,7 @@ class JobWorker:
                     "job_id": job_id,
                     "project_name": project_name,
                     "total_cost": run_summary["total_cost"] if run_summary else 0,
-                }
+                },
             )
 
         except Exception as e:
@@ -730,7 +715,7 @@ class JobWorker:
                         "job_id": job_id,
                         "action": recovery_result.get("action"),
                         "total_cost": recovery_result.get("total_cost", 0),
-                    }
+                    },
                 )
                 return
 
@@ -743,15 +728,19 @@ class JobWorker:
             )
 
             # Log error event with investigation summary
-            await log_event(EventCreate(
-                job_id=job_id,
-                event_type=EventType.job_failed,
-                data=EventData(extra={
-                    "error": str(e),
-                    "recovery_attempted": recovery_result.get("action", "none"),
-                    "recovery_reason": recovery_result.get("reason", "Unknown"),
-                }),
-            ))
+            await log_event(
+                EventCreate(
+                    job_id=job_id,
+                    event_type=EventType.job_failed,
+                    data=EventData(
+                        extra={
+                            "error": str(e),
+                            "recovery_attempted": recovery_result.get("action", "none"),
+                            "recovery_reason": recovery_result.get("reason", "Unknown"),
+                        }
+                    ),
+                )
+            )
 
         finally:
             # Stop heartbeat - properly await cancellation
@@ -762,10 +751,7 @@ class JobWorker:
                 except asyncio.CancelledError:
                     pass  # Expected when cancelling
                 except Exception as e:
-                    logger.warning(
-                        "Heartbeat cleanup error",
-                        extra={"job_id": job_id, "error": str(e)}
-                    )
+                    logger.warning("Heartbeat cleanup error", extra={"job_id": job_id, "error": str(e)})
                 self._heartbeat_task = None
             self._current_job_id = None
 
@@ -787,10 +773,7 @@ class JobWorker:
             record = await client.get_sst_record(airtable_record_id)
 
             if not record:
-                logger.warning(
-                    "SST record not found",
-                    extra={"job_id": job.get("id"), "record_id": airtable_record_id}
-                )
+                logger.warning("SST record not found", extra={"job_id": job.get("id"), "record_id": airtable_record_id})
                 return None
 
             # Extract relevant fields for agent context
@@ -813,10 +796,7 @@ class JobWorker:
             return sst_context if sst_context else None
 
         except Exception as e:
-            logger.warning(
-                "Failed to fetch SST context (non-fatal)",
-                extra={"job_id": job.get("id"), "error": str(e)}
-            )
+            logger.warning("Failed to fetch SST context (non-fatal)", extra={"job_id": job.get("id"), "error": str(e)})
             return None
 
     async def _heartbeat_loop(self, job_id: int):
@@ -828,10 +808,7 @@ class JobWorker:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(
-                    "Heartbeat error",
-                    extra={"job_id": job_id, "error": str(e)}
-                )
+                logger.warning("Heartbeat error", extra={"job_id": job_id, "error": str(e)})
 
     def _all_phases_complete(self, phases: List[Dict[str, Any]], project_path: Path) -> bool:
         """Check if all required phases are complete and output files exist.
@@ -896,16 +873,16 @@ class JobWorker:
                 if TRANSCRIPTS_ARCHIVE_DIR in path.parents or path.parent == TRANSCRIPTS_ARCHIVE_DIR:
                     logger.info(
                         "Using archived transcript (re-processing)",
-                        extra={"job_id": job.get("id"), "source": str(path)}
+                        extra={"job_id": job.get("id"), "source": str(path)},
                     )
                 # Try different encodings
-                for encoding in ['utf-8', 'iso-8859-1', 'cp1252', 'latin-1']:
+                for encoding in ["utf-8", "iso-8859-1", "cp1252", "latin-1"]:
                     try:
                         return path.read_text(encoding=encoding)
                     except UnicodeDecodeError:
                         continue
                 # Last resort: read with errors='replace'
-                return path.read_text(encoding='utf-8', errors='replace')
+                return path.read_text(encoding="utf-8", errors="replace")
 
         raise FileNotFoundError(f"Transcript not found: {transcript_file}")
 
@@ -934,10 +911,7 @@ class JobWorker:
                 break
 
         if not source:
-            logger.warning(
-                "Transcript not found for archiving",
-                extra={"source_file": transcript_file}
-            )
+            logger.warning("Transcript not found for archiving", extra={"source_file": transcript_file})
             return
 
         # Create archive directory if needed
@@ -947,11 +921,9 @@ class JobWorker:
         dest = TRANSCRIPTS_ARCHIVE_DIR / source.name
         try:
             import shutil
+
             shutil.move(str(source), str(dest))
-            logger.info(
-                "Archived transcript",
-                extra={"source_file": source.name, "destination": str(dest)}
-            )
+            logger.info("Archived transcript", extra={"source_file": source.name, "destination": str(dest)})
         except Exception as e:
             logger.error(
                 "Failed to archive transcript",
@@ -974,6 +946,7 @@ class JobWorker:
 
         # Get the base name without extension
         from api.services.utils import extract_media_id
+
         media_id = extract_media_id(transcript_file)
 
         # Look for SRT file with same base name
@@ -997,9 +970,7 @@ class JobWorker:
         return None
 
     def _get_content_duration_minutes(
-        self,
-        transcript_metrics: Dict[str, Any],
-        srt_path: Optional[Path] = None
+        self, transcript_metrics: Dict[str, Any], srt_path: Optional[Path] = None
     ) -> float:
         """Get content duration in minutes from SRT or transcript metrics.
 
@@ -1012,26 +983,21 @@ class JobWorker:
         # Try to get duration from SRT file (most accurate)
         if srt_path and srt_path.exists():
             try:
-                from api.services.utils import parse_srt, get_srt_duration
-                srt_content = srt_path.read_text(encoding='utf-8', errors='replace')
+                from api.services.utils import get_srt_duration, parse_srt
+
+                srt_content = srt_path.read_text(encoding="utf-8", errors="replace")
                 captions = parse_srt(srt_content)
                 if captions:
                     duration_ms = get_srt_duration(captions)
                     return duration_ms / 60000  # Convert ms to minutes
             except Exception as e:
-                logger.warning(
-                    "Failed to parse SRT for duration",
-                    extra={"srt_file": str(srt_path), "error": str(e)}
-                )
+                logger.warning("Failed to parse SRT for duration", extra={"srt_file": str(srt_path), "error": str(e)})
 
         # Fall back to transcript metrics (estimated from word count)
         return transcript_metrics.get("estimated_duration_minutes", 0)
 
     def _should_run_timestamp_phase(
-        self,
-        job: Dict[str, Any],
-        transcript_metrics: Dict[str, Any],
-        srt_path: Optional[Path]
+        self, job: Dict[str, Any], transcript_metrics: Dict[str, Any], srt_path: Optional[Path]
     ) -> bool:
         """Determine if the timestamp phase should run.
 
@@ -1044,19 +1010,13 @@ class JobWorker:
         """
         # No SRT file = no timestamp phase
         if not srt_path or not srt_path.exists():
-            logger.debug(
-                "Skipping timestamp phase: no SRT file",
-                extra={"job_id": job.get("id")}
-            )
+            logger.debug("Skipping timestamp phase: no SRT file", extra={"job_id": job.get("id")})
             return False
 
         # Check for explicit request in job
         include_timestamps = job.get("include_timestamps", False)
         if include_timestamps:
-            logger.info(
-                "Timestamp phase enabled by request",
-                extra={"job_id": job.get("id")}
-            )
+            logger.info("Timestamp phase enabled by request", extra={"job_id": job.get("id")})
             return True
 
         # Check duration threshold
@@ -1067,8 +1027,8 @@ class JobWorker:
                 extra={
                     "job_id": job.get("id"),
                     "duration_minutes": round(duration_minutes, 1),
-                    "threshold": self.TIMESTAMP_AUTO_THRESHOLD_MINUTES
-                }
+                    "threshold": self.TIMESTAMP_AUTO_THRESHOLD_MINUTES,
+                },
             )
             return True
 
@@ -1077,8 +1037,8 @@ class JobWorker:
             extra={
                 "job_id": job.get("id"),
                 "duration_minutes": round(duration_minutes, 1),
-                "threshold": self.TIMESTAMP_AUTO_THRESHOLD_MINUTES
-            }
+                "threshold": self.TIMESTAMP_AUTO_THRESHOLD_MINUTES,
+            },
         )
         return False
 
@@ -1100,7 +1060,6 @@ class JobWorker:
         escalate_on_failure = escalation_config.get("on_failure", True)
         escalate_on_timeout = escalation_config.get("on_timeout", True)
         timeout_seconds = escalation_config.get("timeout_seconds", 120)
-        max_retries = escalation_config.get("max_retries_per_tier", 1)
 
         # Check if tier is being forced (e.g., by manager escalation)
         forced_tier = context.get("_force_tier")
@@ -1153,19 +1112,21 @@ class JobWorker:
                     "tier": current_tier,
                     "tier_label": tier_label,
                     "backend": backend,
-                }
+                },
             )
 
             # Log phase started/retry
-            await log_event(EventCreate(
-                job_id=job_id,
-                event_type=EventType.phase_started,
-                data=EventData(
-                    phase=phase_name,
-                    backend=backend,
-                    extra={"tier": current_tier, "tier_label": tier_label, "attempt": attempts + 1}
-                ),
-            ))
+            await log_event(
+                EventCreate(
+                    job_id=job_id,
+                    event_type=EventType.phase_started,
+                    data=EventData(
+                        phase=phase_name,
+                        backend=backend,
+                        extra={"tier": current_tier, "tier_label": tier_label, "attempt": attempts + 1},
+                    ),
+                )
+            )
 
             try:
                 # Call LLM with timeout (include phase/tier for Langfuse tracing)
@@ -1178,7 +1139,7 @@ class JobWorker:
                         tier=current_tier,
                         tier_label=tier_label,
                     ),
-                    timeout=timeout_seconds
+                    timeout=timeout_seconds,
                 )
 
                 # Track costs across retries
@@ -1195,7 +1156,7 @@ class JobWorker:
                     prev_file.write_text(prev_content)
                     logger.info(
                         "Preserved previous output",
-                        extra={"job_id": job_id, "phase": phase_name, "preserved_as": prev_file.name}
+                        extra={"job_id": job_id, "phase": phase_name, "preserved_as": prev_file.name},
                     )
 
                 # Add provenance header to output
@@ -1203,17 +1164,19 @@ class JobWorker:
                 output_file.write_text(provenance_header + response.content)
 
                 # Log phase completed
-                await log_event(EventCreate(
-                    job_id=job_id,
-                    event_type=EventType.phase_completed,
-                    data=EventData(
-                        phase=phase_name,
-                        cost=response.cost,
-                        tokens=response.total_tokens,
-                        model=response.model,
-                        extra={"tier": current_tier, "tier_label": tier_label, "total_attempts": attempts + 1}
-                    ),
-                ))
+                await log_event(
+                    EventCreate(
+                        job_id=job_id,
+                        event_type=EventType.phase_completed,
+                        data=EventData(
+                            phase=phase_name,
+                            cost=response.cost,
+                            tokens=response.total_tokens,
+                            model=response.model,
+                            extra={"tier": current_tier, "tier_label": tier_label, "total_attempts": attempts + 1},
+                        ),
+                    )
+                )
 
                 return {
                     "success": True,
@@ -1236,7 +1199,7 @@ class JobWorker:
                         "phase": phase_name,
                         "tier_label": tier_label,
                         "timeout_seconds": timeout_seconds,
-                    }
+                    },
                 )
 
                 # Check if we should escalate on timeout
@@ -1271,7 +1234,7 @@ class JobWorker:
                         "job_id": job_id,
                         "phase": phase_name,
                         "final_tier": current_tier,
-                    }
+                    },
                 )
                 break
 
@@ -1285,37 +1248,40 @@ class JobWorker:
                     "from_tier": tier_label,
                     "to_tier": next_label,
                     "reason": last_error,
-                }
+                },
             )
 
             # Update tier reason to reflect escalation
             tier_reason = f"escalated from {tier_label}: {last_error}"
 
-            await log_event(EventCreate(
-                job_id=job_id,
-                event_type=EventType.phase_started,
-                data=EventData(
-                    phase=phase_name,
-                    extra={
-                        "escalation": True,
-                        "from_tier": current_tier,
-                        "to_tier": next_tier,
-                        "reason": last_error
-                    }
-                ),
-            ))
+            await log_event(
+                EventCreate(
+                    job_id=job_id,
+                    event_type=EventType.phase_started,
+                    data=EventData(
+                        phase=phase_name,
+                        extra={
+                            "escalation": True,
+                            "from_tier": current_tier,
+                            "to_tier": next_tier,
+                            "reason": last_error,
+                        },
+                    ),
+                )
+            )
 
             current_tier = next_tier
 
         # All attempts failed
-        await log_event(EventCreate(
-            job_id=job_id,
-            event_type=EventType.phase_failed,
-            data=EventData(
-                phase=phase_name,
-                extra={"error": last_error, "attempts": attempts, "final_tier": current_tier}
-            ),
-        ))
+        await log_event(
+            EventCreate(
+                job_id=job_id,
+                event_type=EventType.phase_failed,
+                data=EventData(
+                    phase=phase_name, extra={"error": last_error, "attempts": attempts, "final_tier": current_tier}
+                ),
+            )
+        )
         return {"success": False, "error": last_error, "attempts": attempts, "cost": total_cost}
 
     async def _analyze_and_recover(
@@ -1349,10 +1315,7 @@ class JobWorker:
         job_id = job.get("id")
         project_name = job.get("project_name", "Unknown")
 
-        logger.info(
-            "Manager analyzing failure",
-            extra={"job_id": job_id, "error": error[:100]}
-        )
+        logger.info("Manager analyzing failure", extra={"job_id": job_id, "error": error[:100]})
 
         try:
             # Find the failed phase
@@ -1425,17 +1388,11 @@ REASON: [Brief explanation - 1-2 sentences]
             tier_backends = routing_config.get("tiers", ["openrouter-cheapskate", "openrouter", "openrouter-big-brain"])
             backend_name = tier_backends[2] if len(tier_backends) > 2 else tier_backends[-1]
 
-            logger.info(
-                "Running recovery analysis",
-                extra={"job_id": job_id, "backend": backend_name}
-            )
+            logger.info("Running recovery analysis", extra={"job_id": job_id, "backend": backend_name})
 
             # Run the analysis
             response = await self.llm.generate(
-                system_prompt=system_prompt,
-                user_prompt=decision_prompt,
-                backend=backend_name,
-                timeout=120
+                system_prompt=system_prompt, user_prompt=decision_prompt, backend=backend_name, timeout=120
             )
 
             # Parse the decision - search full content for action pattern
@@ -1455,12 +1412,12 @@ REASON: [Brief explanation - 1-2 sentences]
 
             # Extract reason - check multiple formats
             reason = "No reason provided"
-            lines = content.split('\n')
+            lines = content.split("\n")
             for i, line in enumerate(lines):
                 line_upper = line.upper().strip()
                 # Check for "REASON:" format
                 if line_upper.startswith("REASON:"):
-                    reason = line[line.find(":") + 1:].strip()
+                    reason = line[line.find(":") + 1 :].strip()
                     break
                 # Check for "### Rationale" section (manager prompt format)
                 elif "RATIONALE" in line_upper and line_upper.startswith("#"):
@@ -1479,12 +1436,13 @@ REASON: [Brief explanation - 1-2 sentences]
                     "action": action,
                     "reason": reason[:100],
                     "analysis_cost": response.cost,
-                }
+                },
             )
 
             # Save the analysis report
             report_file = project_path / "recovery_analysis.md"
-            report_file.write_text(f"""# Recovery Analysis Report
+            report_file.write_text(
+                f"""# Recovery Analysis Report
 **Job ID:** {job_id}
 **Project:** {project_name}
 **Error:** {error}
@@ -1500,7 +1458,8 @@ REASON: [Brief explanation - 1-2 sentences]
 ---
 **Analysis Cost:** ${response.cost:.4f}
 **Model:** {response.model}
-""")
+"""
+            )
 
             total_cost = current_cost + response.cost
 
@@ -1517,10 +1476,7 @@ REASON: [Brief explanation - 1-2 sentences]
                 # Re-run the failed phase at the same tier
                 # Validate index is within bounds (phases may have changed via API)
                 if failed_phase and 0 <= failed_phase_idx < len(phases):
-                    logger.info(
-                        "Retrying failed phase",
-                        extra={"job_id": job_id, "phase": failed_phase.get("name")}
-                    )
+                    logger.info("Retrying failed phase", extra={"job_id": job_id, "phase": failed_phase.get("name")})
 
                     # Reset phase status
                     phases[failed_phase_idx]["status"] = "pending"
@@ -1564,7 +1520,7 @@ REASON: [Brief explanation - 1-2 sentences]
                                 "phase": failed_phase.get("name"),
                                 "from_tier": current_tier,
                                 "to_tier": next_tier,
-                            }
+                            },
                         )
 
                         # Reset phase and force higher tier
@@ -1609,7 +1565,7 @@ REASON: [Brief explanation - 1-2 sentences]
                     # The fix content is everything after the REASON line
                     fix_content = ""
                     found_reason = False
-                    for line in content.split('\n'):
+                    for line in content.split("\n"):
                         if found_reason:
                             fix_content += line + "\n"
                         elif line.upper().startswith("REASON:"):
@@ -1620,7 +1576,7 @@ REASON: [Brief explanation - 1-2 sentences]
                     if fix_content:
                         logger.info(
                             "Applying manager fix",
-                            extra={"job_id": job_id, "phase": phase_name, "fix_length": len(fix_content)}
+                            extra={"job_id": job_id, "phase": phase_name, "fix_length": len(fix_content)},
                         )
 
                         # Save the fixed output
@@ -1645,15 +1601,17 @@ REASON: [Brief explanation - 1-2 sentences]
                             total_cost=total_cost,
                         )
 
-                return {"recovered": False, "action": action, "reason": "Fix could not be applied", "cost": response.cost}
+                return {
+                    "recovered": False,
+                    "action": action,
+                    "reason": "Fix could not be applied",
+                    "cost": response.cost,
+                }
 
             return {"recovered": False, "action": action, "reason": reason, "cost": response.cost}
 
         except Exception as recovery_err:
-            logger.warning(
-                "Recovery analysis failed",
-                extra={"job_id": job_id, "error": str(recovery_err)}
-            )
+            logger.warning("Recovery analysis failed", extra={"job_id": job_id, "error": str(recovery_err)})
             return {
                 "recovered": False,
                 "action": "FAIL",
@@ -1723,6 +1681,7 @@ REASON: [Brief explanation - 1-2 sentences]
 
             # All phases complete - create manifest and mark done
             from api.services.tracking import CostTracker
+
             tracker = CostTracker()
             tracker.total_cost = total_cost
 
@@ -1772,7 +1731,6 @@ REASON: [Brief explanation - 1-2 sentences]
 5. Items that may need human review (unclear audio, names to verify)
 
 Output a detailed analysis document in markdown format that will guide the formatting and SEO agents.""",
-
             "formatter": """You are a transcript formatter for PBS Wisconsin. Your role is to transform raw transcripts into clean, readable markdown documents.
 
 Guidelines:
@@ -1783,7 +1741,6 @@ Guidelines:
 - Maintain the original meaning and voice
 
 Output a clean, well-formatted markdown transcript.""",
-
             "seo": """You are an SEO specialist for PBS Wisconsin streaming content. Your role is to generate search-optimized metadata for video content.
 
 Generate:
@@ -1794,7 +1751,6 @@ Generate:
 5. Categories
 
 Output as JSON with keys: title, short_description, long_description, tags, categories""",
-
             "copy_editor": """You are a copy editor for PBS Wisconsin. Your role is to review and refine formatted transcripts for broadcast quality.
 
 Focus on:
@@ -1805,7 +1761,6 @@ Focus on:
 - Preserving speaker voice while improving prose
 
 Output the polished transcript with any notes on changes made.""",
-
             "manager": """You are the QA Manager for PBS Wisconsin Editorial Assistant. Review all pipeline outputs for quality.
 
 Check:
@@ -1820,7 +1775,9 @@ Output a QA report with:
 - Recommendation""",
         }
 
-        return fallback_prompts.get(phase_name, f"You are the {phase_name} agent. Process the input and provide appropriate output.")
+        return fallback_prompts.get(
+            phase_name, f"You are the {phase_name} agent. Process the input and provide appropriate output."
+        )
 
     def _build_phase_prompt(self, phase_name: str, context: Dict[str, Any]) -> str:
         """Build the user prompt for a phase with relevant context."""
@@ -1853,7 +1810,7 @@ Output a QA report with:
             sst_section += "\n*Use this context to align your analysis with existing metadata.*\n\n"
 
         if phase_name == "analyst":
-            prompt = f"""Please analyze the following transcript:
+            prompt = """Please analyze the following transcript:
 """
             if sst_section:
                 prompt += sst_section

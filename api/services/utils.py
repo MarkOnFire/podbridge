@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +23,12 @@ logger = logging.getLogger(__name__)
 DUPLICATE_FILE_PATTERNS = [
     # Windows: "file - Copy.txt", "file - Copy (2).txt"
     # Must come BEFORE macOS pattern to catch "- Copy (2)" as one unit
-    re.compile(r'\s*-\s*Copy(?:\s*\((\d+)\))?\s*$', re.IGNORECASE),
+    re.compile(r"\s*-\s*Copy(?:\s*\((\d+)\))?\s*$", re.IGNORECASE),
     # Generic: "file copy.txt", "file copy 2.txt"
-    re.compile(r'\s+copy(?:\s+(\d+))?\s*$', re.IGNORECASE),
+    re.compile(r"\s+copy(?:\s+(\d+))?\s*$", re.IGNORECASE),
     # macOS: "file (1).txt", "file (2).txt", etc.
     # Must come AFTER Windows pattern to avoid partial matches
-    re.compile(r'\s*\((\d+)\)\s*$'),
+    re.compile(r"\s*\((\d+)\)\s*$"),
     # macOS alternate: "file 2.txt" (less common, only match if digit at very end)
     # Note: Commented out to avoid false positives with legitimate IDs like "WEB02"
     # re.compile(r'\s+(\d+)\s*$'),
@@ -74,12 +74,9 @@ def sanitize_duplicate_filename(filename: str) -> Tuple[str, bool]:
         match = pattern.search(filename)
         if match:
             # Found a duplicate pattern - remove it
-            filename = pattern.sub('', filename).strip()
+            filename = pattern.sub("", filename).strip()
             was_duplicate = True
-            logger.warning(
-                f"Detected duplicate file suffix in '{original}' -> "
-                f"normalized to '{filename}'"
-            )
+            logger.warning(f"Detected duplicate file suffix in '{original}' -> " f"normalized to '{filename}'")
             break  # Only remove one pattern (they shouldn't stack)
 
     return filename, was_duplicate
@@ -186,7 +183,7 @@ def parse_iso_datetime(s: str) -> datetime:
     """
     try:
         # Try parsing with fromisoformat (handles most ISO formats)
-        dt = datetime.fromisoformat(s.replace('Z', '+00:00'))
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError as e:
         raise ValueError(f"Invalid ISO datetime string: {s}") from e
 
@@ -195,9 +192,7 @@ def parse_iso_datetime(s: str) -> datetime:
 
 
 def calculate_transcript_metrics(
-    transcript_content: str,
-    words_per_minute: int = 150,
-    long_form_threshold_minutes: int = 15
+    transcript_content: str, words_per_minute: int = 150, long_form_threshold_minutes: int = 15
 ) -> dict:
     """Calculate metrics from transcript content for routing decisions.
 
@@ -281,7 +276,7 @@ def extract_media_id(filename: str) -> str:
 
     # Remove only _ForClaude suffix (processing artifact)
     # PRESERVE _REV[date] suffix as it denotes a distinct revised Media ID
-    stem = re.sub(r'_ForClaude', '', stem, flags=re.IGNORECASE)
+    stem = re.sub(r"_ForClaude", "", stem, flags=re.IGNORECASE)
 
     # Remove OS duplicate patterns (1), - Copy, copy 2, etc.
     stem, was_duplicate = sanitize_duplicate_filename(stem)
@@ -293,13 +288,15 @@ def extract_media_id(filename: str) -> str:
 # SRT Parsing Utilities
 # =============================================================================
 
+
 @dataclass
 class SRTCaption:
     """Represents a single SRT caption entry."""
+
     index: int
     start_ms: int  # Start time in milliseconds
-    end_ms: int    # End time in milliseconds
-    text: str      # Caption text (may be multiline)
+    end_ms: int  # End time in milliseconds
+    text: str  # Caption text (may be multiline)
 
     @property
     def start_timecode(self) -> str:
@@ -345,8 +342,8 @@ def srt_timecode_to_ms(timecode: str) -> int:
         150000
     """
     # Handle both , and . as millisecond separator
-    timecode = timecode.replace('.', ',')
-    match = re.match(r'(\d{1,2}):(\d{2}):(\d{2}),(\d{3})', timecode.strip())
+    timecode = timecode.replace(".", ",")
+    match = re.match(r"(\d{1,2}):(\d{2}):(\d{2}),(\d{3})", timecode.strip())
     if not match:
         raise ValueError(f"Invalid SRT timecode: {timecode}")
 
@@ -401,7 +398,7 @@ def ms_to_vtt_timecode(ms: int) -> str:
         '01:30:45.123'
     """
     srt_tc = ms_to_srt_timecode(ms)
-    return srt_tc.replace(',', '.')
+    return srt_tc.replace(",", ".")
 
 
 def ms_to_display_timecode(ms: int, include_hours: bool = False) -> str:
@@ -466,14 +463,14 @@ def parse_srt(content: str) -> List[SRTCaption]:
     captions = []
 
     # Split into blocks (separated by blank lines)
-    blocks = re.split(r'\n\s*\n', content.strip())
+    blocks = re.split(r"\n\s*\n", content.strip())
 
     for block in blocks:
         block = block.strip()
         if not block:
             continue
 
-        lines = block.split('\n')
+        lines = block.split("\n")
         if len(lines) < 3:
             continue
 
@@ -483,8 +480,7 @@ def parse_srt(content: str) -> List[SRTCaption]:
 
             # Line 2: Timecodes
             time_match = re.match(
-                r'(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})',
-                lines[1].strip()
+                r"(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{1,2}:\d{2}:\d{2}[,\.]\d{3})", lines[1].strip()
             )
             if not time_match:
                 continue
@@ -493,14 +489,9 @@ def parse_srt(content: str) -> List[SRTCaption]:
             end_ms = srt_timecode_to_ms(time_match.group(2))
 
             # Lines 3+: Caption text
-            text = '\n'.join(lines[2:]).strip()
+            text = "\n".join(lines[2:]).strip()
 
-            captions.append(SRTCaption(
-                index=index,
-                start_ms=start_ms,
-                end_ms=end_ms,
-                text=text
-            ))
+            captions.append(SRTCaption(index=index, start_ms=start_ms, end_ms=end_ms, text=text))
         except (ValueError, IndexError):
             # Skip malformed entries
             continue
@@ -523,7 +514,7 @@ def generate_srt(captions: List[SRTCaption]) -> str:
         caption.index = i
         output_parts.append(caption.to_srt())
 
-    return '\n'.join(output_parts)
+    return "\n".join(output_parts)
 
 
 def generate_vtt(captions: List[SRTCaption]) -> str:
@@ -540,14 +531,11 @@ def generate_vtt(captions: List[SRTCaption]) -> str:
     for caption in captions:
         output_parts.append(caption.to_vtt())
 
-    return '\n'.join(output_parts)
+    return "\n".join(output_parts)
 
 
 def clean_srt_captions(
-    captions: List[SRTCaption],
-    min_gap_ms: int = 50,
-    max_duration_ms: int = 7000,
-    merge_threshold_ms: int = 1000
+    captions: List[SRTCaption], min_gap_ms: int = 50, max_duration_ms: int = 7000, merge_threshold_ms: int = 1000
 ) -> List[SRTCaption]:
     """Clean and normalize SRT captions.
 
@@ -594,11 +582,11 @@ def clean_srt_captions(
             caption.start_ms = prev_caption.end_ms + min_gap_ms
 
         # Merge very short captions with previous if possible
-        if (prev_caption and
-            caption.duration_ms < merge_threshold_ms and
-            caption.start_ms - prev_caption.end_ms < 500):  # Close in time
+        if (
+            prev_caption and caption.duration_ms < merge_threshold_ms and caption.start_ms - prev_caption.end_ms < 500
+        ):  # Close in time
             # Merge into previous caption
-            prev_caption.text = prev_caption.text + '\n' + caption.text
+            prev_caption.text = prev_caption.text + "\n" + caption.text
             prev_caption.end_ms = caption.end_ms
             continue
 

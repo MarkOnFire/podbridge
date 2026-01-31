@@ -1,17 +1,19 @@
 """Integration tests to verify exit criteria for database service."""
-import pytest
-import pytest_asyncio
+
 import os
 import tempfile
 
+import pytest
+import pytest_asyncio
+
+from api.models.job import JobCreate, JobStatus, JobUpdate
 from api.services.database import (
-    init_db,
     close_db,
     create_job,
     get_job,
+    init_db,
     update_job,
 )
-from api.models.job import JobCreate, JobUpdate, JobStatus
 
 
 @pytest_asyncio.fixture
@@ -25,7 +27,8 @@ async def integration_db():
     await init_db()
 
     # Create schema
-    from api.services.database import metadata, _engine
+    from api.services.database import _engine, metadata
+
     async with _engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
 
@@ -45,11 +48,13 @@ async def test_exit_criteria_thread_safe_connections(integration_db):
     import asyncio
 
     async def create_test_job(i):
-        job = await create_job(JobCreate(
-            project_path=f"/projects/test{i}",
-            transcript_file=f"/transcripts/test{i}.txt",
-            priority=i,
-        ))
+        job = await create_job(
+            JobCreate(
+                project_path=f"/projects/test{i}",
+                transcript_file=f"/transcripts/test{i}.txt",
+                priority=i,
+            )
+        )
         return job
 
     # Create 20 jobs concurrently to test thread safety
@@ -67,11 +72,13 @@ async def test_exit_criteria_thread_safe_connections(integration_db):
 async def test_exit_criteria_basic_crud(integration_db):
     """Verify basic job CRUD operations work (exit criteria 2)."""
     # Create
-    job = await create_job(JobCreate(
-        project_path="/projects/test",
-        transcript_file="/transcripts/test.txt",
-        priority=5,
-    ))
+    job = await create_job(
+        JobCreate(
+            project_path="/projects/test",
+            transcript_file="/transcripts/test.txt",
+            priority=5,
+        )
+    )
     assert job.id is not None
     assert job.status == JobStatus.pending
     print(f"CREATE: Job {job.id} created successfully")
@@ -84,10 +91,13 @@ async def test_exit_criteria_basic_crud(integration_db):
     print(f"READ: Job {job.id} retrieved successfully")
 
     # Update
-    updated = await update_job(job.id, JobUpdate(
-        status=JobStatus.in_progress,
-        current_phase="analyst",
-    ))
+    updated = await update_job(
+        job.id,
+        JobUpdate(
+            status=JobStatus.in_progress,
+            current_phase="analyst",
+        ),
+    )
     assert updated.status == JobStatus.in_progress
     assert updated.current_phase == "analyst"
     assert updated.started_at is not None
@@ -100,23 +110,29 @@ async def test_exit_criteria_basic_crud(integration_db):
 async def test_exit_criteria_create_and_retrieve(integration_db):
     """Verify can create and retrieve jobs (exit criteria 3)."""
     # Create multiple jobs
-    job1 = await create_job(JobCreate(
-        project_path="/projects/episode1",
-        transcript_file="/transcripts/ep1.txt",
-        priority=10,
-    ))
+    job1 = await create_job(
+        JobCreate(
+            project_path="/projects/episode1",
+            transcript_file="/transcripts/ep1.txt",
+            priority=10,
+        )
+    )
 
-    job2 = await create_job(JobCreate(
-        project_path="/projects/episode2",
-        transcript_file="/transcripts/ep2.txt",
-        priority=5,
-    ))
+    job2 = await create_job(
+        JobCreate(
+            project_path="/projects/episode2",
+            transcript_file="/transcripts/ep2.txt",
+            priority=5,
+        )
+    )
 
-    job3 = await create_job(JobCreate(
-        project_path="/projects/episode3",
-        transcript_file="/transcripts/ep3.txt",
-        priority=1,
-    ))
+    job3 = await create_job(
+        JobCreate(
+            project_path="/projects/episode3",
+            transcript_file="/transcripts/ep3.txt",
+            priority=1,
+        )
+    )
 
     # Retrieve all jobs
     retrieved1 = await get_job(job1.id)

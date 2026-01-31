@@ -2,11 +2,11 @@
 
 Tests queue listing, creation, deletion, and statistics.
 """
+
 import pytest
 from fastapi.testclient import TestClient
-from api.main import app
-from api.models.job import JobStatus
 
+from api.main import app
 
 client = TestClient(app)
 
@@ -57,8 +57,7 @@ class TestListQueue:
         """Test filtering queue by status."""
         # Create jobs with different statuses
         job1 = {"project_name": "test-pending", "transcript_file": "pending.txt"}
-        response1 = client.post("/api/queue/", json=job1)
-        job1_id = response1.json()["id"]
+        client.post("/api/queue/", json=job1)
 
         job2 = {"project_name": "test-completed", "transcript_file": "completed.txt"}
         response2 = client.post("/api/queue/", json=job2)
@@ -86,10 +85,7 @@ class TestListQueue:
         """Test queue pagination."""
         # Create multiple jobs
         for i in range(5):
-            job = {
-                "project_name": f"test-page-{i}",
-                "transcript_file": f"test{i}.txt"
-            }
+            job = {"project_name": f"test-page-{i}", "transcript_file": f"test{i}.txt"}
             client.post("/api/queue/", json=job)
 
         # Get first page with page_size=2
@@ -130,11 +126,9 @@ class TestListQueue:
         job1 = {"project_name": "test-sort-1", "transcript_file": "sort1.txt"}
         job2 = {"project_name": "test-sort-2", "transcript_file": "sort2.txt"}
 
-        response1 = client.post("/api/queue/", json=job1)
-        job1_id = response1.json()["id"]
+        client.post("/api/queue/", json=job1)
 
-        response2 = client.post("/api/queue/", json=job2)
-        job2_id = response2.json()["id"]
+        client.post("/api/queue/", json=job2)
 
         # Test newest first (default)
         response = client.get("/api/queue/?sort=newest")
@@ -282,8 +276,7 @@ class TestGetNextJob:
         job2 = {"project_name": "test-next-2", "transcript_file": "next2.txt", "priority": 10}
 
         client.post("/api/queue/", json=job1)
-        response2 = client.post("/api/queue/", json=job2)
-        job2_id = response2.json()["id"]
+        client.post("/api/queue/", json=job2)
 
         # Get next job (should be highest priority)
         response = client.get("/api/queue/next")
@@ -313,7 +306,7 @@ class TestGetNextJob:
         job1 = {"project_name": "test-next-pending", "transcript_file": "next_pending.txt"}
         job2 = {"project_name": "test-next-completed", "transcript_file": "next_completed.txt"}
 
-        response1 = client.post("/api/queue/", json=job1)
+        client.post("/api/queue/", json=job1)
         response2 = client.post("/api/queue/", json=job2)
 
         # Mark second as completed
@@ -352,7 +345,7 @@ class TestGetQueueStats:
         job1 = {"project_name": "test-stats-1", "transcript_file": "stats1.txt"}
         job2 = {"project_name": "test-stats-2", "transcript_file": "stats2.txt"}
 
-        response1 = client.post("/api/queue/", json=job1)
+        client.post("/api/queue/", json=job1)
         response2 = client.post("/api/queue/", json=job2)
 
         # Mark one as completed

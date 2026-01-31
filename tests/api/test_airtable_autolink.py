@@ -4,12 +4,12 @@ Tests that jobs are automatically linked to SST records when created,
 with proper error handling when Airtable is unavailable.
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from fastapi import HTTPException
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from api.models.job import Job, JobCreate, JobStatus
 from api.routers.queue import add_to_queue
-from api.models.job import JobCreate, Job, JobStatus
 
 
 @pytest.mark.asyncio
@@ -60,10 +60,12 @@ async def test_add_to_queue_with_successful_airtable_lookup():
         "createdTime": "2025-01-01T00:00:00.000Z",
     }
 
-    with patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find, \
-         patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create, \
-         patch("api.routers.queue.database.update_job", new_callable=AsyncMock) as mock_update, \
-         patch("api.routers.queue.AirtableClient") as mock_airtable_class:
+    with (
+        patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find,
+        patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create,
+        patch("api.routers.queue.database.update_job", new_callable=AsyncMock) as mock_update,
+        patch("api.routers.queue.AirtableClient") as mock_airtable_class,
+    ):
 
         # Setup mocks
         mock_find.return_value = []
@@ -73,7 +75,9 @@ async def test_add_to_queue_with_successful_airtable_lookup():
         # Mock AirtableClient instance
         mock_airtable = MagicMock()
         mock_airtable.search_sst_by_media_id = AsyncMock(return_value=mock_record)
-        mock_airtable.get_sst_url.return_value = "https://airtable.com/appZ2HGwhiifQToB6/tblTKFOwTvK7xw1H5/recXXXXXXXXXXXXXX"
+        mock_airtable.get_sst_url.return_value = (
+            "https://airtable.com/appZ2HGwhiifQToB6/tblTKFOwTvK7xw1H5/recXXXXXXXXXXXXXX"
+        )
         mock_airtable_class.return_value = mock_airtable
 
         # Execute
@@ -127,10 +131,12 @@ async def test_add_to_queue_airtable_not_found():
         airtable_url=None,
     )
 
-    with patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find, \
-         patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create, \
-         patch("api.routers.queue.database.update_job", new_callable=AsyncMock) as mock_update, \
-         patch("api.routers.queue.AirtableClient") as mock_airtable_class:
+    with (
+        patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find,
+        patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create,
+        patch("api.routers.queue.database.update_job", new_callable=AsyncMock) as mock_update,
+        patch("api.routers.queue.AirtableClient") as mock_airtable_class,
+    ):
 
         mock_find.return_value = []
         mock_create.return_value = mock_job
@@ -173,9 +179,11 @@ async def test_add_to_queue_airtable_api_key_missing():
         max_retries=3,
     )
 
-    with patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find, \
-         patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create, \
-         patch("api.routers.queue.AirtableClient") as mock_airtable_class:
+    with (
+        patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find,
+        patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create,
+        patch("api.routers.queue.AirtableClient") as mock_airtable_class,
+    ):
 
         mock_find.return_value = []
         mock_create.return_value = mock_job
@@ -213,18 +221,18 @@ async def test_add_to_queue_airtable_api_error():
         max_retries=3,
     )
 
-    with patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find, \
-         patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create, \
-         patch("api.routers.queue.AirtableClient") as mock_airtable_class:
+    with (
+        patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find,
+        patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create,
+        patch("api.routers.queue.AirtableClient") as mock_airtable_class,
+    ):
 
         mock_find.return_value = []
         mock_create.return_value = mock_job
 
         # Mock AirtableClient to raise HTTP error
         mock_airtable = MagicMock()
-        mock_airtable.search_sst_by_media_id = AsyncMock(
-            side_effect=Exception("Airtable API connection failed")
-        )
+        mock_airtable.search_sst_by_media_id = AsyncMock(side_effect=Exception("Airtable API connection failed"))
         mock_airtable_class.return_value = mock_airtable
 
         # Execute
@@ -265,10 +273,12 @@ async def test_media_id_extraction():
             media_id=expected_media_id,
         )
 
-        with patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find, \
-             patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create, \
-             patch("api.routers.queue.database.update_job", new_callable=AsyncMock) as mock_update, \
-             patch("api.routers.queue.AirtableClient") as mock_airtable_class:
+        with (
+            patch("api.routers.queue.database.find_jobs_by_transcript", new_callable=AsyncMock) as mock_find,
+            patch("api.routers.queue.database.create_job", new_callable=AsyncMock) as mock_create,
+            patch("api.routers.queue.database.update_job", new_callable=AsyncMock) as mock_update,
+            patch("api.routers.queue.AirtableClient") as mock_airtable_class,
+        ):
 
             mock_find.return_value = []
             mock_create.return_value = mock_job

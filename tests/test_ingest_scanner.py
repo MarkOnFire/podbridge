@@ -3,14 +3,15 @@
 Tests HTML parsing, Media ID extraction, file type detection, smart scanning,
 and database tracking for the remote ingest server monitoring system.
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from api.services.ingest_scanner import (
     IngestScanner,
     RemoteFile,
-    ScanResult,
 )
 
 
@@ -342,16 +343,13 @@ class TestScanWithMockedHTTP:
     @pytest.mark.asyncio
     async def test_scan_makes_http_request(self):
         """Test that scan makes HTTP request to correct URL."""
-        scanner = IngestScanner(
-            base_url="https://test.com",
-            directories=["/exports/"]
-        )
+        scanner = IngestScanner(base_url="https://test.com", directories=["/exports/"])
 
         mock_response = MagicMock()
         mock_response.text = '<html><body><a href="2WLI1209HD.srt">2WLI1209HD.srt</a></body></html>'
         mock_response.raise_for_status = MagicMock()
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.get = AsyncMock(return_value=mock_response)
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
@@ -359,9 +357,9 @@ class TestScanWithMockedHTTP:
             mock_client.return_value = mock_instance
 
             # Mock the Airtable and database calls
-            with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD"]):
-                with patch.object(scanner, '_track_file', return_value=True):
-                    result = await scanner.scan()
+            with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD"]):
+                with patch.object(scanner, "_track_file", return_value=True):
+                    await scanner.scan()
 
             # Verify HTTP request was made
             mock_instance.get.assert_called()
@@ -373,14 +371,14 @@ class TestScanWithMockedHTTP:
         """Test that scan handles network errors gracefully."""
         scanner = IngestScanner()
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.get = AsyncMock(side_effect=Exception("Connection failed"))
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
             mock_instance.__aexit__ = AsyncMock(return_value=None)
             mock_client.return_value = mock_instance
 
-            with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD"]):
+            with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD"]):
                 result = await scanner.scan()
 
             # Network errors per-directory are logged but don't fail the whole scan
@@ -397,15 +395,15 @@ class TestScanWithMockedHTTP:
         mock_response.text = '<html><body><a href="broken'
         mock_response.raise_for_status = MagicMock()
 
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_instance = AsyncMock()
             mock_instance.get = AsyncMock(return_value=mock_response)
             mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
             mock_instance.__aexit__ = AsyncMock(return_value=None)
             mock_client.return_value = mock_instance
 
-            with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD"]):
-                with patch.object(scanner, '_track_file', return_value=False):
+            with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD"]):
+                with patch.object(scanner, "_track_file", return_value=False):
                     # Should not raise, BeautifulSoup handles malformed HTML
                     result = await scanner.scan()
 
@@ -468,8 +466,8 @@ class TestSmartScanning:
         """Test that smart scan queries QC-passed Media IDs first."""
         scanner = IngestScanner()
 
-        with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD", "9UNP2005HD"]) as mock_qc:
-            with patch.object(scanner, 'check_ingest_server_for_media_id', return_value=[]):
+        with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD", "9UNP2005HD"]) as mock_qc:
+            with patch.object(scanner, "check_ingest_server_for_media_id", return_value=[]):
                 await scanner.scan()
 
         # Should have called get_qc_passed_media_ids
@@ -480,8 +478,8 @@ class TestSmartScanning:
         """Test that smart scan checks ingest server for each Media ID."""
         scanner = IngestScanner()
 
-        with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD", "9UNP2005HD"]):
-            with patch.object(scanner, 'check_ingest_server_for_media_id', return_value=[]) as mock_check:
+        with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD", "9UNP2005HD"]):
+            with patch.object(scanner, "check_ingest_server_for_media_id", return_value=[]) as mock_check:
                 await scanner.scan()
 
         # Should have checked for both Media IDs
@@ -499,12 +497,12 @@ class TestSmartScanning:
             url="https://test.com/2WLI1209HD.srt",
             directory_path="/",
             file_type="transcript",
-            media_id="2WLI1209HD"
+            media_id="2WLI1209HD",
         )
 
-        with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD"]):
-            with patch.object(scanner, 'check_ingest_server_for_media_id', return_value=[mock_file]):
-                with patch.object(scanner, '_track_file', return_value=True) as mock_track:
+        with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD"]):
+            with patch.object(scanner, "check_ingest_server_for_media_id", return_value=[mock_file]):
+                with patch.object(scanner, "_track_file", return_value=True) as mock_track:
                     result = await scanner.scan()
 
         # Should have tracked the file
@@ -517,8 +515,8 @@ class TestSmartScanning:
         """Test that smart scan returns scan statistics."""
         scanner = IngestScanner()
 
-        with patch.object(scanner, 'get_qc_passed_media_ids', return_value=["2WLI1209HD", "9UNP2005HD"]):
-            with patch.object(scanner, 'check_ingest_server_for_media_id', return_value=[]):
+        with patch.object(scanner, "get_qc_passed_media_ids", return_value=["2WLI1209HD", "9UNP2005HD"]):
+            with patch.object(scanner, "check_ingest_server_for_media_id", return_value=[]):
                 result = await scanner.scan()
 
         assert result.success is True
@@ -542,7 +540,7 @@ class TestDatabaseTracking:
             file_type="transcript",
             media_id="2WLI1209HD",
             file_size_bytes=45000,
-            modified_at=datetime.now(timezone.utc)
+            modified_at=datetime.now(timezone.utc),
         )
 
         # Mock database session
@@ -551,7 +549,7 @@ class TestDatabaseTracking:
         mock_result.fetchone.return_value = None  # File doesn't exist
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        with patch('api.services.ingest_scanner.get_session') as mock_get_session:
+        with patch("api.services.ingest_scanner.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_get_session.return_value.__aexit__ = AsyncMock()
 
@@ -571,7 +569,7 @@ class TestDatabaseTracking:
             url="https://test.com/2WLI1209HD.srt",
             directory_path="/",
             file_type="transcript",
-            media_id="2WLI1209HD"
+            media_id="2WLI1209HD",
         )
 
         # Mock existing file
@@ -584,7 +582,7 @@ class TestDatabaseTracking:
         mock_result.fetchone.return_value = mock_existing
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        with patch('api.services.ingest_scanner.get_session') as mock_get_session:
+        with patch("api.services.ingest_scanner.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
             mock_get_session.return_value.__aexit__ = AsyncMock()
 
@@ -603,7 +601,7 @@ class TestCheckIngestServerForMediaId:
         """Test that check scans all configured directories."""
         scanner = IngestScanner(directories=["/dir1/", "/dir2/"])
 
-        with patch.object(scanner, '_scan_directory', return_value=[]) as mock_scan:
+        with patch.object(scanner, "_scan_directory", return_value=[]) as mock_scan:
             await scanner.check_ingest_server_for_media_id("2WLI1209HD")
 
         # Should have scanned both directories
@@ -620,7 +618,7 @@ class TestCheckIngestServerForMediaId:
             RemoteFile("2WLI1209HD.jpg", "url3", "/", "screengrab", "2WLI1209HD"),
         ]
 
-        with patch.object(scanner, '_scan_directory', return_value=mock_files):
+        with patch.object(scanner, "_scan_directory", return_value=mock_files):
             result = await scanner.check_ingest_server_for_media_id("2WLI1209HD")
 
         # Should only return files matching the Media ID
@@ -635,7 +633,7 @@ class TestCheckIngestServerForMediaId:
         # First directory fails, second succeeds
         mock_file = RemoteFile("2WLI1209HD.srt", "url", "/dir2/", "transcript", "2WLI1209HD")
 
-        with patch.object(scanner, '_scan_directory') as mock_scan:
+        with patch.object(scanner, "_scan_directory") as mock_scan:
             mock_scan.side_effect = [Exception("Failed"), [mock_file]]
 
             result = await scanner.check_ingest_server_for_media_id("2WLI1209HD")

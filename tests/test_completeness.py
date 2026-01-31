@@ -4,20 +4,17 @@ Tests the word-count comparison logic that detects when an LLM
 silently truncates a long transcript.
 """
 
-import pytest
 from api.services.completeness import (
     CompletenessResult,
     check_completeness,
     count_content_words,
     count_source_words,
-    DEFAULT_COVERAGE_THRESHOLD,
-    MIN_SOURCE_WORDS_FOR_CHECK,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _words(n: int) -> str:
     """Generate a string with exactly n words."""
@@ -28,11 +25,7 @@ def _srt_block(index: int, text: str) -> str:
     """Generate a single SRT subtitle block with valid timecodes."""
     mm = index // 60
     ss = index % 60
-    return (
-        f"{index}\n"
-        f"00:{mm:02d}:{ss:02d},000 --> 00:{mm:02d}:{ss:02d},500\n"
-        f"{text}\n\n"
-    )
+    return f"{index}\n" f"00:{mm:02d}:{ss:02d},000 --> 00:{mm:02d}:{ss:02d},500\n" f"{text}\n\n"
 
 
 def _srt_file(blocks: int, words_per_block: int = 10) -> str:
@@ -59,6 +52,7 @@ def _formatter_output(body: str) -> str:
 # ---------------------------------------------------------------------------
 # count_content_words
 # ---------------------------------------------------------------------------
+
 
 class TestCountContentWords:
     def test_plain_text(self):
@@ -106,6 +100,7 @@ class TestCountContentWords:
 # count_source_words
 # ---------------------------------------------------------------------------
 
+
 class TestCountSourceWords:
     def test_plain_text(self):
         assert count_source_words("one two three", is_srt=False) == 3
@@ -135,6 +130,7 @@ class TestCountSourceWords:
 # ---------------------------------------------------------------------------
 # check_completeness — core logic
 # ---------------------------------------------------------------------------
+
 
 class TestCheckCompleteness:
     def test_complete_transcript(self):
@@ -206,9 +202,7 @@ class TestCheckCompleteness:
         source = "this will not be counted"
         output = _words(800)
         # Force source_word_count=1000 regardless of actual source text
-        result = check_completeness(
-            output, source, source_word_count=1000
-        )
+        result = check_completeness(output, source, source_word_count=1000)
         assert result.source_word_count == 1000
         assert result.is_complete is True  # 800/1000 = 80% > 70%
 
@@ -216,9 +210,7 @@ class TestCheckCompleteness:
         """Duration is included in truncation reason when provided."""
         source = _words(1000)
         output = _words(300)
-        result = check_completeness(
-            output, source, duration_minutes=45.5
-        )
+        result = check_completeness(output, source, duration_minutes=45.5)
         assert result.is_complete is False
         assert "45.5 minutes" in result.reason
 
@@ -226,9 +218,7 @@ class TestCheckCompleteness:
         """Duration is NOT included when check passes."""
         source = _words(1000)
         output = _words(900)
-        result = check_completeness(
-            output, source, duration_minutes=30.0
-        )
+        result = check_completeness(output, source, duration_minutes=30.0)
         assert result.is_complete is True
         assert "minutes" not in result.reason
 
@@ -236,6 +226,7 @@ class TestCheckCompleteness:
 # ---------------------------------------------------------------------------
 # check_completeness — SRT integration
 # ---------------------------------------------------------------------------
+
 
 class TestCheckCompletenessSRT:
     def test_srt_source_stripping(self):
@@ -260,6 +251,7 @@ class TestCheckCompletenessSRT:
 # ---------------------------------------------------------------------------
 # CompletenessResult.to_dict
 # ---------------------------------------------------------------------------
+
 
 class TestCompletenessResultToDict:
     def test_all_fields_present(self):
@@ -307,6 +299,7 @@ class TestCompletenessResultToDict:
 # ---------------------------------------------------------------------------
 # Edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     def test_empty_source(self):

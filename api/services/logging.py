@@ -10,11 +10,11 @@ Log files:
 - OUTPUT/{project}/job.log - Per-job processing logs
 """
 
-import logging
-from logging.handlers import RotatingFileHandler
 import json
+import logging
 import os
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -40,15 +40,35 @@ class JSONFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
-            "extra": {}
+            "extra": {},
         }
 
         # Include any extra context passed via logger.info("msg", extra={...})
         standard_attrs = {
-            'name', 'msg', 'args', 'created', 'filename', 'funcName', 'levelname',
-            'levelno', 'lineno', 'module', 'msecs', 'message', 'pathname', 'process',
-            'processName', 'relativeCreated', 'thread', 'threadName', 'exc_info',
-            'exc_text', 'stack_info', 'getMessage', 'asctime', 'taskName'
+            "name",
+            "msg",
+            "args",
+            "created",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "module",
+            "msecs",
+            "message",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "getMessage",
+            "asctime",
+            "taskName",
         }
 
         for key, value in record.__dict__.items():
@@ -112,10 +132,7 @@ def setup_logging(
         LOGS_DIR.mkdir(parents=True, exist_ok=True)
         log_path = LOGS_DIR / log_file
         file_handler = RotatingFileHandler(
-            log_path,
-            maxBytes=10 * 1024 * 1024,  # 10 MB
-            backupCount=5,
-            encoding='utf-8'
+            log_path, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"  # 10 MB
         )
         file_handler.setLevel(numeric_level)
         file_handler.setFormatter(JSONFormatter())

@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [dev]
+
+# Cancel in-progress runs for the same branch/PR
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
+
+jobs:
+  lint-python:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install lint tools
+        run: pip install ruff black
+      - name: Ruff check
+        run: ruff check .
+      - name: Black check
+        run: black --check .
+
+  lint-frontend:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        run: cd web && npm ci
+      - name: ESLint
+        run: cd web && npm run lint
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    env:
+      OPENROUTER_API_KEY: sk-ci-dummy-not-real
+      AIRTABLE_API_KEY: pat-ci-dummy-not-real
+      LANGFUSE_PUBLIC_KEY: pk-lf-ci-dummy
+      LANGFUSE_SECRET_KEY: sk-lf-ci-dummy
+      LANGFUSE_HOST: https://localhost
+      DATABASE_PATH: ./ci-test.db
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Create required directories
+        run: mkdir -p OUTPUT transcripts logs
+      - name: Run tests
+        run: pytest --tb=short -q
+
+  build-frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - name: Install dependencies
+        run: cd web && npm ci
+      - name: TypeScript compile + Vite build
+        run: cd web && npm run build
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: web/dist/
+          retention-days: 7
+
+  migration-check:
+    name: DB Migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+      - name: Verify tables created
+        run: |
+          python3 -c "
+          import sqlite3
+          conn = sqlite3.connect('dashboard.db')
+          tables = [t[0] for t in conn.execute(\"SELECT name FROM sqlite_master WHERE type='table'\").fetchall()]
+          print(f'Migration created {len(tables)} tables: {tables}')
+          assert len(tables) >= 4, f'Expected at least 4 tables, got {len(tables)}: {tables}'
+          conn.close()
+          "

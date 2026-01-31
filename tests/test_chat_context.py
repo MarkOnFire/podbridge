@@ -3,14 +3,13 @@ Tests for chat context builder service
 """
 
 import pytest
-from pathlib import Path
+
 from api.services.chat_context import (
-    load_editor_personality,
-    get_project_data,
-    build_chat_context,
-    DEFAULT_PERSONALITY,
     EDITOR_PERSONALITY_PATH,
-    OUTPUT_DIR
+    OUTPUT_DIR,
+    build_chat_context,
+    get_project_data,
+    load_editor_personality,
 )
 
 

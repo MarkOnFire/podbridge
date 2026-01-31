@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 from typing import Optional
 
-
 # Path constants
 AGENT_INSTRUCTIONS_DIR = Path(__file__).parent.parent.parent / "claude-desktop-project"
 EDITOR_PERSONALITY_PATH = AGENT_INSTRUCTIONS_DIR / "EDITOR_AGENT_INSTRUCTIONS.md"
@@ -89,11 +88,7 @@ def get_project_data(project_name: str) -> Optional[dict]:
         except Exception:
             pass
 
-    return {
-        "manifest": manifest,
-        "brainstorming": brainstorming,
-        "transcript_excerpt": transcript_excerpt
-    }
+    return {"manifest": manifest, "brainstorming": brainstorming, "transcript_excerpt": transcript_excerpt}
 
 
 def build_chat_context(project_name: Optional[str] = None) -> str:

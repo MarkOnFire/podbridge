@@ -5,11 +5,10 @@ tier escalation, and manager phase analysis/recovery.
 """
 
 import asyncio
-import json
-import pytest
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+
+import pytest
 
 from api.services.worker import JobWorker, WorkerConfig
 
@@ -227,9 +226,7 @@ class TestLoadTranscript:
 
     @patch("api.services.worker.get_llm_client")
     @patch("api.services.worker.TRANSCRIPTS_DIR")
-    def test_loads_transcript_from_transcripts_dir(
-        self, mock_transcripts_dir, mock_get_llm, mock_llm_client, tmp_path
-    ):
+    def test_loads_transcript_from_transcripts_dir(self, mock_transcripts_dir, mock_get_llm, mock_llm_client, tmp_path):
         """Should load transcript from transcripts directory."""
         mock_get_llm.return_value = mock_llm_client
         mock_transcripts_dir.__truediv__ = lambda self, name: tmp_path / name
@@ -246,9 +243,7 @@ class TestLoadTranscript:
 
     @patch("api.services.worker.get_llm_client")
     @patch("api.services.worker.TRANSCRIPTS_DIR")
-    def test_raises_on_missing_file(
-        self, mock_transcripts_dir, mock_get_llm, mock_llm_client, tmp_path
-    ):
+    def test_raises_on_missing_file(self, mock_transcripts_dir, mock_get_llm, mock_llm_client, tmp_path):
         """Should raise FileNotFoundError for missing transcript."""
         mock_get_llm.return_value = mock_llm_client
         mock_transcripts_dir.__truediv__ = lambda self, name: tmp_path / name
@@ -279,9 +274,7 @@ class TestLoadAgentPrompt:
 
     @patch("api.services.worker.get_llm_client")
     @patch("api.services.worker.AGENTS_DIR")
-    def test_uses_fallback_for_missing_file(
-        self, mock_agents_dir, mock_get_llm, mock_llm_client, tmp_path
-    ):
+    def test_uses_fallback_for_missing_file(self, mock_agents_dir, mock_get_llm, mock_llm_client, tmp_path):
         """Should use fallback prompt if file is missing."""
         mock_get_llm.return_value = mock_llm_client
         # Make the path check return False (file doesn't exist)
@@ -402,9 +395,7 @@ class TestRunPhase:
         mock_agents_dir.__truediv__ = lambda self, name: tmp_path / name
 
         # First call times out, second succeeds
-        mock_llm_client.chat = AsyncMock(
-            side_effect=[asyncio.TimeoutError(), mock_llm_response]
-        )
+        mock_llm_client.chat = AsyncMock(side_effect=[asyncio.TimeoutError(), mock_llm_response])
         mock_llm_client.get_escalation_config.return_value = {
             "enabled": True,
             "on_timeout": True,
@@ -583,12 +574,14 @@ class TestProcessJob:
 
         # Verify job was marked completed
         calls = mock_update_status.call_args_list
-        final_call = calls[-1]
         # The final status should be completed
-        assert any(
-            call.args[1].value == "completed" if hasattr(call.args[1], "value") else call.args[1] == "completed"
-            for call in calls
-        ) or mock_update_status.called
+        assert (
+            any(
+                call.args[1].value == "completed" if hasattr(call.args[1], "value") else call.args[1] == "completed"
+                for call in calls
+            )
+            or mock_update_status.called
+        )
 
 
 class TestWorkerStart:

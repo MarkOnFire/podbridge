@@ -9,12 +9,12 @@ File type routing:
 - .jpg/.jpeg/.png files -> auto-attached to SST records (screengrabs)
 """
 
-import re
 import logging
-from datetime import datetime, timezone
-from typing import Optional, List
+import re
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse, unquote
+from datetime import datetime, timezone
+from typing import List, Optional
+from urllib.parse import unquote, urljoin
 
 import httpx
 from bs4 import BeautifulSoup
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RemoteFile:
     """Represents a file discovered on the remote server."""
+
     filename: str
     url: str
     directory_path: str
@@ -41,6 +42,7 @@ class RemoteFile:
 @dataclass
 class ScanResult:
     """Result of scanning the remote server."""
+
     success: bool
     qc_passed_checked: int  # Number of QC-passed Media IDs checked
     new_files_found: int
@@ -61,11 +63,11 @@ class IngestScanner:
 
     # Media ID patterns (PBS Wisconsin conventions)
     # Pattern: 4 characters + 4 digits + optional 2 characters (e.g., 2WLI1209HD, 9UNP2005)
-    MEDIA_ID_PATTERN = re.compile(r'([A-Z0-9]{4}\d{4}[A-Z]{0,2})', re.IGNORECASE)
+    MEDIA_ID_PATTERN = re.compile(r"([A-Z0-9]{4}\d{4}[A-Z]{0,2})", re.IGNORECASE)
 
     # File extensions by type
-    TRANSCRIPT_EXTENSIONS = {'.srt', '.txt'}
-    SCREENGRAB_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
+    TRANSCRIPT_EXTENSIONS = {".srt", ".txt"}
+    SCREENGRAB_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 
     def __init__(
         self,
@@ -83,7 +85,7 @@ class IngestScanner:
             timeout_seconds: HTTP request timeout
             auth: Optional (username, password) tuple for basic auth
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.directories = directories or ["/"]
         self.timeout = timeout_seconds
         self.auth = auth
@@ -98,8 +100,9 @@ class IngestScanner:
         Returns:
             List of Media IDs that passed QC and don't have jobs yet
         """
-        from api.services.airtable import AirtableClient
         from sqlalchemy import text
+
+        from api.services.airtable import AirtableClient
 
         try:
             client = AirtableClient()
@@ -126,11 +129,7 @@ class IngestScanner:
                     if offset:
                         params["offset"] = offset
 
-                    response = await http_client.get(
-                        url,
-                        headers=client.headers,
-                        params=params
-                    )
+                    response = await http_client.get(url, headers=client.headers, params=params)
                     response.raise_for_status()
 
                     data = response.json()
@@ -150,11 +149,13 @@ class IngestScanner:
             async with get_session() as session:
                 if media_ids:
                     placeholders = ",".join([f":id{i}" for i in range(len(media_ids))])
-                    query = text(f"""
+                    query = text(
+                        f"""
                         SELECT DISTINCT media_id
                         FROM jobs
                         WHERE media_id IN ({placeholders})
-                    """)
+                    """
+                    )
 
                     params_dict = {f"id{i}": mid for i, mid in enumerate(media_ids)}
                     result = await session.execute(query, params_dict)
@@ -212,6 +213,7 @@ class IngestScanner:
             ScanResult with scan statistics
         """
         import time
+
         start_time = time.time()
 
         result = ScanResult(
@@ -289,12 +291,14 @@ class IngestScanner:
             existing_urls: set = set()
             batch_size = 500
             for i in range(0, len(all_urls), batch_size):
-                batch_urls = all_urls[i:i + batch_size]
+                batch_urls = all_urls[i : i + batch_size]
                 placeholders = ",".join([f":url{j}" for j in range(len(batch_urls))])
-                check_query = text(f"""
+                check_query = text(
+                    f"""
                     SELECT remote_url FROM available_files
                     WHERE remote_url IN ({placeholders})
-                """)
+                """
+                )
                 params = {f"url{j}": url for j, url in enumerate(batch_urls)}
                 result = await session.execute(check_query, params)
                 existing_urls.update(row.remote_url for row in result.fetchall())
@@ -304,42 +308,51 @@ class IngestScanner:
             # Step 2: Insert new files
             new_files = [f for f in files if f.url not in existing_urls]
             for f in new_files:
-                insert_query = text("""
+                insert_query = text(
+                    """
                     INSERT INTO available_files
                     (remote_url, filename, directory_path, file_type, media_id,
                      file_size_bytes, remote_modified_at, first_seen_at, last_seen_at, status)
                     VALUES
                     (:remote_url, :filename, :directory_path, :file_type, :media_id,
                      :file_size_bytes, :remote_modified_at, :now, :now, 'new')
-                """)
-                await session.execute(insert_query, {
-                    "remote_url": f.url,
-                    "filename": f.filename,
-                    "directory_path": f.directory_path,
-                    "file_type": f.file_type,
-                    "media_id": f.media_id,
-                    "file_size_bytes": f.file_size_bytes,
-                    "remote_modified_at": f.modified_at.isoformat() if f.modified_at else None,
-                    "now": now,
-                })
+                """
+                )
+                await session.execute(
+                    insert_query,
+                    {
+                        "remote_url": f.url,
+                        "filename": f.filename,
+                        "directory_path": f.directory_path,
+                        "file_type": f.file_type,
+                        "media_id": f.media_id,
+                        "file_size_bytes": f.file_size_bytes,
+                        "remote_modified_at": f.modified_at.isoformat() if f.modified_at else None,
+                        "now": now,
+                    },
+                )
                 new_count += 1
-                if f.file_type == 'transcript':
+                if f.file_type == "transcript":
                     new_transcripts += 1
                 else:
                     new_screengrabs += 1
 
             # Step 3: Update last_seen_at for existing files (single UPDATE)
             if existing_urls:
-                update_query = text("""
+                update_query = text(
+                    """
                     UPDATE available_files
                     SET last_seen_at = :now
                     WHERE remote_url IN (SELECT remote_url FROM available_files WHERE 1=1)
-                """)
+                """
+                )
                 # Actually, let's just update all records to current timestamp
                 # This is simpler and still fast
-                update_query = text("""
+                update_query = text(
+                    """
                     UPDATE available_files SET last_seen_at = :now
-                """)
+                """
+                )
                 await session.execute(update_query, {"now": now})
 
             await session.commit()
@@ -403,37 +416,37 @@ class IngestScanner:
             List of RemoteFile objects
         """
         files: List[RemoteFile] = []
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
-        for link in soup.find_all('a'):
-            href = link.get('href', '')
+        for link in soup.find_all("a"):
+            href = link.get("href", "")
             if not href:
                 continue
 
             # Skip parent directory and sorting links
-            if href in ('..', '../', '?', '?C=N;O=D', '?C=M;O=A', '?C=S;O=A', '?C=D;O=A'):
+            if href in ("..", "../", "?", "?C=N;O=D", "?C=M;O=A", "?C=S;O=A", "?C=D;O=A"):
                 continue
-            if href.startswith('?'):
+            if href.startswith("?"):
                 continue
-            if href.endswith('/'):
+            if href.endswith("/"):
                 # This is a subdirectory - skip for now
                 # (could recursively scan in future)
                 continue
 
             # Determine file type by extension
-            filename = href.split('/')[-1]
-            ext = '.' + filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+            filename = href.split("/")[-1]
+            ext = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
             if ext in self.TRANSCRIPT_EXTENSIONS:
-                file_type = 'transcript'
+                file_type = "transcript"
             elif ext in self.SCREENGRAB_EXTENSIONS:
-                file_type = 'screengrab'
+                file_type = "screengrab"
             else:
                 # Skip unknown file types
                 continue
 
             # Build full URL
-            full_url = urljoin(base_url + '/', href)
+            full_url = urljoin(base_url + "/", href)
 
             # Extract Media ID from filename
             media_id = self._extract_media_id(filename)
@@ -441,15 +454,17 @@ class IngestScanner:
             # Try to parse size/date from surrounding text
             file_size, modified_at = self._parse_file_metadata(link)
 
-            files.append(RemoteFile(
-                filename=filename,
-                url=full_url,
-                directory_path=directory_path,
-                file_type=file_type,
-                media_id=media_id,
-                file_size_bytes=file_size,
-                modified_at=modified_at,
-            ))
+            files.append(
+                RemoteFile(
+                    filename=filename,
+                    url=full_url,
+                    directory_path=directory_path,
+                    file_type=file_type,
+                    media_id=media_id,
+                    file_size_bytes=file_size,
+                    modified_at=modified_at,
+                )
+            )
 
         return files
 
@@ -469,14 +484,14 @@ class IngestScanner:
         decoded = unquote(filename)
 
         # Strip duplicate extensions (e.g., .srt.srt -> .srt)
-        while decoded.endswith('.srt.srt'):
+        while decoded.endswith(".srt.srt"):
             decoded = decoded[:-4]
-        while decoded.endswith('.txt.txt'):
+        while decoded.endswith(".txt.txt"):
             decoded = decoded[:-4]
 
         # Remove extension for sanitization
-        if '.' in decoded:
-            name_part = decoded.rsplit('.', 1)[0]
+        if "." in decoded:
+            name_part = decoded.rsplit(".", 1)[0]
         else:
             name_part = decoded
 
@@ -504,17 +519,17 @@ class IngestScanner:
 
         try:
             # Check if we're in a table row (Apache table format)
-            parent_td = link_element.find_parent('td')
+            parent_td = link_element.find_parent("td")
             if parent_td:
                 # Table format: look for sibling <td> elements
-                all_tds = parent_td.find_parent('tr').find_all('td')
+                all_tds = parent_td.find_parent("tr").find_all("td")
                 for td in all_tds:
                     text = td.get_text(strip=True)
-                    if not text or text == '-':
+                    if not text or text == "-":
                         continue
 
                     # Try to parse as date (format: YYYY-MM-DD HH:MM)
-                    if modified_at is None and '-' in text:
+                    if modified_at is None and "-" in text:
                         try:
                             modified_at = datetime.strptime(text, "%Y-%m-%d %H:%M")
                             modified_at = modified_at.replace(tzinfo=timezone.utc)
@@ -559,11 +574,11 @@ class IngestScanner:
         """Parse human-readable size (45K, 1.2M, 500) to bytes."""
         try:
             size_str = size_str.strip().upper()
-            if size_str.endswith('K'):
+            if size_str.endswith("K"):
                 return int(float(size_str[:-1]) * 1024)
-            elif size_str.endswith('M'):
+            elif size_str.endswith("M"):
                 return int(float(size_str[:-1]) * 1024 * 1024)
-            elif size_str.endswith('G'):
+            elif size_str.endswith("G"):
                 return int(float(size_str[:-1]) * 1024 * 1024 * 1024)
             else:
                 return int(size_str)
@@ -582,49 +597,61 @@ class IngestScanner:
         """
         async with get_session() as session:
             # Check if already tracked
-            check_query = text("""
+            check_query = text(
+                """
                 SELECT id, status FROM available_files
                 WHERE remote_url = :url
-            """)
+            """
+            )
             result = await session.execute(check_query, {"url": remote_file.url})
             existing = result.fetchone()
 
             if existing:
                 # Update last_seen_at and backfill remote_modified_at if missing
-                update_query = text("""
+                update_query = text(
+                    """
                     UPDATE available_files
                     SET last_seen_at = :now,
                         remote_modified_at = COALESCE(remote_modified_at, :remote_modified_at)
                     WHERE id = :id
-                """)
-                await session.execute(update_query, {
-                    "now": datetime.now(timezone.utc).isoformat(),
-                    "remote_modified_at": remote_file.modified_at.isoformat() if remote_file.modified_at else None,
-                    "id": existing.id,
-                })
+                """
+                )
+                await session.execute(
+                    update_query,
+                    {
+                        "now": datetime.now(timezone.utc).isoformat(),
+                        "remote_modified_at": remote_file.modified_at.isoformat() if remote_file.modified_at else None,
+                        "id": existing.id,
+                    },
+                )
                 return False
 
             # Insert new file
-            insert_query = text("""
+            insert_query = text(
+                """
                 INSERT INTO available_files
                 (remote_url, filename, directory_path, file_type, media_id,
                  file_size_bytes, remote_modified_at, first_seen_at, last_seen_at, status)
                 VALUES
                 (:remote_url, :filename, :directory_path, :file_type, :media_id,
                  :file_size_bytes, :remote_modified_at, :now, :now, 'new')
-            """)
+            """
+            )
 
             now = datetime.now(timezone.utc).isoformat()
-            await session.execute(insert_query, {
-                "remote_url": remote_file.url,
-                "filename": remote_file.filename,
-                "directory_path": remote_file.directory_path,
-                "file_type": remote_file.file_type,
-                "media_id": remote_file.media_id,
-                "file_size_bytes": remote_file.file_size_bytes,
-                "remote_modified_at": remote_file.modified_at.isoformat() if remote_file.modified_at else None,
-                "now": now,
-            })
+            await session.execute(
+                insert_query,
+                {
+                    "remote_url": remote_file.url,
+                    "filename": remote_file.filename,
+                    "directory_path": remote_file.directory_path,
+                    "file_type": remote_file.file_type,
+                    "media_id": remote_file.media_id,
+                    "file_size_bytes": remote_file.file_size_bytes,
+                    "remote_modified_at": remote_file.modified_at.isoformat() if remote_file.modified_at else None,
+                    "now": now,
+                },
+            )
 
             logger.info(f"Tracked new {remote_file.file_type}: {remote_file.filename}")
             return True
@@ -647,23 +674,24 @@ class IngestScanner:
             - media_id: Media ID from the file
             - error: Error message (if failed)
         """
-        import os
         from pathlib import Path
 
         # Get file record from database
         async with get_session() as session:
-            query = text("""
+            query = text(
+                """
                 SELECT id, remote_url, filename, media_id, file_type, status
                 FROM available_files
                 WHERE id = :file_id
-            """)
+            """
+            )
             result = await session.execute(query, {"file_id": file_id})
             row = result.fetchone()
 
             if not row:
                 return {"success": False, "error": f"File {file_id} not found"}
 
-            if row.file_type != 'transcript':
+            if row.file_type != "transcript":
                 return {"success": False, "error": f"File {file_id} is not a transcript"}
 
         # Create destination directory if needed
@@ -685,7 +713,7 @@ class IngestScanner:
                 response.raise_for_status()
 
                 # Write to local file
-                with open(local_path, 'wb') as f:
+                with open(local_path, "wb") as f:
                     f.write(response.content)
 
                 logger.info(f"Downloaded {row.filename} to {local_path}")
@@ -701,18 +729,23 @@ class IngestScanner:
 
         # Update file status in database
         async with get_session() as session:
-            update_query = text("""
+            update_query = text(
+                """
                 UPDATE available_files
                 SET status = 'queued',
                     local_path = :local_path,
                     downloaded_at = :now
                 WHERE id = :file_id
-            """)
-            await session.execute(update_query, {
-                "file_id": file_id,
-                "local_path": str(local_path),
-                "now": datetime.now(timezone.utc).isoformat(),
-            })
+            """
+            )
+            await session.execute(
+                update_query,
+                {
+                    "file_id": file_id,
+                    "local_path": str(local_path),
+                    "now": datetime.now(timezone.utc).isoformat(),
+                },
+            )
 
         return {
             "success": True,
@@ -729,14 +762,16 @@ class IngestScanner:
             List of file records ready for attachment
         """
         async with get_session() as session:
-            query = text("""
+            query = text(
+                """
                 SELECT id, remote_url, filename, media_id, first_seen_at
                 FROM available_files
                 WHERE file_type = 'screengrab'
                   AND status = 'new'
                   AND media_id IS NOT NULL
                 ORDER BY first_seen_at ASC
-            """)
+            """
+            )
             result = await session.execute(query)
             rows = result.fetchall()
 
