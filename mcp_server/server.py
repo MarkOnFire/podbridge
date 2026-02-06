@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
 """
-Cardigan — The Metadata Neighborhood's Friendly Editor
+Podbridge MCP Server — Copy Editor Tools
 
-"Hello, neighbor. I'm so glad you're here."
-
-Cardigan is the copy editor agent for PBS Wisconsin's editorial workflow.
-Think of them as a warm, patient neighbor who's genuinely delighted to help
-you polish your metadata and make your content shine.
-
-The Metadata Neighborhood is the automated transcript processing pipeline
-that prepares projects for Cardigan's gentle editorial touch.
-
-Tools provided:
-- Discover processed projects ready for editing
-- Load project context (transcript, brainstorming, revisions, SST metadata)
+Tools for the copy editor agent workflow:
+- Discover processed episodes ready for editing
+- Load episode context (transcript, analysis, revisions)
 - Save revisions and keyword reports with auto-versioning
 
-Connects to the FastAPI backend on localhost:8000 for job metadata,
+Connects to the FastAPI backend on localhost:8000 for run metadata,
 and reads/writes directly to the OUTPUT folder for content.
-
-NOTE: Airtable access is READ-ONLY. No write operations are permitted.
 """
 
 import asyncio

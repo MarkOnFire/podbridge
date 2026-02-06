@@ -1,7 +1,7 @@
 """
-Editorial Assistant v3.0 API
+Podbridge API
 
-FastAPI-based control plane for the Editorial Assistant system.
+FastAPI-based control plane for the Podbridge pipeline dashboard.
 """
 
-__version__ = "3.0.0-dev"
+__version__ = "0.1.0"

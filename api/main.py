@@ -1,5 +1,5 @@
 """
-Editorial Assistant v3.0 - FastAPI Application
+Podbridge API - FastAPI Application
 
 Main entry point for the API server.
 """
@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
     closes connections on shutdown.
     """
     # Startup: Initialize database and LLM client
-    logger.info("Starting Editorial Assistant API v3.0")
+    logger.info("Starting Podbridge API")
     await database.init_db()
     logger.info("Database initialized")
     get_llm_client()  # Initialize LLM client
@@ -73,9 +73,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Editorial Assistant API",
-    description="API for PBS Wisconsin Editorial Assistant v3.0",
-    version="3.0.0-dev",
+    title="Podbridge API",
+    description="Podcast content pipeline dashboard API",
+    version="0.1.0",
     lifespan=lifespan,
 )
 
@@ -86,7 +86,7 @@ app.add_middleware(
         "http://localhost:3000",  # React dev server
         "http://localhost:5173",  # Vite dev server
         "http://metadata.neighborhood:3000",  # Local domain alias
-        "https://cardigan.bymarkriechers.com",  # Cloudflare Tunnel
+        "https://podbridge.bymarkriechers.com",  # Cloudflare Tunnel
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -97,7 +97,7 @@ app.add_middleware(
 @app.get("/")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "version": "3.0.0-dev"}
+    return {"status": "ok", "version": "0.1.0"}
 
 
 @app.get("/api/system/health")

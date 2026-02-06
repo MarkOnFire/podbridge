@@ -12,7 +12,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,  // Listen on all interfaces (required for metadata.neighborhood alias)
-    allowedHosts: ['metadata.neighborhood', 'localhost', 'cardigan.bymarkriechers.com'],
+    allowedHosts: ['metadata.neighborhood', 'localhost', 'podbridge.bymarkriechers.com'],
     proxy: {
       '/api': {
         target: 'http://metadata.neighborhood:8000',

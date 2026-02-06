@@ -90,15 +90,10 @@ export default function Layout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center space-x-4">
-              <img
-                src="https://wisconsinpublictv.s3.us-east-2.amazonaws.com/wp-content/uploads/2023/08/pbs-wisconsin-wblue-rgb-2-412x62.png"
-                alt="PBS Wisconsin"
-                className="h-6"
-              />
               <span className="text-lg font-semibold text-white">
-                Digital Editorial Assistant
+                Podbridge
               </span>
-              <span className="text-xs text-gray-400">v3.0</span>
+              <span className="text-xs text-gray-400">v0.1</span>
             </div>
             <div className="flex items-center space-x-1">
               <NavLink
@@ -106,13 +101,13 @@ export default function Layout() {
                 className={navLinkClass}
                 end
               >
-                Dashboard
+                Pipeline
               </NavLink>
               <NavLink
                 to="/ready"
                 className={navLinkClass}
               >
-                Ready for Work
+                Ready for Review
               </NavLink>
               <NavLink
                 to="/queue"
@@ -124,7 +119,7 @@ export default function Layout() {
                 to="/projects"
                 className={navLinkClass}
               >
-                Projects
+                Episodes
               </NavLink>
               <NavLink
                 to="/settings"

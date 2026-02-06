@@ -87,7 +87,7 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-white">Pipeline Dashboard</h1>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -116,7 +116,7 @@ export default function Home() {
       {/* Recent Jobs */}
       <div className="bg-gray-800 rounded-lg border border-gray-700">
         <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-white">Recent Jobs</h2>
+          <h2 className="text-lg font-medium text-white">Recent Runs</h2>
           <Link
             to="/queue"
             className="text-sm text-blue-400 hover:text-blue-300"
@@ -127,7 +127,7 @@ export default function Home() {
         <div className="divide-y divide-gray-700">
           {recentJobs.length === 0 ? (
             <div className="px-4 py-8 text-center text-gray-300">
-              No jobs in queue
+              No runs in queue
             </div>
           ) : (
             recentJobs.map((job) => (

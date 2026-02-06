@@ -1,6 +1,6 @@
 [project]
-name = "editorial-assistant"
-version = "3.0.0-dev"
+name = "podbridge"
+version = "0.1.0"
 requires-python = ">=3.13"
 
 [tool.pytest.ini_options]

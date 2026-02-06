@@ -13,7 +13,7 @@ export interface AgentInfo {
 }
 
 /**
- * Complete list of AI agents in the editorial pipeline.
+ * Complete list of AI agents in the content pipeline.
  * The order here determines display order in the UI.
  */
 export const AGENT_INFO: AgentInfo[] = [
@@ -50,7 +50,7 @@ export const AGENT_INFO: AgentInfo[] = [
     name: 'Copy Editor',
     icon: '✏️',
     description:
-      'Reviews and refines formatted content for clarity, grammar and PBS style guidelines. Ensures broadcast-quality prose while preserving speaker voice.',
+      'Reviews and refines formatted content for clarity and grammar. Ensures quality prose while preserving speaker voice.',
   },
   {
     id: 'chat',

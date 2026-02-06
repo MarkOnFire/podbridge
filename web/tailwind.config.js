@@ -8,9 +8,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        // PBS Wisconsin brand colors
-        'pbs-blue': '#1d4f91',
-        'pbs-red': '#c8102e',
+        // Podbridge brand colors
+        'pod-teal': '#0d9488',
+        'pod-amber': '#d97706',
       },
     },
   },
